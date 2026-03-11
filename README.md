@@ -15,8 +15,6 @@ Web app per la gestione dei turni GTT (Gruppo Torinese Trasporti).
 
 ## Utilizzo
 
-Apri `index.html` nel browser e carica i PDF dei turni.
+Apri la pagina e carica i PDF dei turni.
 
-## Hosting
 
-Il sito è ospitato gratuitamente su GitHub Pages.
