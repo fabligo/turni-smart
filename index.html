@@ -9,8 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#002244">
-<title>Turni Smart</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚌</text></svg>">
+<title>Turni Smart v4.3</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #f4f6f9; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
@@ -19,20 +18,19 @@
 </head>
 <body>
 <script>
-/* Force cache clear on version change */
-var CV="3.8";
+var CV="4.3";
 try{var ov=localStorage.getItem("ts_app_ver");
 if(ov&&ov!==CV){localStorage.setItem("ts_app_ver",CV);location.reload(true);}
 else{localStorage.setItem("ts_app_ver",CV);}
 }catch(e){}
-document.title="Turni Smart v"+CV;
 </script>
-<div id="root"><p style="padding:20px;font-size:18px;font-family:sans-serif;color:#003366">Turni Smart v3.8 — Caricamento...</p></div>
+<div id="root"><p style="padding:20px;font-size:18px;font-family:sans-serif;color:#003366">Turni Smart v4.3 — Caricamento...</p></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
 <script>
-var jsxCode = `const{useState,useEffect,useRef}=React;
+try {
+  var jsxCode = `const{useState,useEffect,useRef}=React;
 
 
 /* ══════════ STORAGE (localStorage, silent fail in sandbox) ══════════ */
@@ -247,7 +245,18 @@ function parsePreconoscenza(text){
 var RE_SEG_STR="(?:([A-Z0-9]{2}\\\\s+\\\\d{3})\\\\s+)?([A-Z0-9]+)\\\\s*/\\\\s*(\\\\d+)\\\\s+(\\\\d{2}\\\\.\\\\d{2})\\\\s+([A-Z]{2,4})\\\\s+([AR-])\\\\s+(\\\\d{2}\\\\.\\\\d{2})\\\\s+([A-Z]{2,4})";
 function parseOrariPageLines(fullText,gt,ver,devs){
   var lines=fullText.split("\\n"),lastL=null,lastR=null;
-  var pageSegs=[];
+  function hm(s){var p=s.split(":");return parseInt(p[0])*60+parseInt(p[1]);}
+  function wouldOverlap(code,seg){
+    if(!devs[code])return false;
+    var same=devs[code].filter(function(e){return e.gt===seg.gt;});
+    if(same.length===0)return false;
+    var ns=hm(seg.start),ne=hm(seg.end);if(ne<=ns)ne+=1440;
+    for(var i=0;i<same.length;i++){
+      var es=hm(same[i].start),ee=hm(same[i].end);if(ee<=es)ee+=1440;
+      if(ns<ee&&ne>es)return true;
+    }
+    return false;
+  }
   lines.forEach(function(line){
     var lineMid=line.length/2;
     var codeLine=line.trim().match(/^([A-Z0-9]{2})\\s+(\\d{3})$/);
@@ -257,40 +266,19 @@ function parseOrariPageLines(fullText,gt,ver,devs){
       var code=m[1]?m[1].replace(/\\s+/g," ").trim():null;
       var seg={ln:m[2],vett:m[3],start:m[4].replace(".",":"),loc_s:m[5],dir:m[6]!=="-"?m[6]:"",end:m[7].replace(".",":"),loc_e:m[8],gt:gt,ver:ver};
       var isRight=m.index>=lineMid;
-      if(code){if(isRight)lastR=code;else lastL=code;}
-      pageSegs.push({code:code,posOwner:code||(isRight?lastR:lastL),seg:seg,matched:false});
-    }
-  });
-  /* PASS 1: all coded segments */
-  var codeEnds={};
-  pageSegs.forEach(function(ps){
-    if(ps.code){
-      ps.matched=true;
-      if(!devs[ps.code])devs[ps.code]=[];
-      devs[ps.code].push(ps.seg);
-      codeEnds[ps.code]={end:ps.seg.end,loc:ps.seg.loc_e};
-    }
-  });
-  /* PASS 2: iterative end-time stitching for continuations */
-  var changed=true,maxIter=10;
-  while(changed&&maxIter-->0){
-    changed=false;
-    pageSegs.forEach(function(ps){
-      if(ps.matched)return;
-      var best=null,keys=Object.keys(codeEnds);
-      for(var i=0;i<keys.length;i++){var k=keys[i],ce=codeEnds[k];
-        if(ce.end===ps.seg.start&&ce.loc===ps.seg.loc_s){best=k;break;}}
-      if(!best){for(var j=0;j<keys.length;j++){var k2=keys[j],ce2=codeEnds[k2];
-        if(ce2.end===ps.seg.start){best=k2;break;}}}
-      if(best){
-        ps.matched=true;changed=true;
-        if(!devs[best])devs[best]=[];
-        devs[best].push(ps.seg);
-        codeEnds[best]={end:ps.seg.end,loc:ps.seg.loc_e};
+      if(code){
+        if(isRight)lastR=code;else lastL=code;
+        if(!devs[code])devs[code]=[];
+        devs[code].push(seg);
+      }else{
+        var owner=isRight?lastR:lastL;
+        if(owner&&!wouldOverlap(owner,seg)){
+          if(!devs[owner])devs[owner]=[];
+          devs[owner].push(seg);
+        }
       }
-    });
-  }
-  /* Remaining unmatched: position-based fallback (ignore — likely header junk) */
+    }
+  });
 }
 function mergeDevs(target,source){Object.keys(source).forEach(function(code){if(!target[code])target[code]=[];source[code].forEach(function(seg){if(!target[code].some(function(e){return e.start===seg.start&&e.loc_s===seg.loc_s&&e.end===seg.end&&e.loc_e===seg.loc_e&&e.gt===seg.gt&&e.ln===seg.ln;}))target[code].push(seg);});});}
 
@@ -430,7 +418,7 @@ function checkRiposoBreve(days,iso){var v=days[iso];if(!v||v.t!=="turno"||!v.e)r
 
 function getFilteredDevSegs(devs,v,date){
   var dk=buildDevKey(v),segs=dk&&devs[dk]?devs[dk]:[];
-  if(segs.length>0&&date){var dow=date.getDay(),dt2=dow===0?"FEST":dow===6?"SAB":"LV";var filt=segs.filter(function(s){var gt=(s.gt||"").toUpperCase();if(!gt)return true;/* empty gt = show always */if(dt2==="LV")return gt.indexOf("LUN")>=0||gt.indexOf("MER")>=0;if(dt2==="SAB")return gt.indexOf("SAB")>=0;return gt.indexOf("FEST")>=0;});if(filt.length>0)segs=filt;}
+  if(segs.length>0&&date){var dow=date.getDay(),dt2=dow===0?"FEST":dow===6?"SAB":"LV";var filt=segs.filter(function(s){var gt=(s.gt||"").toUpperCase();if(!gt)return true;if(dt2==="LV")return gt.indexOf("LUN")>=0||gt.indexOf("MER")>=0;if(dt2==="SAB")return gt.indexOf("SAB")>=0;return gt.indexOf("FEST")>=0;});segs=filt;}
   segs=segs.slice().sort(function(a,b){return hm2min(a.start)-hm2min(b.start);});
   return segs;
 }
@@ -546,7 +534,7 @@ function SegmentList(props){
 /* ══════════ Flip Card ══════════ */
 function Card(props){
   var date=props.date,devs=props.devs||{},allDays=props.allDays||{},onPaste=props.onPaste;
-  var v=localV||allDays[toIso(date)]||props.v;
+  /* ALL hooks must be declared first, before any logic */
   var _cp=useState(false),copied=_cp[0],setCopied=_cp[1];
   var _flipped=useState(false),flipped=_flipped[0],setFlipped=_flipped[1];
   var _perr=useState(""),pasteErr=_perr[0],setPasteErr=_perr[1];
@@ -555,6 +543,8 @@ function Card(props){
   var _localV=useState(null),localV=_localV[0],setLocalV=_localV[1];
   var _nVett=useState(""),nVett=_nVett[0],setNVett=_nVett[1];
   var _alarmSet=useState(function(){var a=DB.get("ts_alarm_"+toIso(props.date));return a&&a.set?true:false;}),alarmSet=_alarmSet[0],setAlarmSet=_alarmSet[1];
+  /* Now use localV AFTER it's declared */
+  var v=localV||allDays[toIso(date)]||props.v;
   var devSegs=getFilteredDevSegs(devs,v,date);
   var isSpezzato=isRealSpezzato(devSegs);
   var hasDevSegs=devSegs.length>=1;
@@ -676,7 +666,7 @@ function Card(props){
   var front=(<div className="flip-front" style={{background:"#ffffff",borderRadius:"10px",boxShadow:isSpezzato?"0 1px 8px rgba(211,84,0,0.15)":"0 1px 6px rgba(0,51,102,0.10)",borderLeft:isSpezzato?"4px solid #d35400":"4px solid #003366",padding:"16px 18px"}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:4}}>
       <span style={{fontSize:13,color:"#003366",fontWeight:600}}>{toWd(date)} {toFmt(date)}</span>
-      <div>{isSpezzato?<Tag bg="#fef2f2" color="#c62828">Cambio ({devSegs.length} seg.)</Tag>:null}{night?<Tag bg={G.purpleBg} color={G.purple}>Serale</Tag>:null}{rb?<Tag bg={G.redBg} color={G.red}>Rip. breve</Tag>:null}</div>
+      <div>{isSpezzato?<Tag bg="#fef2f2" color="#c62828">Cambio ({devSegs.length} seg.)</Tag>:null}{devSegs.length===1?<Tag bg="#edf0f4" color="#003366">1 seg.</Tag>:null}{devSegs.length===0?<Tag bg="#fff3e0" color="#e65100">no sviluppo</Tag>:null}{night?<Tag bg={G.purpleBg} color={G.purple}>Serale</Tag>:null}{rb?<Tag bg={G.redBg} color={G.red}>Rip. breve</Tag>:null}</div>
     </div>
     <div style={{display:"flex",alignItems:"baseline",gap:8,margin:"6px 0 2px"}}><span style={{fontFamily:"'SF Mono',monospace",fontSize:24,fontWeight:800,color:"#003366",letterSpacing:"-0.02em"}}>{code}</span>{firstVett?<span style={{color:"#003366",fontSize:16,fontWeight:700,background:"#f0f4f8",padding:"2px 10px",borderRadius:6}}>vet.{firstVett}</span>:null}<span style={{color:"#003366",fontSize:12}}>Cod. {v.c}</span></div>
     <div style={{background:"#f0f4f8",borderLeft:"3px solid #003366",borderRadius:"0 8px 8px 0",padding:"9px 14px",margin:"8px 0"}}>
@@ -896,7 +886,7 @@ function App(){
   useEffect(function(){
     if(restored)return;
     /* Invalidate orari cache on parser version change */
-    var PARSER_VER="p3.8";
+    var PARSER_VER="p4.3";
     var oldPV=DB.get("ts_parser_ver");
     if(oldPV!==PARSER_VER){
       /* Parser changed — delete all cached orari, keep preconoscenza */
@@ -993,7 +983,7 @@ function App(){
     report+=saved?" | Salvato":" | NON salvato";
     setLoading2(false);if(cb)cb();
     if(!Object.keys(nd).length)setErr("Nessun turno trovato! "+texts.length+" pagine.");
-    else setErr("v3.8 OK! "+report);
+    else setErr("v4.1 OK! "+report);
     });}).catch(function(e){setErr("Errore Orari: "+e.message);setLoading2(false);});};reader.readAsArrayBuffer(file);}
 
   function cerca(){if(!q.trim())return;var d=parseInput(q,refY);if(!d){setRes([]);setMsg("Formato non riconosciuto");return;}var is2=toIso(d);if(days[is2]){setRes([{date:d,v:days[is2]}]);setMsg("");}else{setRes([]);setMsg("Nessun dato per "+toFmt(d));}}
@@ -1029,7 +1019,7 @@ function App(){
           <rect x="32.5" y="14" width="4.5" height="3" rx="0.8" fill="#89b4e8"/>
           <circle cx="28.5" cy="22" r="1.2" fill="#003366"/><circle cx="35.5" cy="22" r="1.2" fill="#003366"/>
         </svg>
-        <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:22,fontWeight:800,color:"#ffffff",letterSpacing:"-0.02em"}}>Turni Smart</span><span style={{fontSize:9,color:"rgba(255,255,255,0.5)",fontWeight:500}}>v3.8</span></div><div style={{fontSize:10,color:"rgba(255,255,255,0.65)",fontWeight:500,marginTop:1}}>Gestione turni GTT — Deposito Gerbido</div>
+        <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:22,fontWeight:800,color:"#ffffff",letterSpacing:"-0.02em"}}>Turni Smart</span><span style={{fontSize:9,color:"rgba(255,255,255,0.5)",fontWeight:500}}>v4.3</span></div><div style={{fontSize:10,color:"rgba(255,255,255,0.65)",fontWeight:500,marginTop:1}}>Gestione turni GTT — Deposito Gerbido</div>
       </div>
       <div style={{maxWidth:460,margin:"0 auto",padding:"16px 16px"}}>
         <input ref={fileRef1} type="file" accept=".pdf" style={{display:"none"}} onChange={function(ev){if(ev.target.files[0])uploadPreco(ev.target.files[0]);}}/>
@@ -1158,11 +1148,14 @@ function App(){
   );
 }
 `;
-var compiled = Babel.transform(jsxCode, {presets:["react"]}).code;
-var s = document.createElement("script");
-s.textContent = compiled;
-document.body.appendChild(s);
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+  var compiled = Babel.transform(jsxCode, {presets:["react"]}).code;
+  var s = document.createElement("script");
+  s.textContent = compiled;
+  document.body.appendChild(s);
+  ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+} catch(e) {
+  document.getElementById("root").innerHTML = "<pre style='color:red;padding:20px;font-size:12px'>ERRORE JS: " + e.message + "\n\nStack: " + e.stack + "</pre>";
+}
 </script>
 </body>
 </html>
