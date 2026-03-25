@@ -245,18 +245,7 @@ function parsePreconoscenza(text){
 var RE_SEG_STR="(?:([A-Z0-9]{2}\\\\s+\\\\d{3})\\\\s+)?([A-Z0-9]+)\\\\s*/\\\\s*(\\\\d+)\\\\s+(\\\\d{2}\\\\.\\\\d{2})\\\\s+([A-Z]{2,4})\\\\s+([AR-])\\\\s+(\\\\d{2}\\\\.\\\\d{2})\\\\s+([A-Z]{2,4})";
 function parseOrariPageLines(fullText,gt,ver,devs){
   var lines=fullText.split("\\n"),lastL=null,lastR=null;
-  function hm(s){var p=s.split(":");return parseInt(p[0])*60+parseInt(p[1]);}
-  function wouldOverlap(code,seg){
-    if(!devs[code])return false;
-    var same=devs[code].filter(function(e){return e.gt===seg.gt;});
-    if(same.length===0)return false;
-    var ns=hm(seg.start),ne=hm(seg.end);if(ne<=ns)ne+=1440;
-    for(var i=0;i<same.length;i++){
-      var es=hm(same[i].start),ee=hm(same[i].end);if(ee<=es)ee+=1440;
-      if(ns<ee&&ne>es)return true;
-    }
-    return false;
-  }
+  var pageSegs=[];
   lines.forEach(function(line){
     var lineMid=line.length/2;
     var codeLine=line.trim().match(/^([A-Z0-9]{2})\\s+(\\d{3})$/);
@@ -266,19 +255,18 @@ function parseOrariPageLines(fullText,gt,ver,devs){
       var code=m[1]?m[1].replace(/\\s+/g," ").trim():null;
       var seg={ln:m[2],vett:m[3],start:m[4].replace(".",":"),loc_s:m[5],dir:m[6]!=="-"?m[6]:"",end:m[7].replace(".",":"),loc_e:m[8],gt:gt,ver:ver};
       var isRight=m.index>=lineMid;
-      if(code){
-        if(isRight)lastR=code;else lastL=code;
-        if(!devs[code])devs[code]=[];
-        devs[code].push(seg);
-      }else{
-        var owner=isRight?lastR:lastL;
-        if(owner&&!wouldOverlap(owner,seg)){
-          if(!devs[owner])devs[owner]=[];
-          devs[owner].push(seg);
-        }
-      }
+      if(code){if(isRight)lastR=code;else lastL=code;}
+      pageSegs.push({code:code,posOwner:code||(isRight?lastR:lastL),seg:seg,done:false});
     }
   });
+  var ce={};
+  pageSegs.forEach(function(ps){if(ps.code){ps.done=true;devs[ps.code]=devs[ps.code]||[];devs[ps.code].push(ps.seg);ce[ps.code]={e:ps.seg.end,l:ps.seg.loc_e};}});
+  var ch=true,mx=10;
+  while(ch&&mx-->0){ch=false;pageSegs.forEach(function(ps){if(ps.done)return;var b=null,ks=Object.keys(ce);
+    for(var i=0;i<ks.length;i++){if(ce[ks[i]].e===ps.seg.start&&ce[ks[i]].l===ps.seg.loc_s){b=ks[i];break;}}
+    if(!b){for(var j=0;j<ks.length;j++){if(ce[ks[j]].e===ps.seg.start){b=ks[j];break;}}}
+    if(b){ps.done=true;ch=true;devs[b]=devs[b]||[];devs[b].push(ps.seg);ce[b]={e:ps.seg.end,l:ps.seg.loc_e};}
+  });}
 }
 function mergeDevs(target,source){Object.keys(source).forEach(function(code){if(!target[code])target[code]=[];source[code].forEach(function(seg){if(!target[code].some(function(e){return e.start===seg.start&&e.loc_s===seg.loc_s&&e.end===seg.end&&e.loc_e===seg.loc_e&&e.gt===seg.gt&&e.ln===seg.ln;}))target[code].push(seg);});});}
 
@@ -885,21 +873,20 @@ function App(){
 
   useEffect(function(){
     if(restored)return;
-    /* Invalidate orari cache on parser version change */
-    var PARSER_VER="p4.3";
+    var PARSER_VER="p5.0";
     var oldPV=DB.get("ts_parser_ver");
     if(oldPV!==PARSER_VER){
-      /* Parser changed — delete all cached orari, keep preconoscenza */
-      DB.keys("ts_orari_").forEach(function(k){DB.del(k);});
-      DB.del("ts_last_orari");
+      /* CLEAR EVERYTHING — force fresh re-upload */
+      try{var toDel=[];for(var ki=0;ki<localStorage.length;ki++){var lk=localStorage.key(ki);if(lk&&lk.indexOf("ts_")===0)toDel.push(lk);}toDel.forEach(function(lk){localStorage.removeItem(lk);});}catch(e){}
       DB.set("ts_parser_ver",PARSER_VER);
+      setErr("Aggiornamento v5.0! Ricarica Preconoscenza e Orari Linee.");
+      setRestored(true);
+      return;
     }
     var d=loadLastPreco();
     if(d&&Object.keys(d.days).length){
       setData(d);
-      if(d.dIn){var ok=orariKey(d.dIn.getFullYear(),d.dIn.getMonth()+1);var od=loadOrariByKey(ok);if(od&&Object.keys(od).length)setDevs(od);
-        else setErr("RICARICA ORARI LINEE — Il parser è stato aggiornato (v3.8). Premi il pulsante qui sotto per caricare di nuovo il PDF Orari.");
-      }
+      if(d.dIn){var ok=orariKey(d.dIn.getFullYear(),d.dIn.getMonth()+1);var od=loadOrariByKey(ok);if(od&&Object.keys(od).length)setDevs(od);}
     }
     setRestored(true);
     checkPendingAlarms();
