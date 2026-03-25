@@ -2,19 +2,30 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#0a0d14">
+<meta name="theme-color" content="#002244">
 <title>Turni Smart</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚌</text></svg>">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #0a0d14; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
-  select option { background: #1a1e2e; color: #e3e5ea; }
+  body { background: #f4f6f9; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+  select option { background: #ffffff; color: #1a1a2e; }
 </style>
 </head>
 <body>
+<script>
+/* Force cache clear on version change */
+var CV="3.5";
+try{var ov=localStorage.getItem("ts_app_ver");
+if(ov&&ov!==CV){localStorage.setItem("ts_app_ver",CV);location.reload(true);}
+else{localStorage.setItem("ts_app_ver",CV);}
+}catch(e){}
+</script>
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -28,7 +39,15 @@ var DB={
   _ok:null,
   _test:function(){if(DB._ok!==null)return DB._ok;try{localStorage.setItem("_ts_test","1");localStorage.removeItem("_ts_test");DB._ok=true;}catch(e){DB._ok=false;}return DB._ok;},
   get:function(k){try{if(!DB._test())return null;var v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}},
-  set:function(k,v){try{if(!DB._test())return;localStorage.setItem(k,JSON.stringify(v));}catch(e){}},
+  set:function(k,v){try{if(!DB._test())return false;var s=JSON.stringify(v);localStorage.setItem(k,s);return true;}catch(e){
+    /* If quota exceeded, try clearing old data */
+    if(e.name==="QuotaExceededError"||e.code===22){
+      try{var keys=[];for(var i=0;i<localStorage.length;i++){var lk=localStorage.key(i);if(lk&&lk.indexOf("ts_")===0)keys.push(lk);}
+      /* Remove oldest entries except current */
+      keys.forEach(function(lk){if(lk!==k)localStorage.removeItem(lk);});
+      localStorage.setItem(k,s);return true;}catch(e2){return false;}
+    }
+    return false;}},
   del:function(k){try{if(!DB._test())return;localStorage.removeItem(k);}catch(e){}},
   keys:function(prefix){try{if(!DB._test())return[];var r=[];for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k.indexOf(prefix)===0)r.push(k);}return r;}catch(e){return[];}}
 };
@@ -49,12 +68,12 @@ function savePreco(data){
   updateIndex("preco",k,data.nome||"",y,m);
 }
 function saveOrari(devs,precoData){
-  if(!precoData||!precoData.dIn||!Object.keys(devs).length)return;
+  if(!precoData||!precoData.dIn||!Object.keys(devs).length)return false;
   var y=precoData.dIn.getFullYear(),m=precoData.dIn.getMonth()+1;
   var k=orariKey(y,m);
-  DB.set(k,devs);
-  DB.set("ts_last_orari",k);
-  updateIndex("orari",k,"",y,m);
+  var ok=DB.set(k,devs);
+  if(ok){DB.set("ts_last_orari",k);updateIndex("orari",k,"",y,m);}
+  return ok;
 }
 function updateIndex(type,key,nome,y,m){
   var idx=DB.get("ts_index")||[];
@@ -93,9 +112,18 @@ function usePdfJs(){
 }
 function extractText(page){
   return page.getTextContent().then(function(c){
-    var byY={};c.items.forEach(function(it){if(!it.str||!it.str.trim())return;var y=Math.round(it.transform[5]),x=Math.round(it.transform[4]);if(!byY[y])byY[y]=[];byY[y].push({x:x,str:it.str});});
-    var yKeys=Object.keys(byY).map(Number).sort(function(a,b){return b-a;});
-    return yKeys.map(function(y){return byY[y].sort(function(a,b){return a.x-b.x;}).map(function(r){return r.str;}).join(" ");}).join("\\n");
+    var items=[];c.items.forEach(function(it){if(!it.str||!it.str.trim())return;items.push({y:it.transform[5],x:it.transform[4],str:it.str});});
+    /* Group by Y with 3px tolerance */
+    items.sort(function(a,b){return b.y-a.y||a.x-b.x;});
+    var lines=[],curY=null,curLine=[];
+    items.forEach(function(it){
+      if(curY===null||Math.abs(it.y-curY)>3){
+        if(curLine.length)lines.push(curLine.slice());
+        curLine=[it];curY=it.y;
+      }else{curLine.push(it);}
+    });
+    if(curLine.length)lines.push(curLine);
+    return lines.map(function(ln){return ln.sort(function(a,b){return a.x-b.x;}).map(function(r){return r.str;}).join(" ");}).join("\\n");
   });
 }
 
@@ -215,8 +243,28 @@ function parsePreconoscenza(text){
   return{days:days,nome:nome,matricola:matricola,dIn:dIn,dTe:dTe,rawText:text};
 }
 
-var RE_SEG_STR="(?:([A-Z0-9]{2}\\\\s\\\\d{3})\\\\s+)?([A-Z0-9]+)\\\\s*/\\\\s*(\\\\d+)\\\\s+(\\\\d{2}\\\\.\\\\d{2})\\\\s+([A-Z]{2,4})\\\\s+([AR-])\\\\s+(\\\\d{2}\\\\.\\\\d{2})\\\\s+([A-Z]{2,4})";
-function parseOrariPageLines(fullText,gt,ver,devs){var lines=fullText.split("\\n"),lastL=null,lastR=null;lines.forEach(function(line){var lineMid=line.length/2,re=new RegExp(RE_SEG_STR,"g"),m;while((m=re.exec(line))!==null){var code=m[1],seg={ln:m[2],start:m[4].replace(".",":"),loc_s:m[5],dir:m[6]!=="-"?m[6]:"",end:m[7].replace(".",":"),loc_e:m[8],gt:gt,ver:ver};var isRight=m.index>=lineMid;if(code){if(isRight)lastR=code;else lastL=code;if(!devs[code])devs[code]=[];devs[code].push(seg);}else{var owner=isRight?lastR:lastL;if(owner){if(!devs[owner])devs[owner]=[];devs[owner].push(seg);}}}});}
+var RE_SEG_STR="(?:([A-Z0-9]{2}\\\\s+\\\\d{3})\\\\s+)?([A-Z0-9]+)\\\\s*/\\\\s*(\\\\d+)\\\\s+(\\\\d{2}\\\\.\\\\d{2})\\\\s+([A-Z]{2,4})\\\\s+([AR-])\\\\s+(\\\\d{2}\\\\.\\\\d{2})\\\\s+([A-Z]{2,4})";
+function parseOrariPageLines(fullText,gt,ver,devs){
+  var lines=fullText.split("\\n"),lastL=null,lastR=null;
+  var RE_CODE=/^([A-Z0-9]{2})\\s+(\\d{3})\\s*$/;
+  lines.forEach(function(line){
+    var lineMid=line.length/2;
+    /* Check if line is just a standalone turno code (pdf.js sometimes splits them) */
+    var codeLine=line.trim().match(/^([A-Z0-9]{2})\\s+(\\d{3})$/);
+    if(codeLine){lastL=codeLine[1]+" "+codeLine[2];return;}
+    /* Also catch codes at start of line even with other content */
+    var codeStart=line.match(/^\\s*([A-Z0-9]{2})\\s+(\\d{3})\\s/);
+    if(codeStart&&!line.match(new RegExp(RE_SEG_STR))){lastL=codeStart[1]+" "+codeStart[2];}
+    var re=new RegExp(RE_SEG_STR,"g"),m;
+    while((m=re.exec(line))!==null){
+      var code=m[1]?m[1].replace(/\\s+/g," ").trim():null;
+      var seg={ln:m[2],vett:m[3],start:m[4].replace(".",":"),loc_s:m[5],dir:m[6]!=="-"?m[6]:"",end:m[7].replace(".",":"),loc_e:m[8],gt:gt,ver:ver};
+      var isRight=m.index>=lineMid;
+      if(code){if(isRight)lastR=code;else lastL=code;if(!devs[code])devs[code]=[];devs[code].push(seg);}
+      else{var owner=isRight?lastR:lastL;if(owner){if(!devs[owner])devs[owner]=[];devs[owner].push(seg);}}
+    }
+  });
+}
 function mergeDevs(target,source){Object.keys(source).forEach(function(code){if(!target[code])target[code]=[];source[code].forEach(function(seg){if(!target[code].some(function(e){return e.start===seg.start&&e.loc_s===seg.loc_s&&e.end===seg.end&&e.loc_e===seg.loc_e&&e.gt===seg.gt&&e.ln===seg.ln;}))target[code].push(seg);});});}
 
 /* ══════════ HELPERS ══════════ */
@@ -309,9 +357,7 @@ function hm2min(s){if(!s)return 0;var p=s.split(":");return parseInt(p[0])*60+pa
 function fmtGap(m){if(m<60)return m+"min";var h=Math.floor(m/60),r=m%60;return r>0?h+"h "+r+"min":h+"h";}
 function calcGap(endStr,startStr){var e=hm2min(endStr),s=hm2min(startStr);var g=s-e;if(g<0)g+=1440;return g;}
 function isRealSpezzato(segs){
-  if(segs.length<2)return false;
-  for(var i=0;i<segs.length-1;i++){var gap=calcGap(segs[i].end,segs[i+1].start);if(gap>=90&&gap<720)return true;}
-  return false;
+  return segs.length>=2;
 }
 function buildDevKey(v){if(v.t!=="turno")return null;return p2(parseInt(v.l))+" "+v.n;}
 
@@ -323,13 +369,41 @@ function parseInput(txt,refY){
   return null;
 }
 
+/* In-app alarm: audio beep + vibration + alert */
+function fireAlarm(label){
+  /* Vibrate if supported */
+  if(navigator.vibrate)navigator.vibrate([500,200,500,200,500]);
+  /* Audio beep using Web Audio API */
+  try{
+    var ctx=new(window.AudioContext||window.webkitAudioContext)();
+    function beep(freq,start,dur){var o=ctx.createOscillator();var g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=freq;o.type="square";g.gain.value=0.3;o.start(start);o.stop(start+dur);}
+    for(var i=0;i<5;i++){beep(880,ctx.currentTime+i*0.6,0.3);beep(1100,ctx.currentTime+i*0.6+0.3,0.2);}
+  }catch(e){}
+  /* Show alert */
+  alert("SVEGLIA! "+label);
+}
+function checkPendingAlarms(){
+  if(!DB._test())return;
+  var keys=DB.keys("ts_alarm_");
+  var now=Date.now();
+  keys.forEach(function(k){
+    var a=DB.get(k);
+    if(!a||!a.set)return;
+    var diff=a.ts-now;
+    if(diff<0){/* Already past — fire now if within 10min */
+      if(diff>-600000){fireAlarm(a.label);} DB.del(k);
+    }else if(diff<86400000){/* Within 24h — schedule */
+      setTimeout(function(){fireAlarm(a.label);DB.del(k);},diff);
+    }
+  });
+}
+
 function isNotturno(v){if(v.t!=="turno"||!v.i||!v.e)return false;var ini=hhmm2min(v.i),ter=hhmm2min(v.e);return ini>=1020||ter>1440||(ter>0&&ter<=165);}
 function checkRiposoBreve(days,iso){var v=days[iso];if(!v||v.t!=="turno"||!v.e)return false;var d=new Date(iso+"T00:00:00");d.setDate(d.getDate()+1);var nv=days[toIso(d)];if(!nv||nv.t!=="turno"||!nv.i)return false;var terM=hhmm2min(v.e),ni=hhmm2min(nv.i);var gap=terM>1440?ni-(terM-1440):(1440-terM)+ni;return gap>0&&gap<660;}
 
 function getFilteredDevSegs(devs,v,date){
   var dk=buildDevKey(v),segs=dk&&devs[dk]?devs[dk]:[];
-  if(segs.length>0&&date){var dow=date.getDay(),dt2=dow===0?"FEST":dow===6?"SAB":"LV";var filt=segs.filter(function(s){var gt=(s.gt||"").toUpperCase();if(dt2==="LV")return gt.indexOf("LUN")>=0||gt.indexOf("MER")>=0;if(dt2==="SAB")return gt.indexOf("SAB")>=0;return gt.indexOf("FEST")>=0;});if(filt.length>0)segs=filt;}
-  /* Sort segments by start time */
+  if(segs.length>0&&date){var dow=date.getDay(),dt2=dow===0?"FEST":dow===6?"SAB":"LV";var filt=segs.filter(function(s){var gt=(s.gt||"").toUpperCase();if(!gt)return true;/* empty gt = show always */if(dt2==="LV")return gt.indexOf("LUN")>=0||gt.indexOf("MER")>=0;if(dt2==="SAB")return gt.indexOf("SAB")>=0;return gt.indexOf("FEST")>=0;});if(filt.length>0)segs=filt;}
   segs=segs.slice().sort(function(a,b){return hm2min(a.start)-hm2min(b.start);});
   return segs;
 }
@@ -343,6 +417,41 @@ function buildICS(date,v,devSegs){var L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID
 function shareToCalendar(date,v,devSegs){var ics=buildICS(date,v,devSegs);var blob=new Blob([ics],{type:"text/calendar"});var url=URL.createObjectURL(blob);window.location.href=url;setTimeout(function(){URL.revokeObjectURL(url);},10000);}
 
 /* ══════════ Summary ══════════ */
+function buildBallottaggiICS(data){
+  if(!data||!data.days)return null;
+  var events=[];
+  Object.keys(data.days).sort().forEach(function(iso){
+    var v=data.days[iso];
+    if(!v||v.t!=="RIS")return;
+    var dt=new Date(iso+"T00:00:00");
+    var d1=dt.getFullYear()+p2(dt.getMonth()+1)+p2(dt.getDate());
+    var nx=new Date(dt.getTime());nx.setDate(nx.getDate()+1);
+    var d2=nx.getFullYear()+p2(nx.getMonth()+1)+p2(nx.getDate());
+    var title="BALLOTTAGGIO"+(v.ball?" "+v.ball:"");
+    var desc=v.ball&&BALL_CODES[v.ball]?BALL_CODES[v.ball]:"Turno da assegnare";
+    events.push("BEGIN:VEVENT");
+    events.push("UID:ts-ball-"+iso+"-"+Math.random().toString(36).slice(2,8)+"@turnismart");
+    events.push("DTSTART;VALUE=DATE:"+d1);
+    events.push("DTEND;VALUE=DATE:"+d2);
+    events.push("SUMMARY:"+title);
+    events.push("DESCRIPTION:"+desc);
+    events.push("END:VEVENT");
+  });
+  if(events.length===0)return null;
+  var L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//TurniSmart//IT","CALSCALE:GREGORIAN","METHOD:PUBLISH"];
+  L=L.concat(events);
+  L.push("END:VCALENDAR");
+  return{ics:L.join("\\r\\n"),count:events.length/7};
+}
+function downloadBallottaggiICS(data){
+  var result=buildBallottaggiICS(data);
+  if(!result)return;
+  var blob=new Blob([result.ics],{type:"text/calendar"});
+  var url=URL.createObjectURL(blob);
+  window.location.href=url;
+  setTimeout(function(){URL.revokeObjectURL(url);},10000);
+}
+
 function buildSummary(date,v,devSegs){
   var wd=toWd(date),df=toFmt(date);
   if(v.t!=="turno"){var info=TL[v.t]||[v.t,"",""];var stxt=wd+" "+df+" — "+info[0];if(v.t==="RIS"&&v.ball){stxt+=" "+v.ball+" — "+(BALL_CODES[v.ball]||"");}else if(info[1]){stxt+=" ("+info[1]+")";}if(v.x)stxt+="\\n"+v.x;return stxt;}
@@ -353,13 +462,13 @@ function buildSummary(date,v,devSegs){
 }
 
 /* ══════════ DESIGN ══════════ */
-var G={bg:"#0a0d14",glass:"rgba(255,255,255,0.06)",glassBorder:"rgba(255,255,255,0.12)",cardBorder:"rgba(255,255,255,0.08)",accentGlass:"rgba(79,195,247,0.08)",accentBorder:"rgba(79,195,247,0.20)",accent:"#64b5f6",green:"#81c784",greenBg:"rgba(129,199,132,0.10)",greenBorder:"rgba(129,199,132,0.25)",yellow:"#fff176",yellowBg:"rgba(255,241,118,0.10)",orange:"#ffb74d",orangeBg:"rgba(255,183,77,0.10)",red:"#ef5350",redBg:"rgba(239,83,80,0.10)",purple:"#b39ddb",purpleBg:"rgba(179,157,219,0.10)",t1:"#e3e5ea",t2:"#8a8f9e",t3:"#555a66",tw:"#f5f5f7",r:"16px",rs:"10px",blur:"blur(20px)",shadow:"0 1px 3px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)"};
-var glassCard={background:G.glass,backdropFilter:G.blur,WebkitBackdropFilter:G.blur,border:"1px solid "+G.glassBorder,borderRadius:G.r,boxShadow:G.shadow};
+var G={bg:"#f4f6f9",glass:"#ffffff",glassBorder:"#dce1e8",cardBorder:"#c8d0da",accentGlass:"rgba(0,51,102,0.05)",accentBorder:"rgba(0,51,102,0.15)",accent:"#003366",green:"#1b7a3d",greenBg:"rgba(27,122,61,0.08)",greenBorder:"rgba(27,122,61,0.20)",yellow:"#ffd100",yellowBg:"rgba(255,209,0,0.12)",orange:"#d35400",orangeBg:"rgba(211,84,0,0.08)",red:"#b71c1c",redBg:"rgba(183,28,28,0.06)",purple:"#4a148c",purpleBg:"rgba(74,20,140,0.06)",t1:"#1a2332",t2:"#4a5c72",t3:"#5a6b80",tw:"#003366",r:"10px",rs:"8px",blur:"none",shadow:"0 1px 3px rgba(0,51,102,0.08)"}
+var glassCard={background:"#ffd100",border:"1px solid #d0d7de",borderRadius:G.r,boxShadow:G.shadow};
 
 function useFlipCSS(){useEffect(function(){if(document.getElementById("flip-css"))return;var style=document.createElement("style");style.id="flip-css";style.textContent=".flip-container{perspective:1000px;margin-bottom:10px}\\n.flip-inner{position:relative;transition:transform 0.6s cubic-bezier(0.4,0,0.2,1);transform-style:preserve-3d}\\n.flip-inner.flipped{transform:rotateY(180deg)}\\n.flip-front,.flip-back{backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:16px}\\n.flip-front{position:relative;z-index:2}\\n.flip-back{position:absolute;top:0;left:0;right:0;transform:rotateY(180deg);z-index:1}";document.head.appendChild(style);},[]);}
 
 /* ══════════ Components ══════════ */
-function Timeline(props){var v=props.v;if(v.t!=="turno"||!v.i||!v.e)return null;var iniM=hhmm2min(v.i),terM=hhmm2min(v.e),total=1560;var startPct=Math.max(0,(iniM/total)*100);var widthPct=terM>=iniM?((terM-iniM)/total)*100:((1440-iniM+terM)/total)*100;var night=isNotturno(v);return(<div style={{marginTop:10}}><div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:G.t3,fontFamily:"monospace",marginBottom:3,padding:"0 1px"}}><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div><div style={{position:"relative",height:6,background:"rgba(255,255,255,0.04)",borderRadius:3,overflow:"hidden"}}><div style={{position:"absolute",top:0,height:"100%",borderRadius:3,left:startPct+"%",width:widthPct+"%",background:night?"linear-gradient(90deg,#b39ddb,#7e57c2)":"linear-gradient(90deg,#64b5f6,#42a5f5)",opacity:0.8}}/></div></div>);}
+function Timeline(props){var v=props.v;if(v.t!=="turno"||!v.i||!v.e)return null;var iniM=hhmm2min(v.i),terM=hhmm2min(v.e),total=1560;var startPct=Math.max(0,(iniM/total)*100);var widthPct=terM>=iniM?((terM-iniM)/total)*100:((1440-iniM+terM)/total)*100;var night=isNotturno(v);return(<div style={{marginTop:10}}><div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:G.t3,fontFamily:"monospace",marginBottom:3,padding:"0 1px"}}><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div><div style={{position:"relative",height:6,background:"#ffffff",borderRadius:3,overflow:"hidden"}}><div style={{position:"absolute",top:0,height:"100%",borderRadius:3,left:startPct+"%",width:widthPct+"%",background:night?"linear-gradient(90deg,#5e35b1,#7e57c2)":"linear-gradient(90deg,#003366,#004d99)",opacity:0.8}}/></div></div>);}
 function Tag(props){return <span style={{display:"inline-block",fontSize:11,fontWeight:600,padding:"3px 10px",borderRadius:20,marginLeft:6,background:props.bg,color:props.color}}>{props.children}</span>;}
 
 function getPalina(loc,dir){
@@ -392,12 +501,12 @@ function SegmentList(props){
   return(<div>{segs.map(function(s,idx){
     var bc=s.dir==="A"?G.accent:s.dir==="R"?G.purple:"#555a66";
     var gapEl=null;
-    if(showGaps&&segs.length>1&&idx<segs.length-1){var gap=calcGap(s.end,segs[idx+1].start);if(gap>0&&gap<720)gapEl=(<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0",color:G.t3}}><div style={{flex:1,height:1,background:"rgba(255,255,255,0.08)"}}/><span style={{fontSize:11,fontWeight:600,color:G.orange,background:G.orangeBg,padding:"2px 10px",borderRadius:12,whiteSpace:"nowrap"}}>Pausa {fmtGap(gap)}</span><div style={{flex:1,height:1,background:"rgba(255,255,255,0.08)"}}/></div>);}
+    if(showGaps&&segs.length>1&&idx<segs.length-1){var gap=calcGap(s.end,segs[idx+1].start);if(gap>0&&gap<720)gapEl=(<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"5px 0",color:G.t3}}><div style={{flex:1,height:1,background:"#dce1e8"}}/><span style={{fontSize:11,fontWeight:600,color:G.orange,background:G.orangeBg,padding:"2px 10px",borderRadius:12,whiteSpace:"nowrap"}}>Pausa {fmtGap(gap)}</span><div style={{flex:1,height:1,background:"#dce1e8"}}/></div>);}
     var liveUrl=showLive?buildLiveUrl(s):null;
     return(<div key={idx}>
-      <div style={{background:"rgba(255,255,255,0.04)",borderLeft:"2px solid "+bc,borderRadius:"0 8px 8px 0",padding:"8px 12px",margin:"4px 0",fontSize:13}}>
-        <span style={{color:G.t3,fontSize:10,marginRight:6}}>{idx+1}.</span><span style={{fontWeight:600,color:G.tw}}>{s.start}</span><span style={{color:G.t2,marginLeft:5}}>{s.loc_s}</span>{s.dir?<span style={{color:s.dir==="A"?G.accent:G.purple,fontSize:10,marginLeft:4,fontWeight:600}}>{s.dir==="A"?"And.":"Rit."}</span>:null}<span style={{color:G.t3,margin:"0 6px"}}>{"\\u2192"}</span><span style={{fontWeight:600,color:G.tw}}>{s.end}</span><span style={{color:G.t2,marginLeft:5}}>{s.loc_e}</span>
-        {liveUrl?(<button onClick={function(e){e.stopPropagation();openLiveMap(liveUrl);}} style={{display:"flex",alignItems:"center",gap:4,marginTop:6,padding:"5px 10px",borderRadius:6,background:"rgba(79,195,247,0.08)",color:G.accent,fontSize:10,fontWeight:600,border:"none",cursor:"pointer",width:"fit-content"}}>
+      <div style={{background:"#f0f4f8",borderLeft:"3px solid "+bc,borderRadius:"0 8px 8px 0",padding:"8px 12px",margin:"4px 0",fontSize:13}}>
+        <span style={{color:G.t3,fontSize:10,marginRight:6}}>{idx+1}.</span>{s.vett?<span style={{color:"#003366",fontSize:13,fontWeight:700,marginRight:6,background:"#f0f4f8",padding:"2px 8px",borderRadius:5}}>{"vet."+s.vett}</span>:null}<span style={{fontWeight:600,color:G.tw}}>{s.start}</span><span style={{color:G.t2,marginLeft:5}}>{s.loc_s}</span>{s.dir?<span style={{color:s.dir==="A"?G.accent:G.purple,fontSize:10,marginLeft:4,fontWeight:600}}>{s.dir==="A"?"And.":"Rit."}</span>:null}<span style={{color:G.t3,margin:"0 6px"}}>{"\\u2192"}</span><span style={{fontWeight:600,color:G.tw}}>{s.end}</span><span style={{color:G.t2,marginLeft:5}}>{s.loc_e}</span>
+        {liveUrl?(<button onClick={function(e){e.stopPropagation();openLiveMap(liveUrl);}} style={{display:"flex",alignItems:"center",gap:4,marginTop:6,padding:"5px 10px",borderRadius:6,background:"#003366",color:"#ffe033",fontSize:10,fontWeight:600,border:"none",cursor:"pointer",width:"fit-content"}}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           {(s.ln||"?")+" live \\u2014 "+s.loc_s+(s.dir==="A"?" \\u2192 "+s.loc_e:s.dir==="R"?" \\u2192 "+s.loc_e:"")}
         </button>):null}
@@ -417,6 +526,8 @@ function Card(props){
   var _showPaste=useState(false),showPaste=_showPaste[0],setShowPaste=_showPaste[1];
   var _pasteTxt=useState(""),pasteTxt=_pasteTxt[0],setPasteTxt=_pasteTxt[1];
   var _localV=useState(null),localV=_localV[0],setLocalV=_localV[1];
+  var _nVett=useState(""),nVett=_nVett[0],setNVett=_nVett[1];
+  var _alarmSet=useState(function(){var a=DB.get("ts_alarm_"+toIso(props.date));return a&&a.set?true:false;}),alarmSet=_alarmSet[0],setAlarmSet=_alarmSet[1];
   var devSegs=getFilteredDevSegs(devs,v,date);
   var isSpezzato=isRealSpezzato(devSegs);
   var hasDevSegs=devSegs.length>1;
@@ -426,6 +537,8 @@ function Card(props){
 
   var night=isNotturno(v);
   var iso=toIso(date);
+  /* Get turno vettura from first segment */
+  var firstVett=devSegs.length>0&&devSegs[0].vett?devSegs[0].vett:"";
   var rb=checkRiposoBreve(allDays,iso);
 
   function doCopy(){var txt=buildSummary(date,v,devSegs);try{var ta=document.createElement("textarea");ta.value=txt;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);setCopied(true);setTimeout(function(){setCopied(false);},1500);}catch(e){}}
@@ -438,14 +551,55 @@ function Card(props){
 
   var moovitData=buildMoovitData(date,v);
 
+  /* In-app alarm system - stores in localStorage, checks on load */
+  function setAlarm(e){
+    e.stopPropagation();
+    if(v.t!=="turno"||!v.i)return;
+    var h=parseInt(v.i.slice(0,2)),m=parseInt(v.i.slice(2));
+    var ah=h-1,am=m;
+    if(ah<0)ah=23;
+    var alarmDate=new Date(date.getFullYear(),date.getMonth(),date.getDate(),ah>=24?ah-24:ah,am);
+    if(h>=24||ah>=24)alarmDate.setDate(alarmDate.getDate()+1);
+    var alarmTs=alarmDate.getTime();
+    var key="ts_alarm_"+toIso(date);
+    var label="Turno "+v.l+" "+v.n+" alle "+fT(v.i)+" a "+v.li;
+    DB.set(key,{ts:alarmTs,label:label,set:true});
+    setAlarmSet(true);
+    /* Schedule if within current session */
+    var diff=alarmTs-Date.now();
+    if(diff>0&&diff<86400000){
+      setTimeout(function(){
+        fireAlarm(label);
+        DB.del(key);
+      },diff);
+    }
+    alert("Sveglia impostata per "+p2(ah)+":"+p2(am)+"\\nL'app deve restare aperta in background.");
+  }
+  var alarmKey="ts_alarm_"+toIso(date);
+  function cancelAlarm(e){e.stopPropagation();DB.del(alarmKey);setAlarmSet(false);}
+  var isMorning=v.t==="turno"&&v.i&&parseInt(v.i.slice(0,2))<14;
+
   var buttons=(<div onClick={stopProp}>
     <div style={{display:"flex",gap:5,marginTop:10}}>
       <a href={gcalUrl} target="_blank" rel="noopener" style={Object.assign({},linkBase,{background:G.accentGlass,color:G.accent})}>Google Cal</a>
       <button onClick={function(e){e.stopPropagation();shareToCalendar(date,v,devSegs);}} style={Object.assign({},btnBase,{background:G.glass,color:G.t1})}>Calendario</button>
-      <button onClick={function(e){e.stopPropagation();doCopy();}} style={Object.assign({},btnBase,{background:G.glass,color:copied?G.green:G.t1})}>{copied?"Copiato":"Copia"}</button>
-      <a href={"https://api.whatsapp.com/send?text="+encodeURIComponent(summary)} target="_blank" rel="noopener" onClick={stopProp} style={Object.assign({},linkBase,{background:"rgba(37,211,102,0.12)",color:"#69f0ae"})}>WhatsApp</a>
+      <button onClick={function(e){e.stopPropagation();doCopy();}} style={Object.assign({},btnBase,{background:G.glass,color:copied?"#1b7a3d":G.t1})}>{copied?"Copiato":"Copia"}</button>
+      <a href={"https://api.whatsapp.com/send?text="+encodeURIComponent(summary)} target="_blank" rel="noopener" onClick={stopProp} style={Object.assign({},linkBase,{background:"#003366",color:"#ffffff"})}>WhatsApp</a>
     </div>
-    {moovitData?(<button onClick={function(e){e.stopPropagation();openMoovit(moovitData);}} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,width:"100%",marginTop:6,padding:"10px 0",borderRadius:G.rs,border:"none",background:"rgba(227,57,53,0.10)",color:"#ef5350",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+    {isMorning&&!alarmSet?(<button onClick={setAlarm} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,width:"100%",marginTop:6,padding:"9px 0",borderRadius:G.rs,border:"none",background:"#ffd100",color:"#003366",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3L2 6"/><path d="M22 6l-3-3"/></svg>
+      {"Sveglia "+p2(Math.max(0,parseInt(v.i.slice(0,2))-1))+":"+v.i.slice(2)+" (1h prima)"}
+    </button>):null}
+    {isMorning&&alarmSet?(<button onClick={cancelAlarm} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,width:"100%",marginTop:6,padding:"9px 0",borderRadius:G.rs,border:"1px solid #1b7a3d",background:"rgba(27,122,61,0.08)",color:"#1b7a3d",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3L2 6"/><path d="M22 6l-3-3"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+      {"Sveglia impostata — Annulla"}
+    </button>):null}
+    {v.t==="turno"?(<div style={{display:"flex",alignItems:"center",gap:6,marginTop:6}} onClick={stopProp}>
+      <span style={{fontSize:11,color:G.t2,fontWeight:600,whiteSpace:"nowrap"}}>N. Vettura:</span>
+      <input value={nVett} onChange={function(e){setNVett(e.target.value);}} placeholder={firstVett||"-"} style={{flex:1,padding:"5px 8px",borderRadius:6,border:"1px solid "+G.cardBorder,background:"#ffffff",color:G.t1,fontSize:13,fontWeight:700,outline:"none",maxWidth:80}}/>
+      {nVett?<span style={{fontSize:11,color:G.green,fontWeight:600}}>N.V. {nVett}</span>:null}
+    </div>):null}
+    {moovitData?(<button onClick={function(e){e.stopPropagation();openMoovit(moovitData);}} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,width:"100%",marginTop:6,padding:"10px 0",borderRadius:G.rs,border:"none",background:"#fef2f2",color:"#ef5350",fontSize:12,fontWeight:600,cursor:"pointer"}}>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
       {"Moovit: Gerbido \\u2192 "+moovitData.locCode+" arrivo "+moovitData.arrLabel}
     </button>):null}
@@ -454,17 +608,23 @@ function Card(props){
   if(v.t!=="turno"){
     var info=TL[v.t]||["Sconosciuto","","#666"];
     return(<div style={Object.assign({},glassCard,{padding:"16px 18px",marginBottom:10})}>
-      <div style={{fontSize:13,color:G.t2,fontWeight:500}}>{toWd(date)} {toFmt(date)}</div>
-      <div style={{marginTop:8}}><span style={{background:info[2],color:v.t==="RIS"?"#000":"#fff",fontSize:12,fontWeight:600,padding:"4px 14px",borderRadius:20}}>{info[0]}</span></div>
-      {v.t==="RIS"&&v.ball?(<div style={{marginTop:10,background:G.yellowBg,border:"1px solid rgba(255,241,118,0.20)",borderRadius:10,padding:"10px 14px"}}><div style={{fontFamily:"monospace",fontWeight:700,fontSize:16,color:G.yellow,marginBottom:3}}>{v.ball}</div><div style={{color:G.t1,fontSize:13}}>{BALL_CODES[v.ball]||"Codice non riconosciuto"}</div></div>):(info[1]?<div style={{color:G.t2,marginTop:8,fontSize:13}}>{info[1]}</div>:null)}
+      <div style={{fontSize:13,color:"#003366",fontWeight:600}}>{toWd(date)} {toFmt(date)}</div>
+      <div style={{marginTop:8}}><span style={{background:info[2],color:v.t==="RIS"?"#ffffff":"#003366",fontSize:12,fontWeight:700,padding:"4px 14px",borderRadius:20}}>{info[0]}</span></div>
+      {v.t==="RIS"&&v.ball?(<div style={{marginTop:10,background:"rgba(0,51,102,0.06)",border:"1px solid rgba(0,51,102,0.15)",borderRadius:10,padding:"10px 14px"}}><div style={{fontFamily:"monospace",fontWeight:700,fontSize:16,color:"#003366",marginBottom:3}}>{v.ball}</div><div style={{color:G.t1,fontSize:13}}>{BALL_CODES[v.ball]||"Codice non riconosciuto"}</div></div>):(info[1]?<div style={{color:G.t2,marginTop:8,fontSize:13}}>{info[1]}</div>:null)}
       {v.t==="RIS"&&onPaste?(<div style={{marginTop:10}}>
-        {!showPaste?(<button onClick={function(e){e.stopPropagation();setShowPaste(true);setPasteErr("");setPasteTxt("");}} style={{width:"100%",padding:"12px 0",borderRadius:10,border:"1px dashed rgba(255,241,118,0.40)",background:G.yellowBg,color:G.yellow,fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+        {!showPaste?(<button onClick={function(e){e.stopPropagation();setShowPaste(true);setPasteErr("");setPasteTxt("");}} style={{width:"100%",padding:"14px 0",borderRadius:10,border:"2px solid #003366",background:"#003366",color:"#ffd100",fontSize:14,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           Incolla turno assegnato
         </button>):(
           <div onClick={function(e){e.stopPropagation();}}>
             <div style={{fontSize:11,color:G.t2,marginBottom:4}}>Incolla qui la riga del turno:</div>
-            <textarea value={pasteTxt} onInput={function(e){setPasteTxt(e.target.value);}} onChange={function(e){setPasteTxt(e.target.value);}} onPaste={function(e){setTimeout(function(){setPasteTxt(e.target.value);},50);}} placeholder={"es. N B 44 107 GE 0713 GERB 1307 OMER R 0554"} style={{width:"100%",minHeight:70,padding:"10px 12px",borderRadius:10,border:"1px solid "+G.glassBorder,background:"rgba(255,255,255,0.08)",color:G.tw,fontSize:12,fontFamily:"monospace",outline:"none",resize:"vertical",boxSizing:"border-box",WebkitAppearance:"none"}}/>
+            <textarea value={pasteTxt} onInput={function(e){setPasteTxt(e.target.value);}} onChange={function(e){setPasteTxt(e.target.value);}} onPaste={function(e){
+              /* Try clipboardData first (most reliable on iOS) */
+              var clip="";try{clip=(e.clipboardData||window.clipboardData).getData("text");}catch(x){}
+              if(clip){setPasteTxt(clip);return;}
+              /* Fallback: read from textarea after delay */
+              var ta=e.target;setTimeout(function(){setPasteTxt(ta.value);},100);setTimeout(function(){setPasteTxt(ta.value);},300);
+            }} placeholder={"es. N B 44 107 GE 0713 GERB 1307 OMER R 0554"} style={{width:"100%",minHeight:70,padding:"10px 12px",borderRadius:10,border:"2px solid "+G.accentBorder,background:"#ffffff",color:"#003366",fontSize:13,fontFamily:"monospace",outline:"none",resize:"vertical",boxSizing:"border-box",WebkitAppearance:"none"}}/>
             {pasteTxt?<div style={{fontSize:10,color:G.t3,marginTop:2}}>{"Testo: "+pasteTxt.length+" car."}</div>:null}
             <div style={{display:"flex",gap:6,marginTop:6}}>
               <button onClick={function(e){e.stopPropagation();setPasteErr("");
@@ -486,29 +646,36 @@ function Card(props){
 
   var displayLine=lineVariant||v.l;
   var code=displayLine+" "+v.n;
-  var front=(<div className="flip-front" style={Object.assign({},glassCard,{padding:"16px 18px"})}>
+  var front=(<div className="flip-front" style={{background:"#ffffff",borderRadius:"10px",boxShadow:isSpezzato?"0 1px 8px rgba(211,84,0,0.15)":"0 1px 6px rgba(0,51,102,0.10)",borderLeft:isSpezzato?"4px solid #d35400":"4px solid #003366",padding:"16px 18px"}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:4}}>
-      <span style={{fontSize:13,color:G.t2,fontWeight:500}}>{toWd(date)} {toFmt(date)}</span>
-      <div>{isSpezzato?<Tag bg={G.orangeBg} color={G.orange}>Spezzato</Tag>:null}{night?<Tag bg={G.purpleBg} color={G.purple}>Serale</Tag>:null}{rb?<Tag bg={G.redBg} color={G.red}>Rip. breve</Tag>:null}</div>
+      <span style={{fontSize:13,color:"#003366",fontWeight:600}}>{toWd(date)} {toFmt(date)}</span>
+      <div>{isSpezzato?<Tag bg="#fef2f2" color="#c62828">Cambio ({devSegs.length} seg.)</Tag>:null}{night?<Tag bg={G.purpleBg} color={G.purple}>Serale</Tag>:null}{rb?<Tag bg={G.redBg} color={G.red}>Rip. breve</Tag>:null}</div>
     </div>
-    <div style={{display:"flex",alignItems:"baseline",gap:8,margin:"6px 0 2px"}}><span style={{fontFamily:"'SF Mono',monospace",fontSize:22,fontWeight:700,color:G.tw,letterSpacing:"-0.02em"}}>{code}</span><span style={{color:G.t3,fontSize:12}}>Cod. {v.c}</span></div>
-    <div style={{background:"rgba(255,255,255,0.04)",borderLeft:"2px solid "+G.accent,borderRadius:"0 8px 8px 0",padding:"9px 14px",margin:"8px 0"}}>
-      <span style={{fontWeight:600,fontSize:16,color:G.tw}}>{fT(v.i)}</span><span style={{color:G.t2,fontSize:13,marginLeft:5}}>{v.li}</span>{v.di?<span style={{color:v.di==="A"?G.accent:G.purple,fontSize:10,marginLeft:4,fontWeight:600}}>{v.di==="A"?"And.":"Rit."}</span>:null}<span style={{color:G.t3,margin:"0 8px"}}>{"\\u2192"}</span><span style={{fontWeight:600,fontSize:16,color:G.tw}}>{fT(v.e)}</span><span style={{color:G.t2,fontSize:13,marginLeft:5}}>{v.le}</span>{v.de?<span style={{color:v.de==="A"?G.accent:G.purple,fontSize:10,marginLeft:4,fontWeight:600}}>{v.de==="A"?"And.":"Rit."}</span>:null}
+    <div style={{display:"flex",alignItems:"baseline",gap:8,margin:"6px 0 2px"}}><span style={{fontFamily:"'SF Mono',monospace",fontSize:24,fontWeight:800,color:"#003366",letterSpacing:"-0.02em"}}>{code}</span>{firstVett?<span style={{color:"#003366",fontSize:16,fontWeight:700,background:"#f0f4f8",padding:"2px 10px",borderRadius:6}}>vet.{firstVett}</span>:null}<span style={{color:"#003366",fontSize:12}}>Cod. {v.c}</span></div>
+    <div style={{background:"#f0f4f8",borderLeft:"3px solid #003366",borderRadius:"0 8px 8px 0",padding:"9px 14px",margin:"8px 0"}}>
+      <span style={{fontWeight:700,fontSize:17,color:"#003366"}}>{fT(v.i)}</span><span style={{color:"#003366",fontSize:13,marginLeft:5}}>{v.li}</span>{v.di?<span style={{color:v.di==="A"?G.accent:G.purple,fontSize:10,marginLeft:4,fontWeight:600}}>{v.di==="A"?"And.":"Rit."}</span>:null}<span style={{color:G.t3,margin:"0 8px"}}>{"\\u2192"}</span><span style={{fontWeight:700,fontSize:17,color:"#003366"}}>{fT(v.e)}</span><span style={{color:"#003366",fontSize:13,marginLeft:5}}>{v.le}</span>{v.de?<span style={{color:v.de==="A"?G.accent:G.purple,fontSize:10,marginLeft:4,fontWeight:600}}>{v.de==="A"?"And.":"Rit."}</span>:null}
     </div>
-    {v.d?<div style={{display:"inline-block",background:G.greenBg,color:G.green,fontWeight:600,padding:"3px 12px",borderRadius:20,fontSize:13,marginTop:4}}>{fD(v.d)}</div>:null}
+    {v.d?<div style={{display:"inline-block",background:"#f0f4f8",color:"#003366",fontWeight:700,padding:"3px 12px",borderRadius:20,fontSize:13,marginTop:4}}>{fD(v.d)}</div>:null}
     <Timeline v={v}/>
     {/* Live link for posto cambio - always visible on front */}
-    {v.t==="turno"&&v.li?(function(){var liveUrl=buildLiveUrlForCard(v);if(!liveUrl)return null;var locName=LOC_GPS[v.li]?LOC_GPS[v.li][2].split(",")[0]:v.li;return(<button onClick={function(e){e.stopPropagation();openLiveMap(liveUrl);}} style={{display:"flex",alignItems:"center",gap:5,marginTop:8,padding:"8px 12px",borderRadius:8,background:"rgba(79,195,247,0.08)",border:"1px solid "+G.accentBorder,color:G.accent,fontSize:11,fontWeight:600,cursor:"pointer",width:"100%",justifyContent:"center"}}>
+    {v.t==="turno"&&v.li?(function(){var liveUrl=buildLiveUrlForCard(v);if(!liveUrl)return null;var locName=LOC_GPS[v.li]?LOC_GPS[v.li][2].split(",")[0]:v.li;return(<button onClick={function(e){e.stopPropagation();openLiveMap(liveUrl);}} style={{display:"flex",alignItems:"center",gap:5,marginTop:8,padding:"8px 12px",borderRadius:8,background:"#003366",border:"none",color:"#ffffff",fontSize:11,fontWeight:600,cursor:"pointer",width:"100%",justifyContent:"center"}}>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      {"Arrivi linea "+parseInt(v.l)+" a "+locName}
+      {"Arrivi linea "+parseInt(v.l)+(firstVett?" vet."+firstVett:"")+" a "+locName}
     </button>);})():null}
-    {hasDevSegs?(<div style={{marginTop:8,display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"8px 0",borderTop:"1px solid "+G.cardBorder,color:G.t2,fontSize:12,fontWeight:500}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Tap per vedere {devSegs.length} segmenti</span></div>):null}
+    {hasDevSegs?(<div style={{marginTop:8,display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"8px 0",borderTop:"1px solid "+G.cardBorder,color:isSpezzato?"#c62828":"#003366",fontSize:12,fontWeight:600}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>{isSpezzato?"Tap per sviluppo cambio ("+devSegs.length+" seg.)":"Tap per vedere "+devSegs.length+" segmenti"}</span></div>):null}
     {!hasDevSegs?buttons:null}
   </div>);
 
-  var back=(<div className="flip-back" style={Object.assign({},glassCard,{padding:"16px 18px",background:"rgba(255,255,255,0.08)"})}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div><span style={{fontSize:13,color:G.t2,fontWeight:500}}>{toWd(date)} {toFmt(date)}</span><span style={{fontFamily:"monospace",fontSize:16,fontWeight:700,color:G.tw,marginLeft:10}}>{code}</span></div><Tag bg={G.orangeBg} color={G.orange}>{devSegs.length} segmenti</Tag></div>
-    <SegmentList segs={devSegs}/>
+  var back=(<div className="flip-back" style={{background:"#ffffff",borderRadius:"10px",boxShadow:isSpezzato?"0 1px 8px rgba(211,84,0,0.15)":"0 1px 6px rgba(0,51,102,0.10)",borderLeft:isSpezzato?"4px solid #d35400":"4px solid #003366",padding:"16px 18px"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div><span style={{fontSize:13,color:"#003366",fontWeight:600}}>{toWd(date)} {toFmt(date)}</span><span style={{fontFamily:"monospace",fontSize:16,fontWeight:800,color:"#003366",marginLeft:10}}>{code}</span></div>{isSpezzato?<Tag bg="#fef2f2" color="#c62828">Cambio</Tag>:<Tag bg="#edf0f4" color="#003366">{devSegs.length} seg.</Tag>}</div>
+    {devSegs.map(function(s,idx){
+      var gapEl=null;
+      if(idx<devSegs.length-1){var gap=calcGap(s.end,devSegs[idx+1].start);if(gap>0&&gap<720)gapEl=(<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"6px 0"}}><div style={{flex:1,height:1,background:"#dce1e8"}}/><span style={{fontSize:12,fontWeight:700,color:gap>=60?"#c62828":"#d35400",background:gap>=60?"#fef2f2":"#fef8e8",padding:"3px 12px",borderRadius:12,whiteSpace:"nowrap"}}>{gap>=60?"CAMBIO — ":""}Pausa {fmtGap(gap)}</span><div style={{flex:1,height:1,background:"#dce1e8"}}/></div>);}
+      return(<div key={idx}><div style={{background:idx%2===0?"#f0f4f8":"#fef8e8",borderLeft:"3px solid "+(idx%2===0?"#003366":"#d35400"),borderRadius:"0 8px 8px 0",padding:"9px 14px"}}>
+        {s.vett?<span style={{color:"#003366",fontSize:11,fontWeight:700,background:"#e8edf2",padding:"1px 6px",borderRadius:4,marginRight:6}}>vet.{s.vett}</span>:null}
+        <span style={{fontWeight:700,fontSize:15,color:"#003366"}}>{s.start}</span><span style={{color:"#003366",fontSize:12,marginLeft:5}}>{s.loc_s}</span>{s.dir?<span style={{color:s.dir==="A"?"#003366":"#4a148c",fontSize:10,marginLeft:4,fontWeight:600}}>{s.dir==="A"?"And.":"Rit."}</span>:null}<span style={{color:"#5a6b80",margin:"0 6px"}}>{"\\u2192"}</span><span style={{fontWeight:700,fontSize:15,color:"#003366"}}>{s.end}</span><span style={{color:"#003366",fontSize:12,marginLeft:5}}>{s.loc_e}</span>
+      </div>{gapEl}</div>);
+    })}
     <div style={{marginTop:10,display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"8px 0",borderTop:"1px solid "+G.cardBorder,color:G.t3,fontSize:12,fontWeight:500}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Tap per tornare</span></div>
     {buttons}
   </div>);
@@ -526,8 +693,8 @@ function Grid(props){
   return(<div>
     <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
     {WK.map(function(w){return <div key={w} style={{textAlign:"center",fontSize:10,fontWeight:600,color:G.t3,padding:"5px 0",textTransform:"uppercase",letterSpacing:"0.06em"}}>{w}</div>;})}
-    {cells.map(function(day,idx){if(!day)return <div key={"e"+idx}></div>;var dt=new Date(yr,mo-1,day),is2=toIso(dt),v=days[is2];var isProjectedRest=!v&&props.riposiSet&&props.riposiSet[is2];var bg="transparent",cl=G.t3,fw=400;if(v){fw=600;if(REST_CODES[v.t]){bg="rgba(255,235,59,0.25)";cl="#fdd835";}else if(v.t==="RIS"){bg=G.yellowBg;cl=G.yellow;}else if(v.t==="turno"){bg=G.accentGlass;cl=G.tw;}else{bg=G.orangeBg;cl=G.orange;}}else if(isProjectedRest){fw=500;bg="rgba(255,235,59,0.12)";cl="#fdd835";}var today=toIso(new Date())===is2;return <div key={idx} onClick={function(){if(v)props.onTap(dt,v);else if(isProjectedRest)props.onTap(dt,{t:"RP",g:"",x:"Riposo previsto (proiezione)"});}} style={{textAlign:"center",fontSize:13,padding:"7px 2px",borderRadius:8,color:cl,fontWeight:fw,background:bg,cursor:(v||isProjectedRest)?"pointer":"default",minHeight:36,display:"flex",alignItems:"center",justifyContent:"center",outline:today?"2px solid "+G.red:"none",outlineOffset:today?"-1px":undefined}}>{day}</div>;})}
-  </div><div style={{fontSize:10,color:G.t3,marginTop:8,textAlign:"center"}}>Tap giorno per dettaglio</div></div>);
+    {cells.map(function(day,idx){if(!day)return <div key={"e"+idx}></div>;var dt=new Date(yr,mo-1,day),is2=toIso(dt),v=days[is2];var isProjectedRest=!v&&props.riposiSet&&props.riposiSet[is2];var bg="transparent",cl=G.t3,fw=400;var today=toIso(new Date())===is2;if(v){fw=700;if(REST_CODES[v.t]){bg="#ffd100";cl="#003366";}else if(v.t==="RIS"){bg="#c62828";cl="#ffffff";}else if(v.t==="turno"){bg="#003366";cl="#ffffff";}else{bg=G.orangeBg;cl=G.orange;}}else if(isProjectedRest){fw=600;bg="rgba(255,209,0,0.30)";cl="#8b6914";}if(today){bg="#00897b";cl="#ffffff";fw=800;}return <div key={idx} onClick={function(){if(v)props.onTap(dt,v);else if(isProjectedRest)props.onTap(dt,{t:"RP",g:"",x:"Riposo previsto (proiezione)"});}} style={{textAlign:"center",fontSize:13,padding:"7px 2px",borderRadius:today?"50%":"8px",color:cl,fontWeight:fw,background:bg,cursor:(v||isProjectedRest)?"pointer":"default",minHeight:36,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:today?"0 0 0 2px #00897b, 0 0 0 4px rgba(0,137,123,0.25)":"none"}}>{day}</div>;})}
+  </div><div style={{display:"flex",justifyContent:"center",gap:12,flexWrap:"wrap",marginTop:8}}><span style={{display:"flex",alignItems:"center",gap:3,fontSize:9,color:G.t3}}><span style={{width:10,height:10,borderRadius:"50%",background:"#00897b",display:"inline-block"}}/> Oggi</span><span style={{display:"flex",alignItems:"center",gap:3,fontSize:9,color:G.t3}}><span style={{width:10,height:10,borderRadius:3,background:"#003366",display:"inline-block"}}/> Turno</span><span style={{display:"flex",alignItems:"center",gap:3,fontSize:9,color:G.t3}}><span style={{width:10,height:10,borderRadius:3,background:"#ffd100",display:"inline-block"}}/> Riposo</span><span style={{display:"flex",alignItems:"center",gap:3,fontSize:9,color:G.t3}}><span style={{width:10,height:10,borderRadius:3,background:"#c62828",display:"inline-block"}}/> Ballott.</span></div></div>);
 }
 
 /* ══════════ Linee Browser ══════════ */
@@ -536,21 +703,54 @@ function LineeBrowser(props){
   var _linea=useState(""),linea=_linea[0],setLinea=_linea[1];
   var _turno=useState(""),turno=_turno[0],setTurno=_turno[1];
   var _gt=useState(function(){var d=new Date().getDay();return d===0?"FEST":d===6?"SAB":"LV";}),gt=_gt[0],setGt=_gt[1];
+  /* Build line map from BOTH turno codes AND segment ln fields */
   var lineMap={};
-  Object.keys(devs).forEach(function(code){var parts=code.split(" ");if(parts.length===2){var ln=parts[0];if(!lineMap[ln])lineMap[ln]=[];lineMap[ln].push(code);}});
-  var lineNums=Object.keys(lineMap).sort(function(a,b){var na=parseInt(a),nb=parseInt(b);if(isNaN(na)&&isNaN(nb))return a.localeCompare(b);if(isNaN(na))return 1;if(isNaN(nb))return -1;return na-nb;});
+  Object.keys(devs).forEach(function(code){
+    var parts=code.split(" ");
+    if(parts.length===2){
+      var ln=parts[0];
+      if(!lineMap[ln])lineMap[ln]=[];
+      lineMap[ln].push(code);
+      /* Also check segments for variant lines */
+      var segs=devs[code]||[];
+      segs.forEach(function(s){
+        if(s.ln&&s.ln!==ln){
+          var vln=s.ln;
+          if(!lineMap[vln])lineMap[vln]=[];
+          if(lineMap[vln].indexOf(code)<0)lineMap[vln].push(code);
+        }
+      });
+    }
+  });
+  var lineNums=Object.keys(lineMap).sort(function(a,b){var na=parseInt(a),nb=parseInt(b);if(isNaN(na)&&isNaN(nb))return a.localeCompare(b);if(isNaN(na))return 1;if(isNaN(nb))return -1;if(na!==nb)return na-nb;return a.localeCompare(b);});
   var turniForLine=linea?lineMap[linea]||[]:[];
   turniForLine.sort(function(a,b){return a.localeCompare(b);});
-  function filterByGt(segs){if(!segs||segs.length===0)return segs;if(gt==="ALL")return segs.slice().sort(function(a,b){return hm2min(a.start)-hm2min(b.start);});var filt=segs.filter(function(s){var g=(s.gt||"").toUpperCase();if(gt==="LV")return g.indexOf("LUN")>=0||g.indexOf("MER")>=0;if(gt==="SAB")return g.indexOf("SAB")>=0;if(gt==="FEST")return g.indexOf("FEST")>=0;return true;});var res=filt.length>0?filt:segs;return res.slice().sort(function(a,b){return hm2min(a.start)-hm2min(b.start);});}
-  function lineLabel(ln){var n=parseInt(ln);return isNaN(n)?ln:String(n);}
-  var selStyle={width:"100%",padding:"12px 14px",borderRadius:12,border:"1px solid "+G.glassBorder,background:"rgba(255,255,255,0.08)",color:G.tw,fontSize:15,outline:"none",appearance:"none",WebkitAppearance:"none",backgroundImage:"url(\\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8f9e' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\\")",backgroundRepeat:"no-repeat",backgroundPosition:"right 14px center"};
+  function filterByGt(segs){
+    if(!segs||segs.length===0)return[];
+    if(gt==="ALL")return segs.slice().sort(function(a,b){return hm2min(a.start)-hm2min(b.start);});
+    var filt=segs.filter(function(s){
+      var g=(s.gt||"").toUpperCase();
+      if(!g)return true;
+      /* Normalize: check for day type keywords */
+      var isLV=g.indexOf("LUN")>=0||g.indexOf("VEN")>=0||g.indexOf("MER")>=0||g.indexOf("FERIALE")>=0||g.indexOf("FERIALI")>=0;
+      var isSAB=g.indexOf("SAB")>=0;
+      var isFEST=g.indexOf("FEST")>=0||g.indexOf("DOM")>=0;
+      if(gt==="LV")return isLV;
+      if(gt==="SAB")return isSAB;
+      if(gt==="FEST")return isFEST;
+      return true;
+    });
+    return filt.sort(function(a,b){return hm2min(a.start)-hm2min(b.start);});
+  }
+  function lineLabel(ln){if(/B$/.test(ln))return ln.replace(/B$/,"/");if(/[A-Z]$/.test(ln)&&ln.length>1)return ln.replace(/[A-Z]$/,"/");var n=parseInt(ln);return isNaN(n)?ln:String(n);}
+  var selStyle={width:"100%",padding:"12px 14px",borderRadius:12,border:"1px solid "+G.glassBorder,background:"#ffffff",color:G.tw,fontSize:15,outline:"none",appearance:"none",WebkitAppearance:"none",backgroundImage:"url(\\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8f9e' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\\")",backgroundRepeat:"no-repeat",backgroundPosition:"right 14px center"};
   return(<div>
     <div style={{marginBottom:12}}><div style={{fontSize:12,color:G.t3,fontWeight:600,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.04em"}}>Seleziona linea</div>
       <select value={linea} onChange={function(ev){setLinea(ev.target.value);setTurno("");}} style={selStyle}><option value="">— Scegli linea —</option>{lineNums.map(function(ln){return <option key={ln} value={ln}>Linea {lineLabel(ln)} ({lineMap[ln].length} turni)</option>;})}</select></div>
     {linea?(<div>
       <div style={{display:"flex",gap:4,marginBottom:12}}>{["LV","SAB","FEST","ALL"].map(function(d){return <button key={d} onClick={function(){setGt(d);}} style={{flex:1,padding:"8px 0",borderRadius:10,border:gt===d?"1px solid "+G.accentBorder:"1px solid "+G.cardBorder,background:gt===d?G.accentGlass:"transparent",color:gt===d?G.accent:G.t2,fontSize:12,fontWeight:600,cursor:"pointer"}}>{d==="LV"?"Lun-Ven":d==="SAB"?"Sabato":d==="FEST"?"Festivo":"Tutti"}</button>;})}</div>
       <div style={{marginBottom:12}}><select value={turno} onChange={function(ev){setTurno(ev.target.value);}} style={selStyle}><option value="">Tutti i turni della linea {lineLabel(linea)}</option>{turniForLine.map(function(code){return <option key={code} value={code}>{code}</option>;})}</select></div>
-      {(turno?[turno]:turniForLine).map(function(code){var segs=devs[code]||[];var filtered=filterByGt(segs);if(filtered.length===0)return null;return <LineeCard key={code+gt} code={code} segs={filtered} isSpezz={isRealSpezzato(filtered)} hasMulti={filtered.length>1}/>;})}</div>):(<div style={{textAlign:"center",padding:"30px 0",color:G.t3,fontSize:13}}>Seleziona una linea per esplorare i turni</div>)}
+      {(function(){var items=(turno?[turno]:turniForLine);var visibleCount=0;var totalSegs=0;var gtBreak={};var cards=items.map(function(code){var segs=devs[code]||[];totalSegs+=segs.length;segs.forEach(function(s){var g=s.gt||"(vuoto)";gtBreak[g]=(gtBreak[g]||0)+1;});var filtered=filterByGt(segs);if(filtered.length===0)return null;visibleCount++;return <LineeCard key={code+gt} code={code} segs={filtered} isSpezz={isRealSpezzato(filtered)} hasMulti={filtered.length>1}/>;});var gtInfo=Object.keys(gtBreak).map(function(g){return g+": "+gtBreak[g];}).join(", ");return(<div>{visibleCount>0?<div style={{fontSize:11,color:G.t2,marginBottom:8,fontWeight:600}}>{visibleCount} turni {gt==="LV"?"feriali":gt==="SAB"?"sabato":gt==="FEST"?"festivi":"totali"}</div>:null}{cards}{visibleCount===0?<div style={{textAlign:"center",padding:"20px 0"}}><div style={{color:"#c62828",fontSize:13,fontWeight:600}}>Nessun turno per {gt==="LV"?"Lun-Ven":gt==="SAB"?"Sabato":"Festivo"}</div><div style={{color:G.t3,fontSize:10,marginTop:6}}>{items.length} codici, {totalSegs} segmenti. GT: {gtInfo}</div><div style={{color:G.t3,fontSize:10,marginTop:2}}>Ricarica il PDF Orari Linee per aggiornare i dati</div></div>:null}</div>);})()}</div>):(<div style={{textAlign:"center",padding:"30px 0",color:G.t3,fontSize:13}}>Seleziona una linea per esplorare i turni</div>)}
   </div>);
 }
 function LineeCard(props){
@@ -558,8 +758,8 @@ function LineeCard(props){
   var _flipped=useState(false),flipped=_flipped[0],setFlipped=_flipped[1];
   var header=(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}><span style={{fontFamily:"monospace",fontSize:18,fontWeight:700,color:G.tw}}>{code}</span><div>{isSpezz?<Tag bg={G.orangeBg} color={G.orange}>Spezzato</Tag>:null}<Tag bg={G.glass} color={G.t2}>{segs.length} seg.</Tag></div></div>);
   if(!hasMulti){return(<div style={Object.assign({},glassCard,{padding:"14px 16px",marginBottom:8})}>{header}<SegmentList segs={segs}/></div>);}
-  var front=(<div className="flip-front" style={Object.assign({},glassCard,{padding:"14px 16px"})}>{header}<SegmentList segs={[segs[0]]} showGaps={false}/><div style={{marginTop:10,display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"8px 0",borderTop:"1px solid "+G.cardBorder,color:G.t2,fontSize:12,fontWeight:500}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Tap per vedere {segs.length} segmenti</span></div></div>);
-  var back=(<div className="flip-back" style={Object.assign({},glassCard,{padding:"14px 16px",background:"rgba(255,255,255,0.08)"})}>{header}<SegmentList segs={segs}/><div style={{marginTop:10,display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"8px 0",borderTop:"1px solid "+G.cardBorder,color:G.t3,fontSize:12,fontWeight:500}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Tap per tornare</span></div></div>);
+  var front=(<div className="flip-front" style={Object.assign({},glassCard,{padding:"14px 16px"})}>{header}<SegmentList segs={[segs[0]]} showGaps={false}/><div style={{marginTop:10,display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"8px 0",borderTop:"1px solid "+G.cardBorder,color:"#003366",fontSize:12,fontWeight:600}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Tap per vedere {segs.length} segmenti</span></div></div>);
+  var back=(<div className="flip-back" style={Object.assign({},glassCard,{padding:"14px 16px",background:"#ffffff"})}>{header}<SegmentList segs={segs}/><div style={{marginTop:10,display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"8px 0",borderTop:"1px solid "+G.cardBorder,color:G.t3,fontSize:12,fontWeight:500}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Tap per tornare</span></div></div>);
   return(<div className="flip-container" onClick={function(){setFlipped(!flipped);}}><div className={"flip-inner"+(flipped?" flipped":"")} style={{minHeight:1}}>{front}{back}</div></div>);
 }
 
@@ -675,6 +875,7 @@ function App(){
       if(d.dIn){var ok=orariKey(d.dIn.getFullYear(),d.dIn.getMonth()+1);var od=loadOrariByKey(ok);if(od&&Object.keys(od).length)setDevs(od);}
     }
     setRestored(true);
+    checkPendingAlarms();
   },[restored]);
 
   var baseDays=data?data.days:{};
@@ -720,19 +921,43 @@ function App(){
     /* Validate: orari should be many pages */
     if(pdf.numPages<5){setErr("Questo sembra la Preconoscenza ("+pdf.numPages+" pagina), non gli Orari Linee. Gli Orari hanno 100+ pagine.");setLoading2(false);if(cb)cb();return;}
     var pp=[];for(var i=1;i<=pdf.numPages;i++)pp.push(pdf.getPage(i).then(extractText));return Promise.all(pp).then(function(texts){var nd={};var parsed=0;texts.forEach(function(ft){
-    /* Accept pages with TURNI DEL PERSONALE or with gruppo+Versione pattern */
-    var hasMarker=ft.indexOf("TURNI DEL PERSONALE")>=0||ft.indexOf("TURNI  DEL  PERSONALE")>=0;
+    /* Extract GT from gruppo header if available */
     var vm=ft.match(/gruppo\\s+(\\S+)\\s*-\\s*(.+?)\\s*-\\s*Versione\\s+(\\w+)/);
-    if(!hasMarker&&!vm)return;
-    var pd={};parseOrariPageLines(ft,vm?vm[2].trim():"",vm?vm[3]:"",pd);
+    var gtVal=vm?vm[2].trim():"";
+    if(!gtVal){
+      /* Fallback: check first 500 chars only (header area) for GT keywords */
+      var hdr=ft.substring(0,500).toUpperCase();
+      if(hdr.indexOf("LUN")>=0&&hdr.indexOf("VEN")>=0)gtVal="LUN - VEN";
+      else if(hdr.indexOf("SABATO")>=0)gtVal="SABATO";
+      else if(hdr.indexOf("FESTIVO")>=0)gtVal="FESTIVO";
+      else if(hdr.indexOf("MERCOLEDI")>=0)gtVal="MERCOLEDI'";
+    }
+    /* Try to parse segments from ANY page - no marker required */
+    var pd={};parseOrariPageLines(ft,gtVal,vm?vm[3]:"",pd);
     var nk=Object.keys(pd).length;if(nk>0){parsed++;mergeDevs(nd,pd);}
   });setDevs(nd);
-    /* Save orari - try to get month from data, fallback to current */
     if(Object.keys(nd).length){
       if(data&&data.dIn)saveOrari(nd,data);
       else{var now=new Date();var fakeD={dIn:now};saveOrari(nd,fakeD);}
     }
-    setLoading2(false);if(cb)cb();if(!Object.keys(nd).length)setErr("Nessun turno Orari trovato. Pagine analizzate: "+texts.length+", con dati: "+parsed);});}).catch(function(e){setErr("Errore Orari: "+e.message);setLoading2(false);});};reader.readAsArrayBuffer(file);}
+    setLoading2(false);if(cb)cb();
+    /* Build detailed report */
+    var gtC={};var gtPages={};Object.keys(nd).forEach(function(code){(nd[code]||[]).forEach(function(s){var g=s.gt||"(vuoto)";gtC[g]=(gtC[g]||0)+1;});});
+    var report=Object.keys(nd).length+" turni, "+parsed+"/"+texts.length+" pagine. GT: "+Object.keys(gtC).map(function(g){return g+":"+gtC[g];}).join(", ");
+    /* Debug line 38 specifically */
+    var dbg38=0;Object.keys(nd).forEach(function(code){if(code.indexOf("38 ")===0){(nd[code]||[]).forEach(function(s){if((s.gt||"").toUpperCase().indexOf("LUN")>=0)dbg38++;});}});
+    report+=" | L38-LV:"+dbg38;
+    /* Check save */
+    var saved=false;
+    if(Object.keys(nd).length){
+      if(data&&data.dIn){saved=saveOrari(nd,data);}
+      else{var now=new Date();saved=saveOrari(nd,{dIn:now});}
+    }
+    report+=saved?" | Salvato":" | NON salvato";
+    setLoading2(false);if(cb)cb();
+    if(!Object.keys(nd).length)setErr("Nessun turno trovato! "+texts.length+" pagine.");
+    else setErr("v3.5 OK! "+report);
+    });}).catch(function(e){setErr("Errore Orari: "+e.message);setLoading2(false);});};reader.readAsArrayBuffer(file);}
 
   function cerca(){if(!q.trim())return;var d=parseInput(q,refY);if(!d){setRes([]);setMsg("Formato non riconosciuto");return;}var is2=toIso(d);if(days[is2]){setRes([{date:d,v:days[is2]}]);setMsg("");}else{setRes([]);setMsg("Nessun dato per "+toFmt(d));}}
   function rapido(tipo){setMsg("");var oggi=new Date();if(tipo==="oggi"){var is2=toIso(oggi);if(days[is2])setRes([{date:oggi,v:days[is2]}]);else{setRes([]);setMsg("Nessun dato per oggi");}}else if(tipo==="domani"){var d2=new Date();d2.setDate(d2.getDate()+1);var is3=toIso(d2);if(days[is3])setRes([{date:d2,v:days[is3]}]);else{setRes([]);setMsg("Nessun dato per domani");}}else if(tipo==="week"){var r=[];for(var j=0;j<7;j++){var dd=new Date();dd.setDate(dd.getDate()+j);var ii=toIso(dd);if(days[ii])r.push({date:dd,v:days[ii]});}setRes(r);if(!r.length)setMsg("Nessun dato per questa settimana");}}
@@ -745,33 +970,56 @@ function App(){
   function onLoadOrari(d){setDevs(d);}
   function onPasteTurno(iso,v){var nw=Object.assign({},overrides);nw[iso]=v;setOverrides(nw);}
 
-  var inp={width:"100%",padding:"12px 16px",borderRadius:12,border:"1px solid "+G.glassBorder,background:G.glass,backdropFilter:G.blur,WebkitBackdropFilter:G.blur,color:G.t1,fontSize:15,outline:"none",boxSizing:"border-box"};
-  var qb={flex:1,padding:"10px 2px",borderRadius:12,border:"1px solid "+G.cardBorder,background:G.glass,color:G.t1,fontSize:12,fontWeight:600,cursor:"pointer"};
-  function tbS(n){return{flex:1,padding:"10px 0",textAlign:"center",fontSize:13,fontWeight:600,background:tab===n?G.accentGlass:"transparent",color:tab===n?G.accent:G.t2,border:tab===n?"1px solid "+G.accentBorder:"1px solid transparent",borderRadius:10,cursor:"pointer"};}
+  var inp={width:"100%",padding:"12px 16px",borderRadius:8,border:"2px solid #d0d7de",background:"#ffd100",color:"#1a1a2e",fontSize:15,outline:"none",boxSizing:"border-box"};
+  var qb={flex:1,padding:"10px 2px",borderRadius:8,border:"1px solid #d0d7de",background:"#ffd100",color:"#003366",fontSize:12,fontWeight:700,cursor:"pointer"};
+  function tbS(n){return{flex:1,padding:"10px 0",textAlign:"center",fontSize:13,fontWeight:700,background:tab===n?"#003366":"#ffffff",color:tab===n?"#ffd100":"#003366",border:"1px solid "+(tab===n?"#003366":"#d0d7de"),borderRadius:8,cursor:"pointer"};}
 
   return(
-    <div style={{minHeight:"100vh",background:G.bg,color:G.t1,fontFamily:"'SF Pro Display','Segoe UI',-apple-system,sans-serif"}}>
+    <div style={{minHeight:"100vh",background:"#f4f6f9",color:"#1a1a2e",fontFamily:"'Segoe UI','SF Pro Display',-apple-system,sans-serif"}}>
+      <div style={{background:"#003366",padding:"10px 18px",display:"flex",alignItems:"center",gap:12,borderBottom:"3px solid #ffd100",boxShadow:"0 2px 12px rgba(0,51,102,0.20)"}}>
+        <svg width="44" height="44" viewBox="0 0 64 64" fill="none">
+          <path d="M8 20l12-8 14 6 14-6 12 8v28l-12 8-14-6-14 6L8 48V20z" fill="#e8d44d" stroke="#c4a82a" strokeWidth="1"/>
+          <path d="M20 12l14 6v36l-14-6V12z" fill="#b8c94a" stroke="#8fa03a" strokeWidth="0.5"/>
+          <path d="M34 18l14-6v36l-14 6V18z" fill="#d4cc5a" stroke="#b0a83a" strokeWidth="0.5"/>
+          <path d="M12 22l8-4v28l-8 4V22z" fill="#c4b84a" opacity="0.6"/>
+          <line x1="20" y1="22" x2="20" y2="42" stroke="#8fa03a" strokeWidth="0.5" opacity="0.4"/>
+          <line x1="34" y1="24" x2="34" y2="44" stroke="#b0a83a" strokeWidth="0.5" opacity="0.4"/>
+          <line x1="27" y1="18" x2="27" y2="48" stroke="#aaa" strokeWidth="0.3" opacity="0.3"/>
+          <path d="M32 6c-6.6 0-12 5-12 11.2C20 25.6 32 38 32 38s12-12.4 12-20.8C44 11 38.6 6 32 6z" fill="#003366"/>
+          <circle cx="32" cy="17" r="7.5" fill="#ffffff"/>
+          <rect x="26" y="12.5" width="12" height="8" rx="2" fill="#003366"/>
+          <rect x="27" y="14" width="4.5" height="3" rx="0.8" fill="#89b4e8"/>
+          <rect x="32.5" y="14" width="4.5" height="3" rx="0.8" fill="#89b4e8"/>
+          <circle cx="28.5" cy="22" r="1.2" fill="#003366"/><circle cx="35.5" cy="22" r="1.2" fill="#003366"/>
+        </svg>
+        <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:22,fontWeight:800,color:"#ffffff",letterSpacing:"-0.02em"}}>Turni Smart</span><span style={{fontSize:9,color:"rgba(255,255,255,0.5)",fontWeight:500}}>v3.5</span></div><div style={{fontSize:10,color:"rgba(255,255,255,0.65)",fontWeight:500,marginTop:1}}>Gestione turni GTT — Deposito Gerbido</div>
+      </div>
       <div style={{maxWidth:460,margin:"0 auto",padding:"16px 16px"}}>
         <input ref={fileRef1} type="file" accept=".pdf" style={{display:"none"}} onChange={function(ev){if(ev.target.files[0])uploadPreco(ev.target.files[0]);}}/>
         <input ref={fileRef2} type="file" accept=".pdf" style={{display:"none"}} onChange={function(ev){if(ev.target.files[0])uploadOrari(ev.target.files[0]);}}/>
 
         {/* Header */}
-        <div style={Object.assign({},glassCard,{padding:"20px 22px",marginBottom:14,position:"relative",overflow:"hidden"})}>
-          <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,"+G.accent+","+G.purple+","+G.accent+")",opacity:0.5}}/>
-          <div style={{fontSize:20,fontWeight:700,color:G.tw,letterSpacing:"-0.03em"}}>Turni Smart</div>
-          <div style={{fontSize:11,color:G.t3,letterSpacing:"0.03em",marginTop:1}}>Gestione turni GTT</div>
+        <div style={{background:"#ffd100",borderRadius:"10px",boxShadow:"0 1px 4px rgba(0,0,0,0.10)",padding:"16px 18px",marginBottom:14}}>
           {data?(
-            <div style={{display:"flex",alignItems:"center",gap:12,marginTop:14,paddingTop:14,borderTop:"1px solid "+G.cardBorder}}>
-              <div style={{width:42,height:42,borderRadius:"50%",background:"linear-gradient(135deg,"+G.accent+","+G.purple+")",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:700,color:"#fff",flexShrink:0}}>{data.nome?data.nome.split(" ").slice(0,2).map(function(w){return w[0];}).join("").toUpperCase():"?"}</div>
+            <div style={{display:"flex",alignItems:"center",gap:12}}>
+              <svg width="46" height="46" viewBox="0 0 64 64" fill="none" style={{flexShrink:0}}>
+                <path d="M8 20l12-8 14 6 14-6 12 8v28l-12 8-14-6-14 6L8 48V20z" fill="#e8d44d" stroke="#c4a82a" strokeWidth="1"/>
+                <path d="M20 12l14 6v36l-14-6V12z" fill="#b8c94a"/>
+                <path d="M34 18l14-6v36l-14 6V18z" fill="#d4cc5a"/>
+                <path d="M32 6c-6.6 0-12 5-12 11.2C20 25.6 32 38 32 38s12-12.4 12-20.8C44 11 38.6 6 32 6z" fill="#003366"/>
+                <circle cx="32" cy="17" r="7" fill="#fff"/>
+                <rect x="26.5" y="13" width="11" height="7.5" rx="2" fill="#003366"/>
+                <rect x="27.5" y="14.2" width="4" height="2.8" rx="0.8" fill="#89b4e8"/>
+                <rect x="32.5" y="14.2" width="4" height="2.8" rx="0.8" fill="#89b4e8"/>
+                <circle cx="29" cy="21.8" r="1.1" fill="#003366"/><circle cx="35" cy="21.8" r="1.1" fill="#003366"/>
+              </svg>
               <div style={{flex:1}}>
-                <div style={{color:G.tw,fontWeight:700,fontSize:17}}>{data.nome||"Autista"}</div>
-                <div style={{display:"flex",gap:12,marginTop:3,flexWrap:"wrap"}}>
-                  {data.matricola?<span style={{color:G.accent,fontSize:12,fontWeight:600}}>Mat. {data.matricola}</span>:null}
-                  {data.dIn&&data.dTe?<span style={{color:G.t2,fontSize:12}}>{toFmt(data.dIn)+" — "+toFmt(data.dTe)}</span>:null}
-                </div>
+                <div style={{color:"#003366",fontWeight:800,fontSize:18}}>{data.nome||"Autista"}</div>
+                <div style={{color:"#003366",fontSize:13,fontWeight:700,marginTop:2}}>N. caratteristico {data.matricola||""}</div>
+                {data.dIn&&data.dTe?<div style={{color:"#5a4500",fontSize:12,marginTop:2}}>{toFmt(data.dIn)+" — "+toFmt(data.dTe)}</div>:null}
               </div>
             </div>
-          ):null}
+          ):(<div><div style={{fontSize:20,fontWeight:800,color:"#003366"}}>Turni Smart</div><div style={{fontSize:12,color:"#5a4500",marginTop:2}}>Gestione turni GTT — Deposito Gerbido</div></div>)}
         </div>
 
         {!data?(
@@ -794,7 +1042,7 @@ function App(){
               </div>
             ):(<div style={{textAlign:"center",padding:"20px 0",color:G.t3,fontSize:12}}>Carica una preconoscenza per iniziare. I documenti verranno salvati automaticamente per i mesi successivi.</div>)}
 
-            {err?<div style={Object.assign({},glassCard,{padding:"12px 16px",marginTop:10,borderColor:"rgba(239,83,80,0.25)",color:G.red,fontSize:12,whiteSpace:"pre-wrap",maxHeight:200,overflow:"auto"})}>{err}</div>:null}
+            {err?<div style={Object.assign({},glassCard,{padding:"12px 16px",marginTop:10,borderColor:err.indexOf("Caricati")===0?"rgba(27,122,61,0.25)":"rgba(239,83,80,0.25)",color:err.indexOf("Caricati")===0?G.green:G.red,fontSize:12,whiteSpace:"pre-wrap",maxHeight:200,overflow:"auto"})}>{err}</div>:null}
           </div>
         ):(
           <div>
@@ -802,7 +1050,10 @@ function App(){
               <div style={{display:"flex",gap:6,marginBottom:12}}>
                 <div style={Object.assign({},glassCard,{flex:1,padding:"10px 14px",fontSize:13,display:"flex",justifyContent:"space-between",alignItems:"center",borderColor:G.greenBorder})}>
                   <span style={{color:G.green,fontWeight:600}}>Orari GTT: {nDevs} turni</span>
-                  <button onClick={function(){setDevs({});if(fileRef2.current)fileRef2.current.value="";}} style={{padding:"2px 8px",borderRadius:6,border:"1px solid "+G.cardBorder,background:"transparent",color:G.t3,fontSize:10,cursor:"pointer"}}>{"\\u00D7"}</button>
+                  <div style={{display:"flex",gap:4}}>
+                    <button onClick={function(){/* Clear orari from storage and memory */setDevs({});if(data&&data.dIn){var ok=orariKey(data.dIn.getFullYear(),data.dIn.getMonth()+1);DB.del(ok);}if(fileRef2.current){fileRef2.current.value="";fileRef2.current.click();}}} style={{padding:"2px 8px",borderRadius:6,border:"1px solid "+G.accentBorder,background:G.accentGlass,color:G.accent,fontSize:10,fontWeight:600,cursor:"pointer"}}>Ricarica</button>
+                    <button onClick={function(){setDevs({});if(fileRef2.current)fileRef2.current.value="";}} style={{padding:"2px 8px",borderRadius:6,border:"1px solid "+G.cardBorder,background:"transparent",color:G.t3,fontSize:10,cursor:"pointer"}}>{"\\u00D7"}</button>
+                  </div>
                 </div>
                 <button onClick={resetAll} style={{padding:"8px 14px",borderRadius:G.rs,border:"1px solid "+G.cardBorder,background:"transparent",color:G.red,fontSize:11,fontWeight:600,cursor:"pointer"}}>Reset</button>
               </div>
@@ -817,7 +1068,7 @@ function App(){
               </div>
             )}
 
-            {err?<div style={Object.assign({},glassCard,{padding:"12px 16px",marginBottom:10,borderColor:"rgba(239,83,80,0.25)",color:G.red,fontSize:12,whiteSpace:"pre-wrap"})}>{err}</div>:null}
+            {err?<div style={Object.assign({},glassCard,{padding:"12px 16px",marginBottom:10,borderColor:err.indexOf("Caricati")===0?"rgba(27,122,61,0.25)":"rgba(239,83,80,0.25)",color:err.indexOf("Caricati")===0?G.green:G.red,fontSize:12,whiteSpace:"pre-wrap"})}>{err}</div>:null}
 
             <div style={{display:"flex",gap:4,marginBottom:14}}>
               <button style={tbS("home")} onClick={function(){setTab("home");}}>Home</button>
@@ -826,8 +1077,13 @@ function App(){
               <button style={tbS("storico")} onClick={function(){setTab("storico");}}>Storico</button>
             </div>
 
+            {(function(){var ballCount=0;Object.keys(days).forEach(function(k){if(days[k]&&days[k].t==="RIS")ballCount++;});if(ballCount===0)return null;return(<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 14px",marginBottom:12,borderRadius:10,background:"rgba(255,209,0,0.15)",border:"1px solid rgba(255,209,0,0.40)"}}>
+              <span style={{color:"#003366",fontSize:12,fontWeight:700}}>{ballCount} ballottaggi</span>
+              <button onClick={function(){downloadBallottaggiICS(data);}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:G.red,color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>Salva su Calendario</button>
+            </div>);})()}
+
             {tab==="home"?(<div>
-              <div style={{display:"flex",gap:8,marginBottom:10}}><input style={Object.assign({},inp,{flex:1})} placeholder="es. 5 marzo, 05/03" value={q} onChange={function(ev){setQ(ev.target.value);}} onKeyDown={function(ev){if(ev.key==="Enter")cerca();}}/><button onClick={cerca} style={{padding:"0 18px",borderRadius:12,border:"none",background:G.accent,color:G.bg,fontWeight:700,fontSize:15,cursor:"pointer"}}>{"\\u2192"}</button></div>
+              <div style={{display:"flex",gap:8,marginBottom:10}}><input style={Object.assign({},inp,{flex:1})} placeholder="es. 5 marzo, 05/03" value={q} onChange={function(ev){setQ(ev.target.value);}} onKeyDown={function(ev){if(ev.key==="Enter")cerca();}}/><button onClick={cerca} style={{padding:"0 18px",borderRadius:8,border:"none",background:"#ffd100",color:"#003366",fontWeight:800,fontSize:16,cursor:"pointer"}}>{"\\u2192"}</button></div>
               <div style={{display:"flex",gap:5,marginBottom:14}}><button style={qb} onClick={function(){rapido("oggi");}}>Oggi</button><button style={qb} onClick={function(){rapido("domani");}}>Domani</button><button style={qb} onClick={function(){rapido("week");}}>Settimana</button></div>
               {msg?<div style={Object.assign({},glassCard,{padding:"10px 14px",marginBottom:10,fontSize:13,color:G.t2})}>{msg}</div>:null}
               {res.map(function(r,i){return <Card key={i} date={r.date} v={r.v} devs={devs} allDays={days} onPaste={onPasteTurno}/>;})}
