@@ -370,9 +370,8 @@ function CalendarActions({ actions, compact = false, gttTarget = null, shareText
   }
 
   function openGttPassages() {
-    const targetUrl = gttTarget?.direct ? gttTarget.url : gttTarget?.mapUrl || gttTarget?.url;
-    if (!targetUrl) return;
-    window.open(targetUrl, '_blank', 'noopener,noreferrer');
+    if (!gttTarget?.url) return;
+    window.open(gttTarget.url, '_blank', 'noopener,noreferrer');
   }
 
   return (
@@ -393,7 +392,7 @@ function CalendarActions({ actions, compact = false, gttTarget = null, shareText
         {gttTarget?.url ? (
           <button className="inline-action inline-action--gtt" onClick={openGttPassages} title={gttTarget.title} type="button">
             <Icon name="gttPassages" size={20} />
-            {gttTarget.direct ? 'Passaggi GTT' : 'Trova palina'}
+            Passaggi GTT
           </button>
         ) : null}
       </div>
