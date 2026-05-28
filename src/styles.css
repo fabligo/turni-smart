@@ -2310,7 +2310,7 @@ select:focus-visible {
 }
 
 .shift-development--expanded .shift-segment {
-  grid-template-columns: 28px minmax(116px, max-content) minmax(0, 1fr) auto;
+  grid-template-columns: 28px minmax(116px, max-content) minmax(0, 1fr) auto minmax(118px, 142px);
   min-height: 46px;
   padding: 9px 10px;
   border-color: rgba(45, 109, 151, 0.44);
@@ -2340,7 +2340,7 @@ select:focus-visible {
 
 .shift-segment {
   display: grid;
-  grid-template-columns: 24px minmax(86px, max-content) minmax(0, 1fr) auto;
+  grid-template-columns: 24px minmax(86px, max-content) minmax(0, 1fr) auto minmax(110px, 132px);
   align-items: center;
   gap: var(--s2);
   padding: 8px 10px;
@@ -2394,6 +2394,41 @@ select:focus-visible {
   background: rgba(10, 48, 78, 0.45);
   color: #d8ecff;
   white-space: nowrap;
+}
+
+.segment-vehicle-number {
+  display: grid;
+  gap: 3px;
+  justify-self: end;
+  min-width: 110px;
+  color: rgba(217, 236, 255, 0.82);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.segment-vehicle-number input {
+  width: 100%;
+  min-height: 32px;
+  border: 1px solid rgba(255, 209, 0, 0.32);
+  border-radius: 9px;
+  background: rgba(2, 19, 34, 0.74);
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.86rem;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+.segment-vehicle-number input::placeholder {
+  color: rgba(217, 236, 255, 0.42);
+  letter-spacing: 0;
+}
+
+.segment-vehicle-number input:focus {
+  outline: 2px solid rgba(255, 209, 0, 0.32);
+  outline-offset: 2px;
 }
 
 /* Statistics */
@@ -3855,6 +3890,13 @@ select:focus-visible {
     grid-row: 3;
     justify-self: start;
     white-space: normal;
+  }
+
+  .shift-segment .segment-vehicle-number {
+    grid-column: 2;
+    grid-row: 4;
+    justify-self: stretch;
+    min-width: 0;
   }
 
   .stats-dashboard {

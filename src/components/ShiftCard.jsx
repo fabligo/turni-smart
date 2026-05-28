@@ -12,6 +12,24 @@ const DIRECTION_LABELS = {
   '-': '-',
 };
 
+const SEGMENT_VEHICLES_KEY = 'ts_segment_vehicles_v1';
+
+function readSegmentVehicles() {
+  try {
+    return JSON.parse(window.localStorage.getItem(SEGMENT_VEHICLES_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function writeSegmentVehicles(value) {
+  try {
+    window.localStorage.setItem(SEGMENT_VEHICLES_KEY, JSON.stringify(value || {}));
+  } catch {
+    // localStorage non disponibile: il valore resta valido solo nella sessione.
+  }
+}
+
 function getDateParts(label = '') {
   const match = String(label).match(/(?:(Prossimo|Oggi|Domani|Settimana)\s+·\s+)?([a-zà]+)\s+(\d{1,2})\s+([a-zà]+)/i);
   return {
@@ -29,7 +47,8 @@ function formatDevelopmentLines(segments = []) {
     ...segments.map((segment, index) => {
       const direction = DIRECTION_LABELS[segment.dir] || segment.dir || '-';
       const vehicleShift = getVehicleShiftLabel(segment);
-      return `${index + 1}. ${segment.start} - ${segment.end} | ${segment.loc_s} ${direction} ${segment.loc_e}${vehicleShift ? ` | ${vehicleShift}` : ''}`;
+      const vehicleNumber = segment.vehicleNumber ? ` | Vettura ${segment.vehicleNumber}` : '';
+      return `${index + 1}. ${segment.start} - ${segment.end} | ${segment.loc_s} ${direction} ${segment.loc_e}${vehicleShift ? ` | ${vehicleShift}` : ''}${vehicleNumber}`;
     }),
   ];
 }
@@ -83,12 +102,28 @@ function getCategoryIconName(category, shift) {
   return 'busMark';
 }
 
+function getSegmentVehicleStorageKey({ dayData, date, index, segment, shift }) {
+  return [
+    dayData?.iso || date || shift?.date || 'giorno',
+    dayData?.lineaNorm || shift?.line || segment?.lineaNorm || segment?.ln || 'linea',
+    shift?.number || dayData?.n || 'turno',
+    index,
+    segment?.start,
+    segment?.end,
+    segment?.loc_s,
+    segment?.loc_e,
+  ]
+    .filter(Boolean)
+    .join('|');
+}
+
 export function ShiftCard({ calendarActions, date, developments = {}, enrichment = null, onAssignTurn, shift, dayData }) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [assignedTurn, setAssignedTurn] = useState('');
   const [assignedTurnError, setAssignedTurnError] = useState('');
   const [assignedTurnSuccess, setAssignedTurnSuccess] = useState('');
   const [isBallotInfoOpen, setIsBallotInfoOpen] = useState(false);
+  const [segmentVehicles, setSegmentVehicles] = useState(() => readSegmentVehicles());
 
   if (shift.type === 'special') {
     const isBallot = Boolean(shift.ballot);
@@ -189,7 +224,11 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
         ? dayData.manualSegments
         : getDevSegments(developments, dayData.l, dayData.n, date || dayData.date, dayData)
       : [];
-  const segments = lookupSegments.length ? lookupSegments : shift.segments || [];
+  const rawSegments = lookupSegments.length ? lookupSegments : shift.segments || [];
+  const segments = rawSegments.map((segment, index) => ({
+    ...segment,
+    vehicleNumber: segmentVehicles[getSegmentVehicleStorageKey({ date, dayData, index, segment, shift })] || '',
+  }));
   const isSplit = segments.length > 1 || shift.isSplit;
   const isEvening = Boolean(enrichment?.isEvening ?? shift.isEvening);
   const isShortRest = Boolean(enrichment?.isShortRest ?? shift.isShortRest);
@@ -202,6 +241,18 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
   const categoryIconName = getCategoryIconName(category, { ...shift, isEvening, isShortRest, isSplit });
   const shareText = buildShareText(shift, segments);
   const gttTarget = buildGttPassagesTarget(getPrimaryGttChangePoint({ dayData, segments, shift }));
+
+  function updateSegmentVehicle(index, segment, value) {
+    const normalized = String(value || '').replace(/\D/g, '').slice(0, 4);
+    const key = getSegmentVehicleStorageKey({ date, dayData, index, segment, shift });
+    setSegmentVehicles((current) => {
+      const next = { ...current };
+      if (normalized) next[key] = normalized;
+      else delete next[key];
+      writeSegmentVehicles(next);
+      return next;
+    });
+  }
 
   return (
     <article className={canFlipDevelopment ? 'shift-card shift-card--flip dc' : 'shift-card dc'}>
@@ -286,7 +337,7 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
           </div>
 
           {!canFlipDevelopment ? (
-            <DevelopmentPanel hasSegments={hasSegments} isSplit={isSplit} segments={segments} splitPause={splitPause} />
+            <DevelopmentPanel hasSegments={hasSegments} isSplit={isSplit} onVehicleNumberChange={updateSegmentVehicle} segments={segments} splitPause={splitPause} />
           ) : null}
         </div>
 
@@ -304,7 +355,7 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
                 Torna al turno
               </button>
             </div>
-            <DevelopmentPanel hasSegments={hasSegments} isSplit={isSplit} segments={segments} splitPause={splitPause} expanded />
+            <DevelopmentPanel expanded hasSegments={hasSegments} isSplit={isSplit} onVehicleNumberChange={updateSegmentVehicle} segments={segments} splitPause={splitPause} />
           </div>
         ) : null}
       </div>
@@ -312,7 +363,7 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
   );
 }
 
-function DevelopmentPanel({ expanded = false, hasSegments, isSplit, segments, splitPause }) {
+function DevelopmentPanel({ expanded = false, hasSegments, isSplit, onVehicleNumberChange, segments, splitPause }) {
   return (
     <div className={expanded ? 'shift-development shift-development--expanded' : 'shift-development'} aria-label="Sviluppo turno">
       <h4>Sviluppo turno</h4>
@@ -328,6 +379,18 @@ function DevelopmentPanel({ expanded = false, hasSegments, isSplit, segments, sp
                 {segment.loc_s} {DIRECTION_LABELS[segment.dir] || segment.dir || '-'} {segment.loc_e}
               </span>
               {getVehicleShiftLabel(segment) ? <small className="segment-vehicle">{getVehicleShiftLabel(segment)}</small> : null}
+              <label className="segment-vehicle-number">
+                <span>Vettura</span>
+                <input
+                  inputMode="numeric"
+                  maxLength={4}
+                  onChange={(event) => onVehicleNumberChange?.(index, segment, event.target.value)}
+                  pattern="\d{4}"
+                  placeholder="4 cifre"
+                  type="text"
+                  value={segment.vehicleNumber || ''}
+                />
+              </label>
             </div>
           ))}
           {splitPause !== null ? <p className="split-pause">Pausa tra le riprese: {formatMinutes(splitPause)}</p> : null}
