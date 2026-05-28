@@ -122,6 +122,7 @@ const ASSET_ICONS = {
   upload: assetPath('icon-upload.webp'),
   route: assetPath('icon-route.webp'),
   calendar: assetPath('icon-calendar.webp'),
+  gttPassages: assetPath('icon-gtt-passages.svg'),
   search: assetPath('icon-search.webp'),
   stats: assetPath('icon-stats.webp'),
   rest: assetPath('icon-rest.webp'),

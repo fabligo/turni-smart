@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Passaggi GTT">
+  <defs>
+    <linearGradient id="mapPaper" x1="18" x2="80" y1="42" y2="74" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dcefff"/>
+    </linearGradient>
+    <linearGradient id="pinBlue" x1="44" x2="68" y1="10" y2="52" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2f86cf"/>
+      <stop offset="1" stop-color="#005daa"/>
+    </linearGradient>
+    <filter id="softShadow" width="140%" height="140%" x="-20%" y="-18%">
+      <feDropShadow dx="0" dy="4" flood-color="#003966" flood-opacity=".22" stdDeviation="3"/>
+    </filter>
+  </defs>
+  <g fill="none" fill-rule="evenodd" filter="url(#softShadow)">
+    <path fill="url(#mapPaper)" stroke="#005daa" stroke-width="3" d="M12 36.5 31 28l22 7.8 31-9.5v50.2L62.5 84 40 76.2 12 85V36.5Z"/>
+    <path stroke="#8bc5ee" stroke-linecap="round" stroke-width="3" d="m19 48 15-5 17 6m-31 15 15-5 16 5m17-20 10-3m-12 17 11-4m-13 18 12-3"/>
+    <path stroke="#ffd100" stroke-linecap="round" stroke-width="4" d="M29 70c8-7 19-8 34-3"/>
+    <path stroke="#005daa" stroke-width="3" d="M31 28v48.2M53 35.8V84"/>
+    <path fill="url(#pinBlue)" stroke="#ffffff" stroke-width="4" d="M58 9c12.7 0 23 10.1 23 22.5C81 48 58 67 58 67S35 48 35 31.5C35 19.1 45.3 9 58 9Z"/>
+    <g stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.6">
+      <rect x="47" y="24" width="22" height="18" rx="4"/>
+      <path d="M51 29h14M51 34h14M52 42v3M64 42v3"/>
+      <circle cx="52.5" cy="39" r="1.7" fill="#ffffff"/>
+      <circle cx="63.5" cy="39" r="1.7" fill="#ffffff"/>
+    </g>
+  </g>
+</svg>

@@ -2022,6 +2022,10 @@ select:focus-visible {
   color: #ffe66b;
 }
 
+.inline-action--gtt .asset-icon {
+  filter: none;
+}
+
 .shift-card--special {
   gap: 12px;
 }
