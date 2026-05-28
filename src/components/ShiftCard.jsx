@@ -392,7 +392,7 @@ function CalendarActions({ actions, compact = false, gttTarget = null, shareText
         </button>
         {gttTarget?.url ? (
           <button className="inline-action inline-action--gtt" onClick={openGttPassages} title={gttTarget.title} type="button">
-            <Icon name="bus" size={18} />
+            <Icon name="gttPassages" size={20} />
             {gttTarget.direct ? 'Passaggi GTT' : 'Trova palina'}
           </button>
         ) : null}
