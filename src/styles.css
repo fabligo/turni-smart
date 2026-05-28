@@ -3306,6 +3306,63 @@ select:focus-visible {
   color: #ff9c9c;
 }
 
+.advanced-block--memory {
+  border-color: rgba(255, 209, 0, 0.24);
+}
+
+.storage-meter {
+  overflow: hidden;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(2, 19, 34, 0.72);
+}
+
+.storage-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #1cc0ec, #ffd100);
+}
+
+.storage-list {
+  display: grid;
+  gap: 6px;
+}
+
+.storage-list span {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: 10px;
+  background: rgba(5, 24, 41, 0.55);
+  color: #d9ecff;
+  padding: 8px 9px;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.storage-list strong {
+  color: var(--yellow);
+}
+
+.backup-actions .small-button--danger,
+.small-button--danger {
+  border-color: rgba(255, 99, 99, 0.34);
+  background: rgba(111, 21, 35, 0.2);
+  color: #ffb3b3;
+}
+
+.storage-alert {
+  margin: 0;
+  border: 1px solid rgba(255, 99, 99, 0.28);
+  border-radius: var(--radius);
+  background: rgba(111, 21, 35, 0.18);
+  color: #ffd7d7;
+  padding: 10px 12px;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
 /* Month */
 .month-view {
   width: min(430px, 100%);

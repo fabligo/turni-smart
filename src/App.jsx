@@ -12,7 +12,20 @@ import {
 import { computeStats, enrichShiftDays, getNextWorkingShift } from './analytics.js';
 import { buildBallotICS, buildICS, openCalendarICS } from './calendarExport.js';
 import { createDemoPreconoscenza, DEMO_DEVELOPMENTS } from './demoData.js';
-import { buildBackup, getHistory, loadOrariByKey, loadPreferences, loadPreconoscenzaByKey, orariKey, restoreBackup, saveOrari, savePreferences, savePreconoscenza } from './storage.js';
+import {
+  buildBackup,
+  clearStoredAppData,
+  getHistory,
+  getStorageReport,
+  loadOrariByKey,
+  loadPreferences,
+  loadPreconoscenzaByKey,
+  orariKey,
+  restoreBackup,
+  saveOrari,
+  savePreferences,
+  savePreconoscenza,
+} from './storage.js';
 import { buildCsv, downloadTextFile } from './exportUtils.js';
 import { getDevSegments, normalizeShiftKey, parseOrari, summarizeDevelopments } from './parserOrari.js';
 import { parseNaturalDate, toIsoDate } from './utils/dateUtils.js';
@@ -529,6 +542,8 @@ export default function App() {
   const [history, setHistory] = useState(() => getHistory());
   const [preferences, setPreferences] = useState(() => ({ autoRestore: true, ...savedPrefs }));
   const [backupMessage, setBackupMessage] = useState('');
+  const [storageMessage, setStorageMessage] = useState('');
+  const [storageReport, setStorageReport] = useState(() => getStorageReport());
   const [activeUtilityPanel, setActiveUtilityPanel] = useState('');
   const [calendarPulse, setCalendarPulse] = useState(0);
 
@@ -573,6 +588,13 @@ export default function App() {
 
   function refreshHistory() {
     setHistory(getHistory());
+    setStorageReport(getStorageReport());
+  }
+
+  function markStorageFailure(context) {
+    setStorageMessage(`${context}: memoria locale piena o non disponibile. Esporta un backup e libera spazio dai dati salvati.`);
+    setBackupMessage('Salvataggio non riuscito: memoria locale piena o non disponibile.');
+    setActiveUtilityPanel('tools');
   }
 
   function applyPreconoscenza(result, options = {}) {
@@ -596,7 +618,7 @@ export default function App() {
       setSearchMessage('');
     }
     if (options.save !== false) {
-      savePreconoscenza(result);
+      if (!savePreconoscenza(result)) markStorageFailure('Preconoscenza');
       refreshHistory();
     }
     if (options.loadOrari !== false && result.dIn) {
@@ -615,7 +637,7 @@ export default function App() {
     });
     setOrariLoaded(true);
     if (options.save !== false) {
-      saveOrari(parsedDevelopments, sourceInfo);
+      if (!saveOrari(parsedDevelopments, sourceInfo)) markStorageFailure('Orari Linee');
       refreshHistory();
     }
   }
@@ -764,7 +786,7 @@ export default function App() {
     setDays(nextDays);
     setSearchResults((current) => current.map((item) => (item?.iso === targetIso ? nextDay : item)));
     if (pdfInfo?.dIn) {
-      savePreconoscenza({ ...pdfInfo, days: nextDays });
+      if (!savePreconoscenza({ ...pdfInfo, days: nextDays })) markStorageFailure('Turno comunicato');
       refreshHistory();
     }
     setSelectedDate(nextDay.date);
@@ -912,6 +934,7 @@ export default function App() {
   function exportBackup() {
     downloadTextFile(`turni-smart-backup-${toIsoDate(new Date())}.json`, JSON.stringify(buildBackup(), null, 2), 'application/json;charset=utf-8');
     setBackupMessage('Backup esportato.');
+    setStorageMessage('');
   }
 
   function restoreBackupFile(backup) {
@@ -919,9 +942,29 @@ export default function App() {
       restoreBackup(backup);
       refreshHistory();
       setBackupMessage('Backup ripristinato.');
+      setStorageMessage('');
     } catch (caughtError) {
       setBackupMessage(caughtError.message || 'Backup non valido.');
     }
+  }
+
+  function clearLocalMemory() {
+    const confirmed = window.confirm(
+      "Attenzione: verranno cancellati Preconoscenza, Orari Linee, archivio mesi e dati inseriti localmente. Prima verra scaricato un backup JSON. Vuoi procedere?"
+    );
+    if (!confirmed) return;
+    exportBackup();
+    clearStoredAppData({ keepPreferences: true });
+    setDays({});
+    setDevelopments({});
+    setPdfInfo(null);
+    setOrariInfo(null);
+    setPdfLoaded(false);
+    setOrariLoaded(false);
+    setHistory(getHistory());
+    setStorageReport(getStorageReport());
+    setBackupMessage('Backup esportato. Memoria locale liberata.');
+    setStorageMessage('');
   }
 
   function getMonthHistoryEntry(type, year, monthIndex) {
@@ -1334,11 +1377,14 @@ export default function App() {
             <div className="utility-panel-anchor utility-panel-anchor--tools" ref={toolsPanelRef}>
               <AdvancedTools
                 backupMessage={backupMessage}
+                onClearStorage={clearLocalMemory}
                 onExportBackup={exportBackup}
                 onRestoreBackup={restoreBackupFile}
                 onToggleAutoRestore={updateAutoRestore}
                 preferences={preferences}
+                storageReport={storageReport}
               />
+              {storageMessage ? <p className="storage-alert">{storageMessage}</p> : null}
             </div>
           ) : null}
           {pdfLoaded ? (

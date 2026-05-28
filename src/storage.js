@@ -5,6 +5,8 @@ const LAST_PRECO_KEY = 'ts_last_preco';
 const LAST_ORARI_KEY = 'ts_last_orari';
 const PREFS_KEY = 'turni-smart-prefs';
 const BACKUP_VERSION = 1;
+const APP_KEY_PREFIXES = ['ts_'];
+const APP_KEYS = [PREFS_KEY, 'ts_segment_vehicles_v1'];
 
 function canUseStorage() {
   try {
@@ -35,6 +37,20 @@ function writeJson(key, value) {
   } catch {
     return false;
   }
+}
+
+function getStringByteSize(value = '') {
+  return new Blob([String(value)]).size;
+}
+
+function getAppStorageKeys() {
+  if (!canUseStorage()) return [];
+  const keys = [];
+  for (let index = 0; index < window.localStorage.length; index += 1) {
+    const key = window.localStorage.key(index);
+    if (key && (APP_KEY_PREFIXES.some((prefix) => key.startsWith(prefix)) || APP_KEYS.includes(key))) keys.push(key);
+  }
+  return keys;
 }
 
 function deleteKey(key) {
@@ -219,4 +235,29 @@ export function restoreBackup(backup) {
   });
 
   return getHistory();
+}
+
+export function getStorageReport() {
+  const keys = getAppStorageKeys();
+  const items = keys
+    .map((key) => {
+      const raw = window.localStorage.getItem(key) || '';
+      return {
+        key,
+        bytes: getStringByteSize(raw),
+      };
+    })
+    .sort((a, b) => b.bytes - a.bytes);
+  const totalBytes = items.reduce((sum, item) => sum + item.bytes, 0);
+  return {
+    itemCount: items.length,
+    items,
+    totalBytes,
+  };
+}
+
+export function clearStoredAppData({ keepPreferences = true } = {}) {
+  const keys = getAppStorageKeys().filter((key) => !keepPreferences || key !== PREFS_KEY);
+  keys.forEach(deleteKey);
+  return getStorageReport();
 }
