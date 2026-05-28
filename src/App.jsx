@@ -950,7 +950,7 @@ export default function App() {
 
   function clearLocalMemory() {
     const confirmed = window.confirm(
-      "Attenzione: verranno cancellati Preconoscenza, Orari Linee, archivio mesi e dati inseriti localmente. Prima verra scaricato un backup JSON. Vuoi procedere?"
+      "Attenzione: verranno cancellati Preconoscenza, Orari Linee, archivio mesi e dati inseriti localmente. Prima verra scaricata una copia di sicurezza. Vuoi procedere?"
     );
     if (!confirmed) return;
     exportBackup();

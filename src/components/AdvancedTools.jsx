@@ -39,8 +39,8 @@ export function AdvancedTools({
     <section className="advanced-tools dc" aria-labelledby="advanced-title">
       <button className="advanced-tools__summary" onClick={() => toggle('tools')} type="button" aria-expanded={openPanel === 'tools'}>
         <span>
-          <strong id="advanced-title">Strumenti avanzati</strong>
-          <small>Backup dati app, memoria locale e preferenze</small>
+          <strong id="advanced-title">Gestione dati</strong>
+          <small>Salvataggio, ripristino e spazio occupato</small>
         </span>
         <span aria-hidden="true">{openPanel === 'tools' ? '−' : '+'}</span>
       </button>
@@ -58,19 +58,19 @@ export function AdvancedTools({
 
             <section className="advanced-block advanced-block--backup">
               <div className="advanced-block__heading">
-                <h3>Backup dati app</h3>
-                <span>JSON</span>
+                <h3>Copia di sicurezza</h3>
+                <span>Dati app</span>
               </div>
               <p className="muted-text">
-                Salva Preconoscenza, Orari Linee, archivio mesi, preferenze e dati inseriti. Il file serve per ripristinare Turni Smart su questo dispositivo o su un altro.
+                Scarica un file di salvataggio con Preconoscenza, Orari Linee, mesi archiviati, preferenze e dati inseriti. Potrai ricaricarlo qui per recuperare tutto.
               </p>
               <input accept="application/json" className="file-input" onChange={handleBackupFile} ref={fileRef} type="file" />
               <div className="backup-actions">
                 <button className="small-button" onClick={onExportBackup} type="button">
-                  Scarica backup dati
+                  Scarica copia
                 </button>
                 <button className="small-button small-button--ghost" onClick={() => fileRef.current?.click()} type="button">
-                  Ripristina da backup
+                  Recupera dati
                 </button>
               </div>
               {backupMessage ? <p className="muted-text">{backupMessage}</p> : null}
@@ -85,7 +85,7 @@ export function AdvancedTools({
                 <span style={{ width: `${Math.min(100, (storageReport?.totalBytes || 0) / 5242880 * 100)}%` }} />
               </div>
               <p className="muted-text">
-                Dati locali usati: <strong>{usedMb} MB</strong>. Se liberi memoria, viene scaricato prima un backup JSON.
+                Dati locali usati: <strong>{usedMb} MB</strong>. Se liberi memoria, l'app scarica prima una copia di sicurezza.
               </p>
               {topItems.length ? (
                 <div className="storage-list" aria-label="Dati principali salvati">
