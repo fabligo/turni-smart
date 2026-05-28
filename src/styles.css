@@ -1990,7 +1990,7 @@ select:focus-visible {
 
 .share-actions {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   gap: 8px;
 }
 
@@ -2004,6 +2004,12 @@ select:focus-visible {
   border: 1px solid rgba(141, 216, 255, 0.3);
   background: rgba(141, 216, 255, 0.12);
   color: #d9ecff;
+}
+
+.inline-action--gtt {
+  border: 1px solid rgba(255, 209, 0, 0.38);
+  background: rgba(255, 209, 0, 0.14);
+  color: #ffe66b;
 }
 
 .shift-card--special {

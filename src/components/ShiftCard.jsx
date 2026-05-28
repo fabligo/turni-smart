@@ -3,6 +3,7 @@ import { formatMinutes, minutesBetween } from '../utils/timeUtils.js';
 import { getDevSegments } from '../parserOrari.js';
 import { getLineDisplayName } from '../constants/depotGerbido.js';
 import { BALLOTTAGGI } from '../constants/shiftClassification.js';
+import { buildGttPassagesTarget, getPrimaryGttChangePoint } from '../utils/gttLinks.js';
 import { AssetIcon, Icon } from './Icon.jsx';
 
 const DIRECTION_LABELS = {
@@ -200,6 +201,7 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
   const showEveningBadge = isEvening && category?.badge !== 'Serale';
   const categoryIconName = getCategoryIconName(category, { ...shift, isEvening, isShortRest, isSplit });
   const shareText = buildShareText(shift, segments);
+  const gttTarget = buildGttPassagesTarget(getPrimaryGttChangePoint({ dayData, segments, shift }));
 
   return (
     <article className={canFlipDevelopment ? 'shift-card shift-card--flip dc' : 'shift-card dc'}>
@@ -260,7 +262,7 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
             </div>
 
             <div className="shift-calendar-zone">
-              {calendarActions ? <CalendarActions actions={calendarActions(dayData, segments)} shareText={shareText} /> : null}
+              {calendarActions ? <CalendarActions actions={calendarActions(dayData, segments)} gttTarget={gttTarget} shareText={shareText} /> : null}
             </div>
           </div>
 
@@ -337,7 +339,7 @@ function DevelopmentPanel({ expanded = false, hasSegments, isSplit, segments, sp
   );
 }
 
-function CalendarActions({ actions, compact = false, shareText = '' }) {
+function CalendarActions({ actions, compact = false, gttTarget = null, shareText = '' }) {
   const [copied, setCopied] = useState(false);
   if (!actions) return null;
 
@@ -367,6 +369,11 @@ function CalendarActions({ actions, compact = false, shareText = '' }) {
     window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank', 'noopener,noreferrer');
   }
 
+  function openGttPassages() {
+    if (!gttTarget?.url) return;
+    window.open(gttTarget.url, '_blank', 'noopener,noreferrer');
+  }
+
   return (
     <div className={compact ? 'calendar-actions calendar-actions--compact calendar-actions--single' : 'calendar-actions calendar-actions--single'}>
       <button className="inline-action" onClick={actions.add} type="button">
@@ -382,6 +389,12 @@ function CalendarActions({ actions, compact = false, shareText = '' }) {
           <Icon name="copy" size={18} />
           {copied ? 'Copiato' : 'Copia turno'}
         </button>
+        {gttTarget?.url ? (
+          <button className="inline-action inline-action--gtt" onClick={openGttPassages} title={gttTarget.title} type="button">
+            <Icon name="bus" size={18} />
+            Passaggi GTT
+          </button>
+        ) : null}
       </div>
       {!compact ? <p>Si aprira il calendario del dispositivo per confermare l'aggiunta.</p> : null}
     </div>
