@@ -380,6 +380,7 @@ function CalendarActions({ actions, compact = false, gttTarget = null, shareText
         <Icon name="calendar" size={18} />
         {compact ? 'Aggiungi turno' : 'Aggiungi al calendario'}
       </button>
+      {!compact ? <p className="action-note action-note--calendar">Si aprira il calendario del dispositivo per confermare l'aggiunta.</p> : null}
       <div className="share-actions">
         <button className="inline-action inline-action--whatsapp" onClick={sendWhatsapp} type="button">
           <Icon name="whatsapp" size={18} />
@@ -396,7 +397,11 @@ function CalendarActions({ actions, compact = false, gttTarget = null, shareText
           </button>
         ) : null}
       </div>
-      {!compact ? <p>Si aprira il calendario del dispositivo per confermare l'aggiunta.</p> : null}
+      {!compact && gttTarget?.url ? (
+        <p className="action-note action-note--gtt">
+          Apre i passaggi GTT della palina del posto cambio. Se la palina non e mappata, apre l'itinerario realtime della linea.
+        </p>
+      ) : null}
     </div>
   );
 }
