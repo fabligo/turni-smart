@@ -40,7 +40,7 @@ export function AdvancedTools({
       <button className="advanced-tools__summary" onClick={() => toggle('tools')} type="button" aria-expanded={openPanel === 'tools'}>
         <span>
           <strong id="advanced-title">Strumenti avanzati</strong>
-          <small>Backup e preferenze</small>
+          <small>Backup dati app, memoria locale e preferenze</small>
         </span>
         <span aria-hidden="true">{openPanel === 'tools' ? '−' : '+'}</span>
       </button>
@@ -56,27 +56,36 @@ export function AdvancedTools({
               </label>
             </section>
 
-            <section className="advanced-block">
-              <h3>Backup</h3>
+            <section className="advanced-block advanced-block--backup">
+              <div className="advanced-block__heading">
+                <h3>Backup dati app</h3>
+                <span>JSON</span>
+              </div>
+              <p className="muted-text">
+                Salva Preconoscenza, Orari Linee, archivio mesi, preferenze e dati inseriti. Il file serve per ripristinare Turni Smart su questo dispositivo o su un altro.
+              </p>
               <input accept="application/json" className="file-input" onChange={handleBackupFile} ref={fileRef} type="file" />
               <div className="backup-actions">
                 <button className="small-button" onClick={onExportBackup} type="button">
-                  Esporta backup
+                  Scarica backup dati
                 </button>
                 <button className="small-button small-button--ghost" onClick={() => fileRef.current?.click()} type="button">
-                  Ripristina backup
+                  Ripristina da backup
                 </button>
               </div>
               {backupMessage ? <p className="muted-text">{backupMessage}</p> : null}
             </section>
 
             <section className="advanced-block advanced-block--memory">
-              <h3>Memoria dati</h3>
+              <div className="advanced-block__heading">
+                <h3>Memoria locale</h3>
+                <span>{storageReport?.itemCount || 0} elementi</span>
+              </div>
               <div className="storage-meter" aria-label={`Memoria locale usata ${usedMb} MB`}>
                 <span style={{ width: `${Math.min(100, (storageReport?.totalBytes || 0) / 5242880 * 100)}%` }} />
               </div>
               <p className="muted-text">
-                Dati locali usati: <strong>{usedMb} MB</strong>. Se lo spazio finisce, esporta un backup prima di cancellare.
+                Dati locali usati: <strong>{usedMb} MB</strong>. Se liberi memoria, viene scaricato prima un backup JSON.
               </p>
               {topItems.length ? (
                 <div className="storage-list" aria-label="Dati principali salvati">
