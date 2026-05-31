@@ -3515,6 +3515,22 @@ select:focus-visible {
   font-weight: 950;
 }
 
+.month-day.is-today {
+  z-index: 1;
+  outline: 3px solid #ffd22e;
+  outline-offset: 3px;
+}
+
+.month-day.is-today::before {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  border: 2px solid rgba(255, 210, 46, 0.9);
+  border-radius: 13px;
+  pointer-events: none;
+  animation: todayCalendarPulse 1.75s ease-in-out infinite;
+}
+
 .month-day.is-highlighted {
   border-radius: 999px;
   box-shadow:
@@ -3530,6 +3546,21 @@ select:focus-visible {
   height: 7px;
   border-radius: 999px;
   background: #f26a21;
+}
+
+@keyframes todayCalendarPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.98);
+    box-shadow: 0 0 0 0 rgba(255, 210, 46, 0.24);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+    box-shadow: 0 0 0 7px rgba(255, 210, 46, 0);
+  }
 }
 
 .month-legend {

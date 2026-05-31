@@ -41,6 +41,7 @@ export function MonthView({
   const highlighted =
     highlightDate && !Number.isNaN(new Date(highlightDate).getTime()) ? new Date(highlightDate) : null;
   const hasActiveFilter = Object.values(activeFilters || {}).some(Boolean);
+  const today = new Date();
 
   function dayState(day) {
     const iso = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}-${String(
@@ -62,6 +63,10 @@ export function MonthView({
         highlighted.getFullYear() === monthDate.getFullYear() &&
         highlighted.getMonth() === monthDate.getMonth() &&
         highlighted.getDate() === day,
+      isToday:
+        today.getFullYear() === monthDate.getFullYear() &&
+        today.getMonth() === monthDate.getMonth() &&
+        today.getDate() === day,
     };
   }
 
@@ -118,6 +123,7 @@ export function MonthView({
                 state.hasRest ? 'has-rest' : '',
                 state.hasBallot ? 'has-ballot' : '',
                 state.hasOther ? 'has-other' : '',
+                state.isToday ? 'is-today' : '',
                 state.isHighlighted ? 'is-highlighted' : '',
                 state.isDimmed ? 'month-day--dimmed' : '',
               ]
