@@ -3498,8 +3498,8 @@ select:focus-visible {
 }
 
 .month-day.has-rest {
-  background: #ffd22e;
-  color: #092347;
+  background: #1f8a43;
+  color: #ffffff;
   font-weight: 950;
 }
 
@@ -3565,7 +3565,7 @@ select:focus-visible {
 }
 
 .legend-dot--rest {
-  background: #ffd22e;
+  background: #1f8a43;
 }
 
 .legend-dot--ballot {
