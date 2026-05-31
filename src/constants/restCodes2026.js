@@ -118,7 +118,7 @@ function positiveModulo(value, modulo) {
 
 function getBaseRestSequence(restCode) {
   const entries = REST_CODE_SCHEDULES_2026[String(restCode)] || [];
-  return entries.filter(([, code]) => code !== 'TA');
+  return entries;
 }
 
 function buildRotation(restCode) {

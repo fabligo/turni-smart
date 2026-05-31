@@ -8,6 +8,7 @@ export const SPECIAL_CODES = {
   FS: { label: 'FESTA SOPPRESSA', description: '' },
   SL: { label: 'SOSTA LUNGA', description: '' },
   MP: { label: 'MANCATA PREST.', description: '' },
+  TA: { label: 'RIPOSO', description: '' },
 };
 
 export const REST_CODES = {
@@ -15,6 +16,7 @@ export const REST_CODES = {
   FS: true,
   SL: true,
   MP: true,
+  TA: true,
 };
 
 const SHIFT_LINE_RE = /(\d{2}\/\d{2}\/\d{4})\s+(DOM|LUN|MAR|MER|GIO|VEN|SAB)\s+(.*)/;
