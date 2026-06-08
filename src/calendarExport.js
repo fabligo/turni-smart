@@ -41,7 +41,14 @@ function escapeICS(value) {
     .replace(/;/g, '\\;');
 }
 
-function eventBlock({ uid, dtStart, dtEnd, summary, description, allDay = false }) {
+function alarmBlock({ trigger, description, absolute = false }) {
+  const triggerLine = absolute ? `TRIGGER;VALUE=DATE-TIME:${trigger}` : `TRIGGER:${trigger}`;
+  return ['BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${escapeICS(description)}`, triggerLine, 'END:VALARM'].join(
+    '\r\n',
+  );
+}
+
+function eventBlock({ uid, dtStart, dtEnd, summary, description, allDay = false, alarms = [] }) {
   const startKey = allDay ? 'DTSTART;VALUE=DATE' : 'DTSTART';
   const endKey = allDay ? 'DTEND;VALUE=DATE' : 'DTEND';
   return [
@@ -52,6 +59,7 @@ function eventBlock({ uid, dtStart, dtEnd, summary, description, allDay = false 
     `${endKey}:${dtEnd}`,
     `SUMMARY:${escapeICS(summary)}`,
     `DESCRIPTION:${escapeICS(description)}`,
+    ...alarms.map(alarmBlock),
     'END:VEVENT',
   ].join('\r\n');
 }
@@ -86,6 +94,8 @@ export function buildShiftICS(date, dayData, devSegments = []) {
         .map((segment, index) => `${index + 1}. ${segment.start} ${segment.loc_s} ${segment.dir || '-'} ${segment.end} ${segment.loc_e}`)
         .join('\n')
     : `${compactToTime(dayData.i)} ${dayData.li || ''} - ${compactToTime(dayData.e)} ${dayData.le || ''}`;
+  const reminderDay = addDays(eventDate, -1);
+  const reminderAt20 = dateTime(reminderDay, '20:00');
 
   return eventBlock({
     uid: `turni-smart-${iso}-${line}-${dayData.n}@local`,
@@ -93,6 +103,17 @@ export function buildShiftICS(date, dayData, devSegments = []) {
     dtEnd: end,
     summary: `Turno ${line} ${dayData.n}`,
     description: [`Linea ${line}`, `Turno ${dayData.n}`, category.label, segmentDescription].filter(Boolean).join('\n'),
+    alarms: [
+      {
+        trigger: reminderAt20,
+        absolute: true,
+        description: `Domani hai il turno ${line} ${dayData.n}. Controlla orario e imposta la sveglia.`,
+      },
+      {
+        trigger: '-PT1H',
+        description: `Turno ${line} ${dayData.n} tra 1 ora.`,
+      },
+    ],
   });
 }
 

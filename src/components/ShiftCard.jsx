@@ -188,7 +188,7 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
             </button>
           </div>
         ) : null}
-        {calendarActions ? <CalendarActions actions={calendarActions(dayData, [])} compact shareText={shareText} /> : null}
+        {calendarActions ? <CalendarActions actions={calendarActions(dayData, [])} compact shareText={shareText} shift={shift} /> : null}
         {isBallot && isBallotInfoOpen ? (
           <div className="ballot-modal" role="dialog" aria-modal="true" aria-label="Dettagli ballottaggio">
             <div className="ballot-modal__panel">
@@ -313,7 +313,7 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
             </div>
 
             <div className="shift-calendar-zone">
-              {calendarActions ? <CalendarActions actions={calendarActions(dayData, segments)} gttTarget={gttTarget} shareText={shareText} /> : null}
+              {calendarActions ? <CalendarActions actions={calendarActions(dayData, segments)} gttTarget={gttTarget} shareText={shareText} shift={shift} /> : null}
             </div>
           </div>
 
@@ -402,7 +402,16 @@ function DevelopmentPanel({ expanded = false, hasSegments, isSplit, onVehicleNum
   );
 }
 
-function CalendarActions({ actions, compact = false, gttTarget = null, shareText = '' }) {
+function getReminderNote(shift) {
+  if (!shift || shift.type === 'special') return "Si aprira il calendario del dispositivo per confermare l'aggiunta.";
+  const startHour = Number(String(shift.start || '').split(':')[0]);
+  const earlyShift = Number.isFinite(startHour) && startHour < 6;
+  return earlyShift
+    ? 'Promemoria inclusi: sera prima alle 20:00 e 1 ora prima del turno. Per la sveglia nativa serve conferma in Orologio.'
+    : 'Promemoria inclusi: sera prima alle 20:00 e 1 ora prima del turno.';
+}
+
+function CalendarActions({ actions, compact = false, gttTarget = null, shareText = '', shift = null }) {
   const [copied, setCopied] = useState(false);
   if (!actions) return null;
 
@@ -443,7 +452,7 @@ function CalendarActions({ actions, compact = false, gttTarget = null, shareText
         <Icon name="calendar" size={18} />
         {compact ? 'Aggiungi turno' : 'Aggiungi al calendario'}
       </button>
-      {!compact ? <p className="action-note action-note--calendar">Si aprira il calendario del dispositivo per confermare l'aggiunta.</p> : null}
+      {!compact ? <p className="action-note action-note--calendar">{getReminderNote(shift)}</p> : null}
       <div className="share-actions">
         <button className="inline-action inline-action--whatsapp" onClick={sendWhatsapp} type="button">
           <Icon name="whatsapp" size={18} />
