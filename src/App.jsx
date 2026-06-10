@@ -38,7 +38,7 @@ import { MonthView } from './components/MonthView.jsx';
 import { StatsPanel } from './components/StatsPanel.jsx';
 import { AdvancedTools } from './components/AdvancedTools.jsx';
 import { LineConsultation } from './components/LineConsultation.jsx';
-import { OnboardingHome } from './components/OnboardingHome.jsx';
+import { OnboardingHome, SuspendedShiftEntry } from './components/OnboardingHome.jsx';
 import { AssetIcon, Icon } from './components/Icon.jsx';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
@@ -814,15 +814,20 @@ export default function App() {
       g: parsed.g || '',
       suspendedPreconoscenza: true,
     };
-    const nextDays = { [targetIso]: nextDay };
-    const sourceInfo = {
-      nome: 'Preconoscenza sospesa',
-      matricola: '',
-      fileName: 'Turno comunicato',
-      dIn: new Date(targetDate.getFullYear(), targetDate.getMonth(), 1),
-      dTe: new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0),
-      days: nextDays,
-    };
+    const nextDays = pdfLoaded ? { ...days, [targetIso]: nextDay } : { [targetIso]: nextDay };
+    const sourceInfo = pdfLoaded && pdfInfo
+      ? {
+          ...pdfInfo,
+          days: nextDays,
+        }
+      : {
+          nome: 'Preconoscenza sospesa',
+          matricola: '',
+          fileName: 'Turno comunicato',
+          dIn: new Date(targetDate.getFullYear(), targetDate.getMonth(), 1),
+          dTe: new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0),
+          days: nextDays,
+        };
 
     setDays(nextDays);
     setPdfInfo(sourceInfo);
@@ -1259,6 +1264,21 @@ export default function App() {
                   </button>
                 </div>
               </form>
+
+              <details className="suspended-shift-disclosure">
+                <summary>
+                  <span>Preconoscenza sospesa</span>
+                  <strong>Inserisci turno comunicato</strong>
+                </summary>
+                <SuspendedShiftEntry
+                  className="suspended-shift-card--embedded"
+                  error={suspendedShiftError}
+                  loading={loading}
+                  onSubmit={insertSuspendedShift}
+                  onTextChange={setSuspendedShiftText}
+                  text={suspendedShiftText}
+                />
+              </details>
 
               <div className="result-list">
                 {searchResults.map((day) => cardForDay(day))}

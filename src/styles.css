@@ -499,6 +499,47 @@ select:focus-visible {
   resize: vertical;
 }
 
+.suspended-shift-disclosure {
+  border: 1px solid rgba(255, 209, 0, 0.24);
+  border-radius: var(--radius);
+  border-top-right-radius: 32px;
+  background: rgba(255, 209, 0, 0.06);
+  overflow: hidden;
+}
+
+.suspended-shift-disclosure summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  cursor: pointer;
+  color: #ffffff;
+  font-weight: 930;
+  list-style: none;
+}
+
+.suspended-shift-disclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.suspended-shift-disclosure summary span {
+  color: var(--gtt-blue-light);
+  font-size: 0.95rem;
+  font-weight: 950;
+}
+
+.suspended-shift-disclosure summary strong {
+  color: var(--yellow);
+  font-size: 0.95rem;
+  font-weight: 950;
+}
+
+.suspended-shift-card--embedded {
+  margin: 0 14px 14px;
+  box-shadow: none;
+}
+
 .onboarding-demo {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
