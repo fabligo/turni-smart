@@ -1,6 +1,15 @@
 import { AssetIcon, Icon } from './Icon.jsx';
 
-export function OnboardingHome({ error = '', loading = false, onLoadDemo, onPrimaryUpload }) {
+export function OnboardingHome({
+  error = '',
+  loading = false,
+  onLoadDemo,
+  onPrimaryUpload,
+  onSuspendedShiftSubmit,
+  suspendedShiftError = '',
+  suspendedShiftText = '',
+  onSuspendedShiftTextChange,
+}) {
   return (
     <section className="onboarding-home" aria-labelledby="onboarding-title">
       <div className="onboarding-hero">
@@ -32,6 +41,36 @@ export function OnboardingHome({ error = '', loading = false, onLoadDemo, onPrim
         </span>
         <Icon className="onboarding-upload__chevron" name="chevronRight" size={26} />
       </button>
+
+      <form
+        className="suspended-shift-card dc"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSuspendedShiftSubmit?.();
+        }}
+      >
+        <div className="suspended-shift-card__header">
+          <span className="suspended-shift-card__icon" aria-hidden="true">
+            <Icon name="question" size={28} />
+          </span>
+          <div>
+            <strong>Preconoscenza sospesa</strong>
+            <small>In attesa turno</small>
+          </div>
+        </div>
+        <label htmlFor="suspended-shift-input">Turno comunicato</label>
+        <textarea
+          id="suspended-shift-input"
+          onChange={(event) => onSuspendedShiftTextChange?.(event.target.value)}
+          placeholder="Incolla qui il turno ricevuto. Se manca la data, verra usata la data di oggi."
+          rows={4}
+          value={suspendedShiftText}
+        />
+        {suspendedShiftError ? <p className="ballot-assignment-error">{suspendedShiftError}</p> : null}
+        <button className="ballot-insert-button" disabled={loading || !suspendedShiftText.trim()} type="submit">
+          Inserisci turno
+        </button>
+      </form>
 
       <button className="onboarding-demo" disabled={loading} onClick={onLoadDemo} type="button">
         <span className="onboarding-demo__icon" aria-hidden="true">

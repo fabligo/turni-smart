@@ -546,6 +546,8 @@ export default function App() {
   const [storageReport, setStorageReport] = useState(() => getStorageReport());
   const [activeUtilityPanel, setActiveUtilityPanel] = useState('');
   const [calendarPulse, setCalendarPulse] = useState(0);
+  const [suspendedShiftText, setSuspendedShiftText] = useState('');
+  const [suspendedShiftError, setSuspendedShiftError] = useState('');
 
   useEffect(() => {
     savePreferences({ ...preferences, activeTab });
@@ -792,6 +794,49 @@ export default function App() {
     setSelectedDate(nextDay.date);
     setActiveTab('Giorno');
     return nextDay;
+  }
+
+  function insertSuspendedShift() {
+    setSuspendedShiftError('');
+    const fallbackDate = new Date();
+    const parsed = parseCommunicatedShift(suspendedShiftText, fallbackDate, null);
+    if (!parsed) {
+      setSuspendedShiftError('Formato turno non riconosciuto. Incolla data, linea, turno, orari e posti cambio.');
+      return;
+    }
+
+    const targetIso = parsed.iso || toIsoDate(parsed.date);
+    const targetDate = parsed.date || fallbackDate;
+    const nextDay = {
+      ...parsed,
+      iso: targetIso,
+      date: targetDate,
+      g: parsed.g || '',
+      suspendedPreconoscenza: true,
+    };
+    const nextDays = { [targetIso]: nextDay };
+    const sourceInfo = {
+      nome: 'Preconoscenza sospesa',
+      matricola: '',
+      fileName: 'Turno comunicato',
+      dIn: new Date(targetDate.getFullYear(), targetDate.getMonth(), 1),
+      dTe: new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0),
+      days: nextDays,
+    };
+
+    setDays(nextDays);
+    setPdfInfo(sourceInfo);
+    setPdfLoaded(true);
+    setSelectedDate(targetDate);
+    setSearchResults([nextDay]);
+    setSearchMessage('');
+    setSearchQuery(toIsoDate(targetDate));
+    setViewMonth(targetDate.getMonth());
+    setViewYear(targetDate.getFullYear());
+    setActiveTab('Giorno');
+    setSuspendedShiftText('');
+    if (!savePreconoscenza(sourceInfo)) markStorageFailure('Preconoscenza sospesa');
+    refreshHistory();
   }
 
   const enrichedDays = useMemo(() => (pdfLoaded ? enrichShiftDays(days, developments) : {}), [days, developments, pdfLoaded]);
@@ -1162,7 +1207,16 @@ export default function App() {
 
         <section className="content-panel">
           {!pdfLoaded ? (
-            <OnboardingHome error={error} loading={loading} onLoadDemo={loadDemo} onPrimaryUpload={() => onboardingInputRef.current?.click()} />
+            <OnboardingHome
+              error={error}
+              loading={loading}
+              onLoadDemo={loadDemo}
+              onPrimaryUpload={() => onboardingInputRef.current?.click()}
+              onSuspendedShiftSubmit={insertSuspendedShift}
+              onSuspendedShiftTextChange={setSuspendedShiftText}
+              suspendedShiftError={suspendedShiftError}
+              suspendedShiftText={suspendedShiftText}
+            />
           ) : null}
 
           {pdfLoaded && activeTab === 'Giorno' ? (

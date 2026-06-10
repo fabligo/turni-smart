@@ -442,6 +442,63 @@ select:focus-visible {
   color: #9edcff;
 }
 
+.suspended-shift-card {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  border-color: rgba(255, 209, 0, 0.28);
+  background:
+    linear-gradient(135deg, rgba(255, 209, 0, 0.08), transparent 46%),
+    var(--panel);
+}
+
+.suspended-shift-card__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.suspended-shift-card__icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(255, 209, 0, 0.14);
+  color: var(--yellow);
+}
+
+.suspended-shift-card__header div {
+  display: grid;
+  gap: 2px;
+}
+
+.suspended-shift-card__header strong {
+  color: #ffffff;
+  font-size: 1.22rem;
+  font-weight: 950;
+}
+
+.suspended-shift-card__header small {
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 820;
+}
+
+.suspended-shift-card label {
+  color: var(--gtt-blue-light);
+  font-size: 0.88rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.suspended-shift-card textarea {
+  min-height: 118px;
+  resize: vertical;
+}
+
 .onboarding-demo {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
