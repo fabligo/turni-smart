@@ -9,6 +9,7 @@ export function UploadPanel({
   onClearOrari,
   onClearPreconoscenza,
   onPreconoscenzaUpload,
+  onSharePreconoscenza,
   orariError,
   orariLoading,
   pdfInfo,
@@ -95,9 +96,15 @@ export function UploadPanel({
           {loading ? 'Elaboro...' : hasPreconoscenza ? 'Sostituisci' : 'Carica'}
         </button>
         {hasPreconoscenza ? (
-          <button className="upload-document__clear" onClick={onClearPreconoscenza} type="button">
-            Cancella
-          </button>
+          <div className="upload-document__extra-actions">
+            <button className="upload-document__share" disabled={!preconoscenzaSummary?.totalShifts} onClick={onSharePreconoscenza} type="button">
+              <Icon name="whatsapp" size={17} />
+              Invia riepilogo
+            </button>
+            <button className="upload-document__clear" onClick={onClearPreconoscenza} type="button">
+              Cancella
+            </button>
+          </div>
         ) : null}
       </div>
 

@@ -26,7 +26,7 @@ import {
   savePreferences,
   savePreconoscenza,
 } from './storage.js';
-import { buildCsv, downloadTextFile } from './exportUtils.js';
+import { buildCsv, buildReadablePreconoscenza, downloadTextFile } from './exportUtils.js';
 import { getDevSegments, normalizeShiftKey, parseOrari, summarizeDevelopments } from './parserOrari.js';
 import { parseNaturalDate, toIsoDate } from './utils/dateUtils.js';
 import { DEFAULT_REST_CODE, getOfficialRestEntries } from './constants/restCodes2026.js';
@@ -990,6 +990,26 @@ export default function App() {
     downloadTextFile(filename, buildCsv(entries), 'text/csv;charset=utf-8');
   }
 
+  async function shareReadablePreconoscenza() {
+    const entries = Object.values(days).filter(Boolean);
+    const text = buildReadablePreconoscenza(entries, pdfInfo);
+    if (!entries.some((day) => day?.t === 'turno')) return;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Preconoscenza turni',
+          text,
+        });
+        return;
+      } catch (error) {
+        if (error?.name === 'AbortError') return;
+      }
+    }
+
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+  }
+
   function exportBackup() {
     downloadTextFile(`turni-smart-backup-${toIsoDate(new Date())}.json`, JSON.stringify(buildBackup(), null, 2), 'application/json;charset=utf-8');
     setBackupMessage('Backup esportato.');
@@ -1216,6 +1236,7 @@ export default function App() {
             loading={loading}
             onOrariUpload={handleOrariUpload}
             onPreconoscenzaUpload={handlePreconoscenzaUpload}
+            onSharePreconoscenza={shareReadablePreconoscenza}
           />
         ) : null}
 
