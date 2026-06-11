@@ -113,9 +113,18 @@ function canvasToBlob(canvas) {
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/png', 0.96));
 }
 
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = src;
+  });
+}
+
 export async function buildPreconoscenzaInfographicBlob(entries = [], info = {}) {
   const sorted = entries
-    .filter((day) => day?.t === 'turno' || REST_CODES[day?.t])
+    .filter((day) => day?.t === 'turno' || REST_CODES[day?.t] || day?.t === 'RIS')
     .sort((a, b) => (a.date || new Date(`${a.iso}T00:00:00`)) - (b.date || new Date(`${b.iso}T00:00:00`)));
   const rows = sorted.map((day) => {
     const date = day.date || new Date(`${day.iso}T00:00:00`);
@@ -127,6 +136,14 @@ export async function buildPreconoscenzaInfographicBlob(entries = [], info = {})
         detail: `${formatCompactTime(day.i)} - ${formatCompactTime(day.e)}`,
       };
     }
+    if (day.t === 'RIS') {
+      return {
+        date: cleanDateFormatter.format(date),
+        type: 'ballot',
+        main: 'Ballottaggio',
+        detail: 'Turno da assegnare',
+      };
+    }
     return {
       date: cleanDateFormatter.format(date),
       type: 'rest',
@@ -136,6 +153,7 @@ export async function buildPreconoscenzaInfographicBlob(entries = [], info = {})
   });
   const shifts = rows.filter((row) => row.type === 'shift').length;
   const rests = rows.filter((row) => row.type === 'rest').length;
+  const ballots = rows.filter((row) => row.type === 'ballot').length;
   const period = [info?.dIn, info?.dTe]
     .filter(Boolean)
     .map((date) => new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date))
@@ -165,7 +183,12 @@ export async function buildPreconoscenzaInfographicBlob(entries = [], info = {})
   ctx.closePath();
   ctx.fill();
 
-  drawBusMark(ctx, 48, 46, 112);
+  try {
+    const busIcon = await loadImage(`${import.meta.env.BASE_URL}assets-webp/bus-front-icon.webp`);
+    ctx.drawImage(busIcon, 48, 46, 112, 112);
+  } catch {
+    drawBusMark(ctx, 48, 46, 112);
+  }
   ctx.fillStyle = '#ffffff';
   ctx.font = '900 54px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
   ctx.fillText('Preconoscenza turni', 190, 88);
@@ -187,9 +210,11 @@ export async function buildPreconoscenzaInfographicBlob(entries = [], info = {})
   ctx.fillText(`${shifts} turni`, cardX + 34, y + 56);
   ctx.fillStyle = '#1f8a43';
   ctx.fillText(`${rests} riposi`, cardX + 260, y + 56);
+  ctx.fillStyle = '#c62828';
+  ctx.fillText(`${ballots} ballott.`, cardX + 480, y + 56);
   ctx.fillStyle = '#697382';
   ctx.font = '760 24px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-  ctx.fillText('Solo linee e orari principali', cardX + 480, y + 56);
+  ctx.fillText('Solo linee e orari principali', cardX + 700, y + 56);
 
   y += summaryHeight;
   rows.forEach((row, index) => {
@@ -202,7 +227,7 @@ export async function buildPreconoscenzaInfographicBlob(entries = [], info = {})
     ctx.font = '850 24px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
     ctx.fillText(row.date, cardX + 24, rowY + 38);
 
-    ctx.fillStyle = row.type === 'rest' ? '#1f8a43' : '#005daa';
+    ctx.fillStyle = row.type === 'rest' ? '#1f8a43' : row.type === 'ballot' ? '#c62828' : '#005daa';
     ctx.font = '950 28px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
     ctx.fillText(row.main, cardX + 360, rowY + 39);
 
@@ -215,7 +240,7 @@ export async function buildPreconoscenzaInfographicBlob(entries = [], info = {})
 
   ctx.fillStyle = '#697382';
   ctx.font = '720 22px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-  ctx.fillText('Generato con Turni Smart · dati semplificati, senza codici tecnici o posti cambio', 48, height - 34);
+  ctx.fillText('Generato con Turni Smart · turni, riposi e ballottaggi senza codici tecnici o posti cambio', 48, height - 34);
 
   return canvasToBlob(canvas);
 }
