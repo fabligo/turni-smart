@@ -855,6 +855,15 @@ export default function App() {
 
   const stats = useMemo(() => (pdfLoaded ? buildStats(days, developments) : []), [days, developments, pdfLoaded]);
   const preconoscenzaSummary = useMemo(() => computeStats(days, developments), [days, developments]);
+  const isSuspendedPreconoscenza = useMemo(
+    () =>
+      !pdfLoaded ||
+      pdfInfo?.nome === 'Preconoscenza sospesa' ||
+      pdfInfo?.fileName === 'Turno comunicato' ||
+      Object.values(days).some((day) => day?.suspendedPreconoscenza) ||
+      (preconoscenzaSummary.totalDays > 0 && preconoscenzaSummary.totalDays < 20),
+    [days, pdfInfo, pdfLoaded, preconoscenzaSummary.totalDays],
+  );
   const periodLabel = buildPeriodLabel(pdfInfo);
   const personLabel = pdfLoaded
     ? [pdfInfo?.nome || 'Nominativo non indicato', pdfInfo?.matricola ? `cod. ${pdfInfo.matricola}` : '']
@@ -1265,20 +1274,22 @@ export default function App() {
                 </div>
               </form>
 
-              <details className="suspended-shift-disclosure">
-                <summary>
-                  <span>Preconoscenza sospesa</span>
-                  <strong>Inserisci turno comunicato</strong>
-                </summary>
-                <SuspendedShiftEntry
-                  className="suspended-shift-card--embedded"
-                  error={suspendedShiftError}
-                  loading={loading}
-                  onSubmit={insertSuspendedShift}
-                  onTextChange={setSuspendedShiftText}
-                  text={suspendedShiftText}
-                />
-              </details>
+              {isSuspendedPreconoscenza ? (
+                <details className="suspended-shift-disclosure">
+                  <summary>
+                    <span>Preconoscenza sospesa</span>
+                    <strong>Inserisci turno comunicato</strong>
+                  </summary>
+                  <SuspendedShiftEntry
+                    className="suspended-shift-card--embedded"
+                    error={suspendedShiftError}
+                    loading={loading}
+                    onSubmit={insertSuspendedShift}
+                    onTextChange={setSuspendedShiftText}
+                    text={suspendedShiftText}
+                  />
+                </details>
+              ) : null}
 
               <div className="result-list">
                 {searchResults.map((day) => cardForDay(day))}
