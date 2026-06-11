@@ -98,8 +98,8 @@ export function UploadPanel({
         {hasPreconoscenza ? (
           <div className="upload-document__extra-actions">
             <button className="upload-document__share" disabled={!preconoscenzaSummary?.totalShifts} onClick={onSharePreconoscenza} type="button">
-              <Icon name="whatsapp" size={17} />
-              Invia riepilogo
+              <Icon name="share" size={17} />
+              Invia infografica
             </button>
             <button className="upload-document__clear" onClick={onClearPreconoscenza} type="button">
               Cancella

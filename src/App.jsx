@@ -26,7 +26,7 @@ import {
   savePreferences,
   savePreconoscenza,
 } from './storage.js';
-import { buildCsv, buildReadablePreconoscenza, downloadTextFile } from './exportUtils.js';
+import { buildCsv, buildPreconoscenzaInfographicBlob, downloadBlobFile, downloadTextFile } from './exportUtils.js';
 import { getDevSegments, normalizeShiftKey, parseOrari, summarizeDevelopments } from './parserOrari.js';
 import { parseNaturalDate, toIsoDate } from './utils/dateUtils.js';
 import { DEFAULT_REST_CODE, getOfficialRestEntries } from './constants/restCodes2026.js';
@@ -992,14 +992,16 @@ export default function App() {
 
   async function shareReadablePreconoscenza() {
     const entries = Object.values(days).filter(Boolean);
-    const text = buildReadablePreconoscenza(entries, pdfInfo);
     if (!entries.some((day) => day?.t === 'turno')) return;
+    const blob = await buildPreconoscenzaInfographicBlob(entries, pdfInfo);
+    const filename = `preconoscenza-turni-${toIsoDate(new Date())}.png`;
+    const file = new File([blob], filename, { type: 'image/png' });
 
-    if (navigator.share) {
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
       try {
         await navigator.share({
           title: 'Preconoscenza turni',
-          text,
+          files: [file],
         });
         return;
       } catch (error) {
@@ -1007,7 +1009,7 @@ export default function App() {
       }
     }
 
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+    downloadBlobFile(filename, blob);
   }
 
   function exportBackup() {
