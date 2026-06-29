@@ -2548,6 +2548,15 @@ select:focus-visible {
   outline-offset: 2px;
 }
 
+.segment-vehicle-inserted {
+  color: rgba(217, 236, 255, 0.72);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.25;
+  text-transform: none;
+}
+
 /* Statistics */
 .stats-panel {
   overflow: hidden;

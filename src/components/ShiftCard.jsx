@@ -51,6 +51,37 @@ function formatVehicleNumbers(value = '') {
   return `${vehicles.length > 1 ? 'Vetture' : 'Vettura'} ${vehicles.join(', ')}`;
 }
 
+function normalizeVehicleRecord(record) {
+  if (record && typeof record === 'object' && !Array.isArray(record)) {
+    return {
+      insertedAt: record.insertedAt && typeof record.insertedAt === 'object' ? record.insertedAt : {},
+      value: String(record.value || ''),
+    };
+  }
+  return {
+    insertedAt: {},
+    value: String(record || ''),
+  };
+}
+
+function formatInsertedTime(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatVehicleNumbersWithTimes(value = '', insertedAt = {}) {
+  const vehicles = parseVehicleNumbers(value);
+  if (!vehicles.length) return '';
+  return vehicles
+    .map((vehicle) => {
+      const time = formatInsertedTime(insertedAt[vehicle]);
+      return time ? `${vehicle} · inserita ${time}` : vehicle;
+    })
+    .join(' · ');
+}
+
 function getDateParts(label = '') {
   const match = String(label).match(/(?:(Prossimo|Oggi|Domani|Settimana)\s+·\s+)?([a-zà]+)\s+(\d{1,2})\s+([a-zà]+)/i);
   return {
@@ -68,7 +99,7 @@ function formatDevelopmentLines(segments = []) {
     ...segments.map((segment, index) => {
       const direction = DIRECTION_LABELS[segment.dir] || segment.dir || '-';
       const vehicleShift = getVehicleShiftLabel(segment);
-      const vehicleNumber = formatVehicleNumbers(segment.vehicleNumber);
+      const vehicleNumber = formatVehicleNumbersWithTimes(segment.vehicleNumber, segment.vehicleInsertedAt);
       return `${index + 1}. ${segment.start} - ${segment.end} | ${segment.loc_s} ${direction} ${segment.loc_e}${vehicleShift ? ` | ${vehicleShift}` : ''}${vehicleNumber ? ` | ${vehicleNumber}` : ''}`;
     }),
   ];
@@ -246,10 +277,14 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
         : getDevSegments(developments, dayData.l, dayData.n, date || dayData.date, dayData)
       : [];
   const rawSegments = lookupSegments.length ? lookupSegments : shift.segments || [];
-  const segments = rawSegments.map((segment, index) => ({
-    ...segment,
-    vehicleNumber: segmentVehicles[getSegmentVehicleStorageKey({ date, dayData, index, segment, shift })] || '',
-  }));
+  const segments = rawSegments.map((segment, index) => {
+    const vehicleRecord = normalizeVehicleRecord(segmentVehicles[getSegmentVehicleStorageKey({ date, dayData, index, segment, shift })]);
+    return {
+      ...segment,
+      vehicleInsertedAt: vehicleRecord.insertedAt,
+      vehicleNumber: vehicleRecord.value,
+    };
+  });
   const isSplit = segments.length > 1 || shift.isSplit;
   const isEvening = Boolean(enrichment?.isEvening ?? shift.isEvening);
   const isShortRest = Boolean(enrichment?.isShortRest ?? shift.isShortRest);
@@ -267,8 +302,17 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
     const normalized = sanitizeVehicleNumbersInput(value);
     const key = getSegmentVehicleStorageKey({ date, dayData, index, segment, shift });
     setSegmentVehicles((current) => {
+      const previous = normalizeVehicleRecord(current[key]);
+      const now = new Date().toISOString();
+      const nextVehicles = parseVehicleNumbers(normalized);
+      const nextInsertedAt = {};
+      nextVehicles.forEach((vehicle) => {
+        if (vehicle.length === 4) {
+          nextInsertedAt[vehicle] = previous.insertedAt?.[vehicle] || now;
+        }
+      });
       const next = { ...current };
-      if (parseVehicleNumbers(normalized).length) next[key] = normalized;
+      if (nextVehicles.length) next[key] = { insertedAt: nextInsertedAt, value: normalized };
       else delete next[key];
       writeSegmentVehicles(next);
       return next;
@@ -410,6 +454,9 @@ function DevelopmentPanel({ expanded = false, hasSegments, isSplit, onVehicleNum
                   type="text"
                   value={segment.vehicleNumber || ''}
                 />
+                {parseVehicleNumbers(segment.vehicleNumber).length ? (
+                  <small className="segment-vehicle-inserted">{formatVehicleNumbersWithTimes(segment.vehicleNumber, segment.vehicleInsertedAt)}</small>
+                ) : null}
               </label>
             </div>
           ))}
