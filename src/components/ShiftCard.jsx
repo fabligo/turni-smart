@@ -30,6 +30,27 @@ function writeSegmentVehicles(value) {
   }
 }
 
+function parseVehicleNumbers(value = '') {
+  return String(value || '')
+    .split(/[\s,;/-]+/)
+    .map((part) => part.replace(/\D/g, '').slice(0, 4))
+    .filter(Boolean)
+    .slice(0, 8);
+}
+
+function sanitizeVehicleNumbersInput(value = '') {
+  return String(value || '')
+    .replace(/[^\d\s,;/-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .slice(0, 64);
+}
+
+function formatVehicleNumbers(value = '') {
+  const vehicles = parseVehicleNumbers(value);
+  if (!vehicles.length) return '';
+  return `${vehicles.length > 1 ? 'Vetture' : 'Vettura'} ${vehicles.join(', ')}`;
+}
+
 function getDateParts(label = '') {
   const match = String(label).match(/(?:(Prossimo|Oggi|Domani|Settimana)\s+·\s+)?([a-zà]+)\s+(\d{1,2})\s+([a-zà]+)/i);
   return {
@@ -47,8 +68,8 @@ function formatDevelopmentLines(segments = []) {
     ...segments.map((segment, index) => {
       const direction = DIRECTION_LABELS[segment.dir] || segment.dir || '-';
       const vehicleShift = getVehicleShiftLabel(segment);
-      const vehicleNumber = segment.vehicleNumber ? ` | Vettura ${segment.vehicleNumber}` : '';
-      return `${index + 1}. ${segment.start} - ${segment.end} | ${segment.loc_s} ${direction} ${segment.loc_e}${vehicleShift ? ` | ${vehicleShift}` : ''}${vehicleNumber}`;
+      const vehicleNumber = formatVehicleNumbers(segment.vehicleNumber);
+      return `${index + 1}. ${segment.start} - ${segment.end} | ${segment.loc_s} ${direction} ${segment.loc_e}${vehicleShift ? ` | ${vehicleShift}` : ''}${vehicleNumber ? ` | ${vehicleNumber}` : ''}`;
     }),
   ];
 }
@@ -243,11 +264,11 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
   const gttTarget = buildGttPassagesTarget(getPrimaryGttChangePoint({ dayData, segments, shift }));
 
   function updateSegmentVehicle(index, segment, value) {
-    const normalized = String(value || '').replace(/\D/g, '').slice(0, 4);
+    const normalized = sanitizeVehicleNumbersInput(value);
     const key = getSegmentVehicleStorageKey({ date, dayData, index, segment, shift });
     setSegmentVehicles((current) => {
       const next = { ...current };
-      if (normalized) next[key] = normalized;
+      if (parseVehicleNumbers(normalized).length) next[key] = normalized;
       else delete next[key];
       writeSegmentVehicles(next);
       return next;
@@ -380,13 +401,12 @@ function DevelopmentPanel({ expanded = false, hasSegments, isSplit, onVehicleNum
               </span>
               {getVehicleShiftLabel(segment) ? <small className="segment-vehicle">{getVehicleShiftLabel(segment)}</small> : null}
               <label className="segment-vehicle-number">
-                <span>Vettura</span>
+                <span>Vetture</span>
                 <input
-                  inputMode="numeric"
-                  maxLength={4}
+                  inputMode="text"
+                  maxLength={64}
                   onChange={(event) => onVehicleNumberChange?.(index, segment, event.target.value)}
-                  pattern="\d{4}"
-                  placeholder="4 cifre"
+                  placeholder="es. 1234, 5678"
                   type="text"
                   value={segment.vehicleNumber || ''}
                 />

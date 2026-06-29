@@ -2517,7 +2517,7 @@ select:focus-visible {
   display: grid;
   gap: 3px;
   justify-self: end;
-  min-width: 110px;
+  min-width: 150px;
   color: rgba(217, 236, 255, 0.82);
   font-size: 0.66rem;
   font-weight: 900;
@@ -2534,7 +2534,7 @@ select:focus-visible {
   color: #ffffff;
   font: inherit;
   font-size: 0.86rem;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.02em;
   text-align: center;
 }
 
