@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "GIT_SSH_COMMAND=\"ssh -i /Users/Pippo/.ssh/turni_smart_github -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new\" gh-pages -d dist"
   },
   "dependencies": {
     "@vitejs/plugin-react": "4.7.0",
