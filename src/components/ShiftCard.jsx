@@ -45,6 +45,25 @@ function sanitizeVehicleNumbersInput(value = '') {
     .slice(0, 64);
 }
 
+function sanitizeSingleVehicleNumber(value = '') {
+  return String(value || '').replace(/\D/g, '').slice(0, 4);
+}
+
+function getVehicleInputValues(value = '') {
+  const raw = String(value || '');
+  if (!raw) return [''];
+  const parts = raw
+    .split(/[\s,;/-]+/)
+    .map(sanitizeSingleVehicleNumber)
+    .filter((part, index, list) => part || index === list.length - 1)
+    .slice(0, 8);
+  return parts.length ? parts : [''];
+}
+
+function serializeVehicleInputs(values = []) {
+  return values.map(sanitizeSingleVehicleNumber).join(', ');
+}
+
 function formatVehicleNumbers(value = '') {
   const vehicles = parseVehicleNumbers(value);
   if (!vehicles.length) return '';
@@ -298,8 +317,8 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
   const shareText = buildShareText(shift, segments);
   const gttTarget = buildGttPassagesTarget(getPrimaryGttChangePoint({ dayData, segments, shift }));
 
-  function updateSegmentVehicle(index, segment, value) {
-    const normalized = sanitizeVehicleNumbersInput(value);
+  function updateSegmentVehicle(index, segment, values) {
+    const normalized = Array.isArray(values) ? serializeVehicleInputs(values) : sanitizeVehicleNumbersInput(values);
     const key = getSegmentVehicleStorageKey({ date, dayData, index, segment, shift });
     setSegmentVehicles((current) => {
       const previous = normalizeVehicleRecord(current[key]);
@@ -434,32 +453,71 @@ function DevelopmentPanel({ expanded = false, hasSegments, isSplit, onVehicleNum
       <h4>Sviluppo turno</h4>
       {hasSegments ? (
         <>
-          {segments.map((segment, index) => (
-            <div className={isSplit ? 'shift-segment is-split' : 'shift-segment'} key={`${segment.start}-${segment.end}-${index}`}>
-              <span className="segment-index">{index + 1}</span>
-              <strong>
-                {segment.start} - {segment.end}
-              </strong>
-              <span>
-                {segment.loc_s} {DIRECTION_LABELS[segment.dir] || segment.dir || '-'} {segment.loc_e}
-              </span>
-              {getVehicleShiftLabel(segment) ? <small className="segment-vehicle">{getVehicleShiftLabel(segment)}</small> : null}
-              <label className="segment-vehicle-number">
-                <span>Vetture</span>
-                <input
-                  inputMode="text"
-                  maxLength={64}
-                  onChange={(event) => onVehicleNumberChange?.(index, segment, event.target.value)}
-                  placeholder="es. 1234, 5678"
-                  type="text"
-                  value={segment.vehicleNumber || ''}
-                />
-                {parseVehicleNumbers(segment.vehicleNumber).length ? (
-                  <small className="segment-vehicle-inserted">{formatVehicleNumbersWithTimes(segment.vehicleNumber, segment.vehicleInsertedAt)}</small>
-                ) : null}
-              </label>
-            </div>
-          ))}
+          {segments.map((segment, index) => {
+            const vehicleInputs = getVehicleInputValues(segment.vehicleNumber);
+            const hasCompleteVehicle = parseVehicleNumbers(segment.vehicleNumber).length > 0;
+
+            function updateVehicleInput(vehicleIndex, value) {
+              const nextValues = [...vehicleInputs];
+              nextValues[vehicleIndex] = sanitizeSingleVehicleNumber(value);
+              onVehicleNumberChange?.(index, segment, nextValues);
+            }
+
+            function addVehicleInput() {
+              if (!hasCompleteVehicle || vehicleInputs.length >= 8) return;
+              onVehicleNumberChange?.(index, segment, [...vehicleInputs, '']);
+            }
+
+            function removeVehicleInput(vehicleIndex) {
+              const nextValues = vehicleInputs.filter((_, itemIndex) => itemIndex !== vehicleIndex);
+              onVehicleNumberChange?.(index, segment, nextValues.length ? nextValues : ['']);
+            }
+
+            return (
+              <div className={isSplit ? 'shift-segment is-split' : 'shift-segment'} key={`${segment.start}-${segment.end}-${index}`}>
+                <span className="segment-index">{index + 1}</span>
+                <strong>
+                  {segment.start} - {segment.end}
+                </strong>
+                <span>
+                  {segment.loc_s} {DIRECTION_LABELS[segment.dir] || segment.dir || '-'} {segment.loc_e}
+                </span>
+                {getVehicleShiftLabel(segment) ? <small className="segment-vehicle">{getVehicleShiftLabel(segment)}</small> : null}
+                <div className="segment-vehicle-number">
+                  <div className="segment-vehicle-number__header">
+                    <span>Vetture</span>
+                    <button aria-label="Aggiungi numero vettura" disabled={!hasCompleteVehicle || vehicleInputs.length >= 8} onClick={addVehicleInput} type="button">
+                      +
+                    </button>
+                  </div>
+                  <div className="segment-vehicle-list">
+                    {vehicleInputs.map((vehicle, vehicleIndex) => (
+                      <label className="segment-vehicle-row" key={`${index}-vehicle-${vehicleIndex}`}>
+                        <span className="sr-only">Numero vettura {vehicleIndex + 1}</span>
+                        <input
+                          inputMode="numeric"
+                          maxLength={4}
+                          onChange={(event) => updateVehicleInput(vehicleIndex, event.target.value)}
+                          pattern="\d{4}"
+                          placeholder="4 cifre"
+                          type="text"
+                          value={vehicle}
+                        />
+                        {vehicleInputs.length > 1 ? (
+                          <button aria-label={`Rimuovi vettura ${vehicleIndex + 1}`} onClick={() => removeVehicleInput(vehicleIndex)} type="button">
+                            ×
+                          </button>
+                        ) : null}
+                      </label>
+                    ))}
+                  </div>
+                  {parseVehicleNumbers(segment.vehicleNumber).length ? (
+                    <small className="segment-vehicle-inserted">{formatVehicleNumbersWithTimes(segment.vehicleNumber, segment.vehicleInsertedAt)}</small>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
           {splitPause !== null ? <p className="split-pause">Pausa tra le riprese: {formatMinutes(splitPause)}</p> : null}
         </>
       ) : (

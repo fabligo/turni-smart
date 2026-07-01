@@ -69,6 +69,17 @@ select {
   font: inherit;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 button {
   touch-action: manipulation;
 }
@@ -2515,7 +2526,7 @@ select:focus-visible {
 
 .segment-vehicle-number {
   display: grid;
-  gap: 3px;
+  gap: 6px;
   justify-self: end;
   min-width: 150px;
   color: rgba(217, 236, 255, 0.82);
@@ -2525,7 +2536,45 @@ select:focus-visible {
   text-transform: uppercase;
 }
 
-.segment-vehicle-number input {
+.segment-vehicle-number__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.segment-vehicle-number__header button,
+.segment-vehicle-row button {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid rgba(255, 209, 0, 0.42);
+  border-radius: 999px;
+  background: rgba(255, 209, 0, 0.14);
+  color: var(--yellow);
+  font-size: 1rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.segment-vehicle-number__header button:disabled {
+  opacity: 0.38;
+}
+
+.segment-vehicle-list {
+  display: grid;
+  gap: 6px;
+}
+
+.segment-vehicle-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.segment-vehicle-row input {
   width: 100%;
   min-height: 32px;
   border: 1px solid rgba(255, 209, 0, 0.32);
@@ -2538,12 +2587,18 @@ select:focus-visible {
   text-align: center;
 }
 
-.segment-vehicle-number input::placeholder {
+.segment-vehicle-row button {
+  border-color: rgba(255, 145, 145, 0.36);
+  background: rgba(198, 40, 40, 0.16);
+  color: #ffd6d6;
+}
+
+.segment-vehicle-row input::placeholder {
   color: rgba(217, 236, 255, 0.42);
   letter-spacing: 0;
 }
 
-.segment-vehicle-number input:focus {
+.segment-vehicle-row input:focus {
   outline: 2px solid rgba(255, 209, 0, 0.32);
   outline-offset: 2px;
 }
