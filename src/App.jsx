@@ -29,6 +29,7 @@ import {
 import { buildCsv, buildPreconoscenzaInfographicBlob, downloadBlobFile, downloadTextFile } from './exportUtils.js';
 import { getDevSegments, normalizeShiftKey, parseOrari, summarizeDevelopments } from './parserOrari.js';
 import { parseNaturalDate, toIsoDate } from './utils/dateUtils.js';
+import { isGerbidoLine as checkGerbidoLine } from './constants/depotGerbido.js';
 import { DEFAULT_REST_CODE, getOfficialRestEntries } from './constants/restCodes2026.js';
 import { BALLOTTAGGI, getShiftCategory } from './constants/shiftClassification.js';
 import { Header } from './components/Header.jsx';
@@ -345,6 +346,20 @@ function buildPeriodLabel(info) {
 function getInitialDate(days, fallback = new Date()) {
   const firstIso = Object.keys(days || {}).sort()[0];
   return firstIso ? new Date(`${firstIso}T00:00:00`) : fallback;
+}
+
+function isRecognizedLine(day, developments = {}) {
+  if (!day || day.t !== 'turno') return false;
+  if (day.isGerbidoLine || checkGerbidoLine(day.lineaNorm || day.linea || day.l)) return true;
+  return getDevSegments(developments, day.l, day.n, day.date, day).length > 0;
+}
+
+function normalizeDayForDisplay(day, developments = {}) {
+  if (!day || day.t !== 'turno') return day;
+  return {
+    ...day,
+    isGerbidoLine: isRecognizedLine(day, developments),
+  };
 }
 
 function dateFromInputValue(value) {
@@ -883,8 +898,9 @@ export default function App() {
 
     Object.values(days).forEach((day) => {
       if (day?.t !== 'turno') return;
-      if (day.lineaNorm) lineSet.add(day.lineaNorm);
-      if (!day.isGerbidoLine && day.lineaNorm) unknownLineSet.add(day.lineaNorm);
+      const displayDay = normalizeDayForDisplay(day, developments);
+      if (displayDay.lineaNorm) lineSet.add(displayDay.lineaNorm);
+      if (!displayDay.isGerbidoLine && displayDay.lineaNorm) unknownLineSet.add(displayDay.lineaNorm);
       const matchedSegments = getDevSegments(developments, day.l, day.n, day.date, day);
       if (matchedSegments.length) {
         associations += 1;
@@ -953,15 +969,16 @@ export default function App() {
   }
 
   function cardForDay(day, prefix = '') {
-    const shift = buildShiftCard(day, prefix, enrichedDays[day?.iso]);
+    const displayDay = normalizeDayForDisplay(day, developments);
+    const shift = buildShiftCard(displayDay, prefix, enrichedDays[displayDay?.iso]);
     if (!shift) return null;
     return (
       <ShiftCard
-        date={day?.date}
-        dayData={day}
+        date={displayDay?.date}
+        dayData={displayDay}
         developments={developments}
-        enrichment={enrichedDays[day?.iso]}
-        key={day?.iso || shift.date}
+        enrichment={enrichedDays[displayDay?.iso]}
+        key={displayDay?.iso || shift.date}
         calendarActions={(dayForExport) => buildCalendarActions([dayForExport], `turno-${dayForExport?.iso || 'turno'}.ics`)}
         onAssignTurn={applyCommunicatedShift}
         shift={shift}
@@ -1061,12 +1078,28 @@ export default function App() {
     const normalizedYear = normalizedDate.getFullYear();
     const normalizedMonth = normalizedDate.getMonth();
     const archivedPreconoscenza = getMonthHistoryEntry('preconoscenza', normalizedYear, normalizedMonth);
+    const archivedOrari = getMonthHistoryEntry('orari', normalizedYear, normalizedMonth);
 
     if (archivedPreconoscenza) {
       const stored = loadPreconoscenzaByKey(archivedPreconoscenza.key);
       if (stored) {
-        applyPreconoscenza(stored, { save: false, keepCalendarPosition: true });
+        applyPreconoscenza(stored, { save: false, keepCalendarPosition: true, loadOrari: false });
       }
+    }
+
+    if (archivedOrari) {
+      const storedOrari = loadOrariByKey(archivedOrari.key);
+      if (storedOrari && Object.keys(storedOrari).length) {
+        applyOrari(storedOrari, {
+          fileName: archivedOrari.label || 'Orari Linee',
+          dIn: new Date(normalizedYear, normalizedMonth, 1),
+          dTe: new Date(normalizedYear, normalizedMonth + 1, 0),
+        }, { save: false });
+      }
+    } else {
+      setDevelopments({});
+      setOrariInfo(null);
+      setOrariLoaded(false);
     }
 
     setViewMonth(normalizedMonth);
@@ -1439,29 +1472,27 @@ export default function App() {
                   </button>
                 </div>
               </section>
-              {shouldShowMonthUpload ? (
-                <div className="calendar-archive-panel calendar-archive-panel--missing">
-                  <div>
-                    <strong>Completa questo mese</strong>
-                    <span>
-                      {MONTH_NAMES[viewMonth]} {viewYear}: {missingMonthDocuments.preconoscenza ? 'manca Preconoscenza' : 'Preconoscenza salvata'} ·{' '}
-                      {missingMonthDocuments.orari ? 'mancano Orari Linee' : 'Orari Linee salvati'}
-                    </span>
-                  </div>
-                  <div className="calendar-archive-actions">
-                    {missingMonthDocuments.preconoscenza ? (
-                      <button className="small-button" onClick={() => monthPreconoscenzaInputRef.current?.click()} type="button">
-                        Carica Preconoscenza
-                      </button>
-                    ) : null}
-                    {missingMonthDocuments.orari ? (
-                      <button className="small-button small-button--ghost" onClick={() => monthOrariInputRef.current?.click()} type="button">
-                        Carica Orari Linee
-                      </button>
-                    ) : null}
-                  </div>
+              <div className={shouldShowMonthUpload ? 'calendar-archive-panel calendar-archive-panel--missing' : 'calendar-archive-panel'}>
+                <div>
+                  <strong>{shouldShowMonthUpload ? 'Completa questo mese' : 'Archivio mese'}</strong>
+                  <span>
+                    {MONTH_NAMES[viewMonth]} {viewYear}: {missingMonthDocuments.preconoscenza ? 'manca Preconoscenza' : 'Preconoscenza salvata'} ·{' '}
+                    {missingMonthDocuments.orari ? 'mancano Orari Linee' : 'Orari Linee salvati'}
+                  </span>
                 </div>
-              ) : null}
+                <div className="calendar-archive-actions">
+                  {missingMonthDocuments.preconoscenza ? (
+                    <button className="small-button" onClick={() => monthPreconoscenzaInputRef.current?.click()} type="button">
+                      Carica Preconoscenza
+                    </button>
+                  ) : null}
+                  {missingMonthDocuments.orari ? (
+                    <button className="small-button small-button--ghost" onClick={() => monthOrariInputRef.current?.click()} type="button">
+                      Carica Orari Linee
+                    </button>
+                  ) : null}
+                </div>
+              </div>
               <div className="result-toolbar">
                 <span>{monthItems.length} giorni nel dettaglio mese</span>
               </div>
