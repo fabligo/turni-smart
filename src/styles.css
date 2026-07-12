@@ -2617,6 +2617,89 @@ select:focus-visible {
   overflow: hidden;
 }
 
+.depot-returns-panel {
+  display: grid;
+  gap: var(--s4);
+}
+
+.depot-returns-panel__header {
+  display: grid;
+  gap: var(--s2);
+}
+
+.depot-returns-panel__header h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: clamp(1.35rem, 3vw, 2rem);
+}
+
+.depot-returns-panel__header p,
+.depot-returns-message {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.depot-returns-controls {
+  display: grid;
+  grid-template-columns: auto minmax(160px, 1fr) minmax(150px, 0.7fr);
+  gap: var(--s3);
+  align-items: end;
+}
+
+.depot-returns-controls label {
+  display: grid;
+  gap: 6px;
+  color: var(--cyan);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.depot-returns-controls select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid rgba(47, 134, 207, 0.38);
+  border-radius: 10px 28px 10px 10px;
+  background: rgba(1, 20, 36, 0.72);
+  color: #ffffff;
+  font-weight: 900;
+  padding: 0 12px;
+}
+
+.depot-returns-results {
+  display: grid;
+  gap: var(--s2);
+}
+
+.depot-return-card {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.85fr) minmax(150px, 1fr) minmax(130px, 0.75fr);
+  gap: var(--s3);
+  align-items: center;
+  border: 1px solid rgba(47, 134, 207, 0.28);
+  border-radius: 10px 30px 10px 10px;
+  background: rgba(5, 45, 76, 0.78);
+  padding: var(--s3);
+}
+
+.depot-return-card div {
+  display: grid;
+  gap: 3px;
+}
+
+.depot-return-card strong {
+  color: #ffffff;
+  font-size: 1rem;
+}
+
+.depot-return-card span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
 .stats-dashboard {
   display: grid;
   grid-template-columns: 168px minmax(0, 1fr);
@@ -4151,6 +4234,15 @@ select:focus-visible {
   .calendar-actions--single p {
     max-width: none;
     font-size: 0.78rem;
+  }
+
+  .depot-returns-controls,
+  .depot-return-card {
+    grid-template-columns: 1fr;
+  }
+
+  .depot-returns-controls .small-button {
+    width: 100%;
   }
 
   .flip-action,

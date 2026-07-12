@@ -39,6 +39,7 @@ import { MonthView } from './components/MonthView.jsx';
 import { StatsPanel } from './components/StatsPanel.jsx';
 import { AdvancedTools } from './components/AdvancedTools.jsx';
 import { LineConsultation } from './components/LineConsultation.jsx';
+import { DepotReturnsPanel } from './components/DepotReturnsPanel.jsx';
 import { OnboardingHome, SuspendedShiftEntry } from './components/OnboardingHome.jsx';
 import { AssetIcon, Icon } from './components/Icon.jsx';
 
@@ -526,6 +527,7 @@ export default function App() {
   const calendarPanelRef = useRef(null);
   const searchPanelRef = useRef(null);
   const linePanelRef = useRef(null);
+  const returnsPanelRef = useRef(null);
   const statsPanelRef = useRef(null);
   const toolsPanelRef = useRef(null);
   const savedPrefs = useMemo(() => loadPreferences(), []);
@@ -578,6 +580,7 @@ export default function App() {
   useEffect(() => {
     const panelRefs = {
       lines: linePanelRef,
+      returns: returnsPanelRef,
       stats: statsPanelRef,
       tools: toolsPanelRef,
     };
@@ -1512,6 +1515,11 @@ export default function App() {
               <LineConsultation developments={developments} />
             </div>
           ) : null}
+          {pdfLoaded && orariLoaded && activeUtilityPanel === 'returns' ? (
+            <div className="utility-panel-anchor utility-panel-anchor--returns" ref={returnsPanelRef}>
+              <DepotReturnsPanel developments={developments} />
+            </div>
+          ) : null}
           {pdfLoaded && activeUtilityPanel === 'tools' ? (
             <div className="utility-panel-anchor utility-panel-anchor--tools" ref={toolsPanelRef}>
               <AdvancedTools
@@ -1596,6 +1604,18 @@ export default function App() {
               >
                 <AssetIcon name="busMark" size={24} />
                 <span>Linee</span>
+              </button>
+              <button
+                className={activeUtilityPanel === 'returns' ? 'utility-dock__button utility-dock__button--returns is-active' : 'utility-dock__button utility-dock__button--returns'}
+                disabled={!orariLoaded}
+                onClick={() => {
+                  setActiveTab('Giorno');
+                  setActiveUtilityPanel((current) => (current === 'returns' ? '' : 'returns'));
+                }}
+                type="button"
+              >
+                <Icon name="route" size={24} />
+                <span>Rientri</span>
               </button>
               <button
                 className={activeUtilityPanel === 'stats' ? 'utility-dock__button utility-dock__button--stats is-active' : 'utility-dock__button utility-dock__button--stats'}
