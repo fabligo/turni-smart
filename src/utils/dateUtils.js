@@ -102,7 +102,7 @@ export function parseNaturalDate(text, refYear = new Date().getFullYear()) {
   const iso = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
   if (iso) return makeValidDate(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
 
-  const numeric = value.match(/\b(\d{1,2})[\/.\-\s](\d{1,2})(?:[\/.\-\s](\d{2,4}))?\b/);
+  const numeric = value.match(/\b(\d{1,2})[/.\s-](\d{1,2})(?:[/.\s-](\d{2,4}))?\b/);
   if (numeric) return makeValidDate(expandYear(numeric[3], refYear), Number(numeric[2]) - 1, Number(numeric[1]));
 
   const compactNumeric = value.match(/\b(\d{2})(\d{2})(\d{2,4})\b/);

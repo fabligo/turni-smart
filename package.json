@@ -5,19 +5,26 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "lint": "eslint .",
+    "test": "node --test",
     "build": "vite build",
     "preview": "vite preview",
-    "predeploy": "npm run build",
-    "deploy": "GIT_SSH_COMMAND=\"ssh -i /Users/Pippo/.ssh/turni_smart_github -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new\" gh-pages -d dist"
+    "audit": "npm audit --audit-level=high",
+    "check:secrets": "node scripts/check-public-secrets.mjs",
+    "check": "npm run lint && npm run test && npm run check:secrets && npm run build"
   },
   "dependencies": {
     "@vitejs/plugin-react": "4.7.0",
-    "pdfjs-dist": "^3.11.174",
+    "pdfjs-dist": "^4.10.38",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "vite": "6.4.2"
+    "vite": "^6.4.3"
   },
   "devDependencies": {
-    "gh-pages": "^6.3.0"
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^16.5.0"
   }
 }
