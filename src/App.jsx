@@ -1625,7 +1625,7 @@ export default function App() {
                 }}
                 type="button"
               >
-                <Icon name="route" size={24} />
+                <Icon name="depotReturn" size={24} />
                 <span>Rientri</span>
               </button>
               <button
