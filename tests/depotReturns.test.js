@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildReturnMatches, RETURN_WINDOW_MINUTES } from '../src/utils/depotReturns.js';
+import { buildReturnMatches, parseClockMinutes, RETURN_WINDOW_MINUTES } from '../src/utils/depotReturns.js';
 
 // Lunedi 4 maggio 2026, ore 14:00: giorno feriale.
 const NOW = new Date(2026, 4, 4, 14, 0, 0);
@@ -130,6 +130,44 @@ test('gestisce le corse a cavallo della mezzanotte', () => {
   const [match] = buildReturnMatches(developments, 'PITA', { now: lateNight });
   assert.equal(match.waitMinutes, 15);
   assert.equal(match.rideMinutes, 25);
+});
+
+test('cerca i rientri a un orario di passaggio impostato a mano', () => {
+  const developments = {
+    '071 12': [
+      segment({ ln: '71', vett: '5', start: '18:40', loc_s: 'PITA', end: '19:05', loc_e: 'GERB' }),
+      segment({ ln: '063', vett: '2', start: '14:10', loc_s: 'PITA', end: '14:35', loc_e: 'GERB' }),
+    ],
+  };
+
+  const matches = buildReturnMatches(developments, 'PITA', { now: NOW, time: '18:30' });
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].departure, '18:40');
+  assert.equal(matches[0].waitMinutes, 10);
+});
+
+test('l orario impostato ha la precedenza sull offset', () => {
+  const developments = {
+    '071 12': [segment({ ln: '71', vett: '5', start: '09:10', loc_s: 'PITA', end: '09:35', loc_e: 'GERB' })],
+  };
+
+  const [match] = buildReturnMatches(developments, 'PITA', { now: NOW, offsetMinutes: 30, time: '09:00' });
+  assert.equal(match.departure, '09:10');
+  assert.equal(match.waitMinutes, 10);
+});
+
+test('un orario non valido non blocca la ricerca e torna al comportamento a offset', () => {
+  assert.equal(parseClockMinutes('7:45'), 465);
+  assert.equal(parseClockMinutes('24:00'), null);
+  assert.equal(parseClockMinutes('12:60'), null);
+  assert.equal(parseClockMinutes('mezzogiorno'), null);
+
+  const developments = {
+    '071 12': [segment({ ln: '71', vett: '5', start: '14:10', loc_s: 'PITA', end: '14:35', loc_e: 'GERB' })],
+  };
+
+  const [match] = buildReturnMatches(developments, 'PITA', { now: NOW, time: 'boh' });
+  assert.equal(match.departure, '14:10');
 });
 
 test('non propone rientri se il posto cambio e gia il deposito', () => {

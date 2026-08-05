@@ -13,6 +13,20 @@ export function normalizePlace(value = '') {
   return String(value || '').trim().toUpperCase();
 }
 
+// Accetta l'orario digitato dall'utente solo se e' un HH:MM valido.
+export function parseClockMinutes(value = '') {
+  const match = String(value || '').trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
+export function formatClock(date = new Date()) {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
 export function getShiftParts(key = '') {
   const [line = '', shift = ''] = String(key).split(/\s+/);
   return { line, shift };
@@ -101,11 +115,19 @@ export function buildReturnMatches(developments = {}, selectedPlace, options = {
   const {
     now = new Date(),
     offsetMinutes = 0,
+    time = '',
     windowMinutes = RETURN_WINDOW_MINUTES,
   } = options;
 
+  // Un orario esplicito vince sull'offset: e' l'ora in cui l'utente passa
+  // davvero dal posto cambio.
+  const explicitMinutes = parseClockMinutes(time);
   const targetDate = new Date(now.getTime());
-  targetDate.setMinutes(targetDate.getMinutes() + offsetMinutes);
+  if (explicitMinutes === null) {
+    targetDate.setMinutes(targetDate.getMinutes() + offsetMinutes);
+  } else {
+    targetDate.setHours(Math.floor(explicitMinutes / 60), explicitMinutes % 60, 0, 0);
+  }
   const targetMinutes = targetDate.getHours() * 60 + targetDate.getMinutes();
   const service = getTodayServiceType(targetDate);
 

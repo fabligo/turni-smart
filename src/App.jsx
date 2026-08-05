@@ -41,7 +41,7 @@ import { AdvancedTools } from './components/AdvancedTools.jsx';
 import { LineConsultation } from './components/LineConsultation.jsx';
 import { DepotReturnsPanel } from './components/DepotReturnsPanel.jsx';
 import { OnboardingHome, SuspendedShiftEntry } from './components/OnboardingHome.jsx';
-import { AssetIcon, Icon } from './components/Icon.jsx';
+import { Icon } from './components/Icon.jsx';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
@@ -1552,7 +1552,7 @@ export default function App() {
                 onClick={showDaySearch}
                 type="button"
               >
-                <Icon name="search" size={24} />
+                <Icon name="dockSearch" size={24} />
                 <span>Cerca</span>
               </button>
               <button
@@ -1563,7 +1563,7 @@ export default function App() {
                 }}
                 type="button"
               >
-                <Icon name="mapPin" size={24} />
+                <Icon name="dockToday" size={24} />
                 <span>Oggi</span>
               </button>
               <button
@@ -1574,7 +1574,7 @@ export default function App() {
                 }}
                 type="button"
               >
-                <Icon name="chevronRight" size={24} />
+                <Icon name="dockTomorrow" size={24} />
                 <span>Domani</span>
               </button>
               <button
@@ -1585,7 +1585,7 @@ export default function App() {
                 }}
                 type="button"
               >
-                <Icon name="route" size={24} />
+                <Icon name="dockWeek" size={24} />
                 <span>Settimana</span>
               </button>
               <button
@@ -1593,7 +1593,7 @@ export default function App() {
                 onClick={() => showCalendar(DEFAULT_MONTH_FILTERS)}
                 type="button"
               >
-                <AssetIcon name="calendar" size={24} />
+                <Icon name="dockCalendar" size={24} />
                 <span>Calendario</span>
               </button>
               <button
@@ -1601,7 +1601,7 @@ export default function App() {
                 onClick={() => showCalendar({ turni: false, riposi: true, ballottaggi: false })}
                 type="button"
               >
-                <AssetIcon name="rest" size={24} />
+                <Icon name="dockRest" size={24} />
                 <span>Riposi</span>
               </button>
               <button
@@ -1613,7 +1613,7 @@ export default function App() {
                 }}
                 type="button"
               >
-                <AssetIcon name="busMark" size={24} />
+                <Icon name="dockLines" size={24} />
                 <span>Linee</span>
               </button>
               <button
@@ -1625,7 +1625,7 @@ export default function App() {
                 }}
                 type="button"
               >
-                <Icon name="depotReturn" size={24} />
+                <Icon name="dockReturns" size={24} />
                 <span>Rientri</span>
               </button>
               <button
@@ -1636,7 +1636,7 @@ export default function App() {
                 }}
                 type="button"
               >
-                <AssetIcon name="stats" size={24} />
+                <Icon name="dockStats" size={24} />
                 <span>Statistiche</span>
               </button>
               <button
@@ -1647,7 +1647,7 @@ export default function App() {
                 }}
                 type="button"
               >
-                <Icon name="document" size={24} />
+                <Icon name="dockTools" size={24} />
                 <span>Strumenti</span>
               </button>
             </nav>

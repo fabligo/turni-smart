@@ -1,15 +1,21 @@
 import { useMemo, useState } from 'react';
 import { CHANGE_POINTS, getChangePointLabel } from '../constants/changePoints.js';
 import { getLineDisplayName } from '../constants/depotGerbido.js';
-import { buildReturnMatches, DEPOT_CODE, normalizePlace, RETURN_WINDOW_MINUTES } from '../utils/depotReturns.js';
+import {
+  buildReturnMatches,
+  DEPOT_CODE,
+  formatClock,
+  normalizePlace,
+  RETURN_WINDOW_MINUTES,
+} from '../utils/depotReturns.js';
 import { Icon } from './Icon.jsx';
 
 const GEO_MAX_DISTANCE_METERS = 900;
 
-function formatTargetTime(offsetMinutes) {
+function clockFromNow(offsetMinutes = 0) {
   const date = new Date();
   date.setMinutes(date.getMinutes() + offsetMinutes);
-  return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  return formatClock(date);
 }
 
 function haversineMeters(a, b) {
@@ -58,11 +64,11 @@ function formatWait(waitMinutes) {
 export function DepotReturnsPanel({ developments = {} }) {
   const changePoints = useMemo(() => getAvailableChangePoints(developments), [developments]);
   const [selectedPlace, setSelectedPlace] = useState(() => changePoints.find((code) => code !== DEPOT_CODE) || '');
-  const [offsetMinutes, setOffsetMinutes] = useState(0);
+  const [passageTime, setPassageTime] = useState(() => clockFromNow(0));
   const [geoMessage, setGeoMessage] = useState('');
   const matches = useMemo(
-    () => buildReturnMatches(developments, selectedPlace, { offsetMinutes }),
-    [developments, offsetMinutes, selectedPlace],
+    () => buildReturnMatches(developments, selectedPlace, { time: passageTime }),
+    [developments, passageTime, selectedPlace],
   );
 
   function useCurrentPosition() {
@@ -92,13 +98,13 @@ export function DepotReturnsPanel({ developments = {} }) {
     <section className="depot-returns-panel dc" aria-labelledby="depot-returns-title">
       <div className="depot-returns-panel__header">
         <span className="section-kicker">
-          <Icon name="depotReturn" size={22} />
+          <Icon name="dockReturns" size={22} />
           Rientri deposito
         </span>
         <h2 id="depot-returns-title">Come rientro al Gerbido</h2>
         <p>
-          Mezzi che transitano dal posto cambio selezionato entro {RETURN_WINDOW_MINUTES} minuti e proseguono fino al
-          Gerbido, anche quando il deposito non e il capolinea della corsa.
+          Mezzi che transitano dal posto cambio nei {RETURN_WINDOW_MINUTES} minuti successivi all&apos;orario indicato e
+          proseguono fino al Gerbido, anche quando il deposito non e il capolinea della corsa.
         </p>
       </div>
 
@@ -118,13 +124,26 @@ export function DepotReturnsPanel({ developments = {} }) {
           </select>
         </label>
         <label>
-          <span>Fine turno</span>
-          <select onChange={(event) => setOffsetMinutes(Number(event.target.value))} value={offsetMinutes}>
-            <option value={0}>Adesso ({formatTargetTime(0)})</option>
-            <option value={15}>Tra 15 minuti ({formatTargetTime(15)})</option>
-            <option value={30}>Tra 30 minuti ({formatTargetTime(30)})</option>
-          </select>
+          <span>Passo di qui alle</span>
+          <input
+            aria-label="Orario di passaggio dal posto cambio"
+            onChange={(event) => setPassageTime(event.target.value)}
+            type="time"
+            value={passageTime}
+          />
         </label>
+      </div>
+
+      <div className="depot-returns-quick">
+        <button onClick={() => setPassageTime(clockFromNow(0))} type="button">
+          Adesso
+        </button>
+        <button onClick={() => setPassageTime(clockFromNow(15))} type="button">
+          Tra 15 min
+        </button>
+        <button onClick={() => setPassageTime(clockFromNow(30))} type="button">
+          Tra 30 min
+        </button>
       </div>
 
       {geoMessage ? <p className="depot-returns-message">{geoMessage}</p> : null}
@@ -156,8 +175,8 @@ export function DepotReturnsPanel({ developments = {} }) {
           ))
         ) : (
           <p className="result-message">
-            Nessun mezzo diretto al Gerbido da {selectedPlace || 'questo posto'} nei prossimi {RETURN_WINDOW_MINUTES}{' '}
-            minuti. Prova a spostare in avanti la fine turno.
+            Nessun mezzo diretto al Gerbido da {selectedPlace || 'questo posto'} tra le {passageTime} e i{' '}
+            {RETURN_WINDOW_MINUTES} minuti successivi. Prova a spostare avanti l&apos;orario di passaggio.
           </p>
         )}
       </div>
