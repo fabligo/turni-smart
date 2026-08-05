@@ -43,16 +43,6 @@ const ICONS = {
       <path d="M12 8h5a4 4 0 0 1 0 8h-2a4 4 0 0 0 0 8h5" />
     </>
   ),
-  depotReturn: (
-    <>
-      <rect x="1.5" y="13" width="12.5" height="10" rx="2.2" />
-      <path d="M9.8 13v10" />
-      <circle cx="5" cy="24.4" r="1.15" />
-      <circle cx="11" cy="24.4" r="1.15" />
-      <path d="M18.5 26V18a5.5 5.5 0 0 1 11 0v8" />
-      <path d="M16.5 26h15" />
-    </>
-  ),
   chart: (
     <>
       <path d="M7 25V7" />
@@ -120,6 +110,98 @@ const ICONS = {
       <path d="M21 7.6a5 5 0 0 1 5 5c0 3.6-5 8.4-5 8.4s-5-4.8-5-8.4a5 5 0 0 1 5-5Z" />
       <rect x="18.7" y="10.7" width="4.6" height="4.2" rx="1" />
       <path d="M19.5 12.4h3M19.8 15v.8M22.2 15v.8" />
+    </>
+  ),
+  // Set del dock: tratto blu con dettaglio giallo, coerente su tutte le voci.
+  dockSearch: (
+    <>
+      <circle cx="14" cy="14" r="8.5" />
+      <path className="icon-accent" d="m20.4 20.4 5.4 5.4" />
+    </>
+  ),
+  dockToday: (
+    <>
+      <rect x="4.5" y="7" width="23" height="20" rx="3.5" />
+      <path d="M4.5 13.5h23" />
+      <path d="M11 4.5v5M21 4.5v5" />
+      <circle className="icon-accent" cx="16" cy="20.5" r="2.7" fill="currentColor" stroke="none" />
+    </>
+  ),
+  dockTomorrow: (
+    <>
+      <path d="M5.5 16h13.5" />
+      <path className="icon-accent" d="m17.5 9.5 6.5 6.5-6.5 6.5" />
+    </>
+  ),
+  dockWeek: (
+    <>
+      <rect x="4" y="7" width="24" height="20" rx="3.5" />
+      <path d="M4 13.5h24" />
+      <path d="M10.5 4.5v5M21.5 4.5v5" />
+      <rect className="icon-accent" x="8" y="17" width="4.4" height="3.4" rx="1.2" fill="currentColor" stroke="none" />
+      <rect className="icon-accent" x="13.8" y="17" width="4.4" height="3.4" rx="1.2" fill="currentColor" stroke="none" />
+      <rect x="19.6" y="17" width="4.4" height="3.4" rx="1.2" fill="currentColor" stroke="none" />
+    </>
+  ),
+  dockCalendar: (
+    <>
+      <rect x="4" y="7" width="24" height="20" rx="3.5" />
+      <path className="icon-accent" d="M10.5 4.5v5M21.5 4.5v5" />
+      <path d="M4 13.5h24" />
+      <circle cx="10.5" cy="18.5" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="16" cy="18.5" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="21.5" cy="18.5" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="10.5" cy="23.2" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="16" cy="23.2" r="1.6" fill="currentColor" stroke="none" />
+    </>
+  ),
+  dockRest: (
+    <>
+      <path d="M3.5 25.5v-9.5" />
+      <path d="M3.5 20h17a5.5 5.5 0 0 1 5.5 5.5" />
+      <path d="M3.5 25.5h23" />
+      <rect x="6.5" y="16" width="5.5" height="4" rx="1.8" />
+      <path d="M22.2 4.6a4.7 4.7 0 1 0 5.2 6.7 5.3 5.3 0 0 1-5.2-6.7Z" />
+      <path
+        className="icon-accent"
+        d="m14.3 5 .95 1.95 2.15.3-1.55 1.5.36 2.15-1.91-1-1.91 1 .36-2.15-1.55-1.5 2.15-.3Z"
+        fill="currentColor"
+        stroke="none"
+      />
+    </>
+  ),
+  dockLines: (
+    <>
+      <rect x="6.5" y="5.5" width="19" height="17" rx="4" />
+      <path d="M6.5 11.5h19" />
+      <path d="M10.5 22.5v3.5M21.5 22.5v3.5" />
+      <circle className="icon-accent" cx="11" cy="18.5" r="1.6" fill="currentColor" stroke="none" />
+      <circle className="icon-accent" cx="21" cy="18.5" r="1.6" fill="currentColor" stroke="none" />
+    </>
+  ),
+  dockReturns: (
+    <>
+      <path d="M22.9 23.6A10 10 0 1 1 25.6 19" />
+      <path d="M20.5 16h-9" />
+      <path d="m15 11.5-4.5 4.5 4.5 4.5" />
+      <circle className="icon-accent" cx="24.6" cy="24.6" r="2.4" fill="currentColor" stroke="none" />
+    </>
+  ),
+  dockStats: (
+    <>
+      <path d="M4.5 26.5h23" />
+      <rect x="6.5" y="17" width="4.5" height="6.5" rx="1.4" />
+      <rect x="13.8" y="14" width="4.5" height="9.5" rx="1.4" />
+      <rect x="21" y="10.5" width="4.5" height="13" rx="1.4" />
+      <path className="icon-accent" d="m7 13.5 6-4.5 5 3 7-5.5" />
+      <circle className="icon-accent" cx="13" cy="9" r="1.7" fill="currentColor" stroke="none" />
+      <circle className="icon-accent" cx="25" cy="6.5" r="1.7" fill="currentColor" stroke="none" />
+    </>
+  ),
+  dockTools: (
+    <>
+      <path d="M13.7 4.5h4.6l.55 3a9 9 0 0 1 2.3 1.35l2.85-1.1 2.3 4-2.3 1.95a9 9 0 0 1 0 2.6l2.3 1.95-2.3 4-2.85-1.1a9 9 0 0 1-2.3 1.35l-.55 3h-4.6l-.55-3a9 9 0 0 1-2.3-1.35l-2.85 1.1-2.3-4 2.3-1.95a9 9 0 0 1 0-2.6l-2.3-1.95 2.3-4 2.85 1.1a9 9 0 0 1 2.3-1.35Z" />
+      <circle className="icon-accent" cx="16" cy="16" r="3.6" />
     </>
   ),
   chevronRight: <path d="m13 8 8 8-8 8" />,

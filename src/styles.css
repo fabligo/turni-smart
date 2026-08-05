@@ -2657,7 +2657,8 @@ select:focus-visible {
   font-weight: 900;
 }
 
-.depot-returns-controls select {
+.depot-returns-controls select,
+.depot-returns-controls input[type='time'] {
   width: 100%;
   min-height: 44px;
   border: 1px solid rgba(47, 134, 207, 0.38);
@@ -2666,6 +2667,48 @@ select:focus-visible {
   color: #ffffff;
   font-weight: 900;
   padding: 0 12px;
+}
+
+.depot-returns-controls input[type='time'] {
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Safari su iOS schiarisce da solo l'indicatore dell'orario. */
+.depot-returns-controls input[type='time']::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.6);
+  opacity: 0.75;
+}
+
+.depot-returns-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-top: var(--s2);
+}
+
+.depot-returns-quick button {
+  flex: 1 1 auto;
+  min-height: 38px;
+  border: 1px solid rgba(47, 134, 207, 0.38);
+  border-radius: 999px;
+  background: rgba(47, 134, 207, 0.16);
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 0 14px;
+  transition:
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.depot-returns-quick button:hover {
+  background: rgba(47, 134, 207, 0.3);
+}
+
+.depot-returns-quick button:active {
+  transform: scale(0.96);
 }
 
 .depot-returns-results {
@@ -3227,39 +3270,76 @@ select:focus-visible {
 }
 
 /* Utility dock */
+/* Dock a riga singola: scorre in orizzontale come una tab bar iOS, senza
+   barra di scorrimento visibile e con i bordi sfumati a suggerire il resto. */
 .utility-dock {
   position: sticky;
   z-index: 20;
   bottom: 10px;
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 6px;
-  border: 1px solid rgba(0, 93, 170, 0.28);
-  border-radius: 10px 36px 10px 10px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
-  padding: 7px;
-  backdrop-filter: blur(14px);
+  display: flex;
+  /* "safe" evita che il centraggio renda irraggiungibile il primo elemento
+     quando la riga e' piu' larga del dock. */
+  justify-content: safe center;
+  gap: 2px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scroll-padding: 0 10px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  border: 1px solid rgba(0, 93, 170, 0.16);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 16px 38px rgba(3, 34, 61, 0.24);
+  padding: 8px 10px;
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
+}
+
+.utility-dock::-webkit-scrollbar {
+  display: none;
 }
 
 .utility-dock__button {
   display: grid;
-  min-height: 50px;
+  flex: 0 0 auto;
+  width: 66px;
+  scroll-snap-align: center;
   place-items: center;
-  gap: 3px;
-  border: 1px solid rgba(0, 93, 170, 0.16);
-  border-radius: var(--button-radius);
-  background: var(--gtt-blue);
-  color: #ffffff;
+  gap: 5px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--gtt-blue);
   cursor: pointer;
-  font-size: 0.62rem;
-  font-weight: 950;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  padding: 4px 2px 5px;
   transition:
-    background 180ms ease,
-    border-color 180ms ease,
-    box-shadow 180ms ease,
+    color 180ms ease,
     opacity 180ms ease,
     transform 180ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* La pastiglia tonda attorno all'icona e' l'elemento che cambia stato. */
+.utility-dock__button svg {
+  box-sizing: content-box;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #eef5fd 0%, #dde9f8 100%);
+  padding: 9px;
+  transition:
+    background 180ms ease,
+    box-shadow 180ms ease,
+    color 180ms ease;
+}
+
+.utility-dock__button .icon-accent {
+  color: #e8a13a;
 }
 
 .utility-dock__button span {
@@ -3269,59 +3349,36 @@ select:focus-visible {
   white-space: nowrap;
 }
 
-.utility-dock__button--search svg {
-  color: var(--yellow);
+.utility-dock__button:not(:disabled):hover svg {
+  background: linear-gradient(180deg, #e2eefb 0%, #cfe1f6 100%);
+  box-shadow: 0 6px 14px rgba(0, 93, 170, 0.16);
 }
 
-.utility-dock__button--today svg {
-  color: #ffd100;
-}
-
-.utility-dock__button--tomorrow svg {
-  color: var(--yellow);
-}
-
-.utility-dock__button--week svg {
-  color: var(--yellow);
-}
-
-.utility-dock__button--calendar .asset-icon {
-  filter: saturate(1.08);
-}
-
-.utility-dock__button--rests .asset-icon {
-  filter: saturate(1.12) hue-rotate(8deg) drop-shadow(0 2px 5px rgba(0, 0, 0, 0.22));
-}
-
-.utility-dock__button--lines .asset-icon {
-  filter: saturate(1.12) drop-shadow(0 2px 5px rgba(0, 0, 0, 0.24));
-}
-
-.utility-dock__button--stats .asset-icon {
-  filter: hue-rotate(14deg) saturate(1.08);
-}
-
-.utility-dock__button--tools svg {
-  color: var(--yellow);
-}
-
-.utility-dock__button:not(:disabled):hover,
 .utility-dock__button.is-active {
-  border-color: rgba(0, 93, 170, 0.5);
-  background: var(--gtt-blue-light);
-  box-shadow:
-    inset 0 -3px 0 rgba(0, 47, 92, 0.2),
-    0 8px 18px rgba(0, 93, 170, 0.18);
-  transform: translateY(-1px);
+  color: var(--gtt-blue);
+}
+
+.utility-dock__button.is-active svg {
+  background: linear-gradient(180deg, var(--gtt-blue-light) 0%, var(--gtt-blue) 100%);
+  box-shadow: 0 8px 18px rgba(0, 93, 170, 0.34);
+  color: #ffffff;
+}
+
+.utility-dock__button.is-active .icon-accent {
+  color: var(--yellow);
 }
 
 .utility-dock__button.is-active span {
-  color: #ffffff;
+  font-weight: 950;
+}
+
+.utility-dock__button:active:not(:disabled) {
+  transform: scale(0.94);
 }
 
 .utility-dock__button:disabled {
   cursor: not-allowed;
-  opacity: 0.46;
+  opacity: 0.38;
 }
 
 @keyframes soft-fade {
