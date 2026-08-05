@@ -43,6 +43,16 @@ const ICONS = {
       <path d="M12 8h5a4 4 0 0 1 0 8h-2a4 4 0 0 0 0 8h5" />
     </>
   ),
+  depotReturn: (
+    <>
+      <rect x="1.5" y="13" width="12.5" height="10" rx="2.2" />
+      <path d="M9.8 13v10" />
+      <circle cx="5" cy="24.4" r="1.15" />
+      <circle cx="11" cy="24.4" r="1.15" />
+      <path d="M18.5 26V18a5.5 5.5 0 0 1 11 0v8" />
+      <path d="M16.5 26h15" />
+    </>
+  ),
   chart: (
     <>
       <path d="M7 25V7" />
