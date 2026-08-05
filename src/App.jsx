@@ -565,6 +565,9 @@ export default function App() {
   const [calendarPulse, setCalendarPulse] = useState(0);
   const [suspendedShiftText, setSuspendedShiftText] = useState('');
   const [suspendedShiftError, setSuspendedShiftError] = useState('');
+  const [manualEntryOpen, setManualEntryOpen] = useState(false);
+  const manualEntryDate =
+    selectedDate instanceof Date && !Number.isNaN(selectedDate.getTime()) ? selectedDate : new Date();
 
   useEffect(() => {
     savePreferences({ ...preferences, activeTab });
@@ -816,7 +819,7 @@ export default function App() {
 
   function insertSuspendedShift() {
     setSuspendedShiftError('');
-    const fallbackDate = new Date();
+    const fallbackDate = manualEntryDate;
     const parsed = parseCommunicatedShift(suspendedShiftText, fallbackDate, null);
     if (!parsed) {
       setSuspendedShiftError('Formato turno non riconosciuto. Incolla data, linea, turno, orari e posti cambio.');
@@ -830,7 +833,7 @@ export default function App() {
       iso: targetIso,
       date: targetDate,
       g: parsed.g || '',
-      suspendedPreconoscenza: true,
+      suspendedPreconoscenza: !pdfLoaded,
     };
     const nextDays = pdfLoaded ? { ...days, [targetIso]: nextDay } : { [targetIso]: nextDay };
     const sourceInfo = pdfLoaded && pdfInfo
@@ -858,6 +861,7 @@ export default function App() {
     setViewYear(targetDate.getFullYear());
     setActiveTab('Giorno');
     setSuspendedShiftText('');
+    setManualEntryOpen(false);
     if (!savePreconoscenza(sourceInfo)) markStorageFailure('Preconoscenza sospesa');
     refreshHistory();
   }
@@ -1173,6 +1177,7 @@ export default function App() {
     setSelectedDate(dates[0]);
     setSearchResults(results);
     setSearchMessage(results.length ? '' : 'Nessun turno trovato per questa data.');
+    if (!results.length) setManualEntryOpen(true);
   }
 
   function quickSearch(label, offset = 0) {
@@ -1184,6 +1189,7 @@ export default function App() {
     const item = days[toIsoDate(date)];
     setSearchResults(item ? [item] : []);
     setSearchMessage(item ? '' : 'Nessun turno trovato per questa data.');
+    if (!item) setManualEntryOpen(true);
   }
 
   function searchWeek() {
@@ -1333,22 +1339,27 @@ export default function App() {
                 </div>
               </form>
 
-              {isSuspendedPreconoscenza ? (
-                <details className="suspended-shift-disclosure">
-                  <summary>
-                    <span>Preconoscenza sospesa</span>
-                    <strong>Inserisci turno comunicato</strong>
-                  </summary>
-                  <SuspendedShiftEntry
-                    className="suspended-shift-card--embedded"
-                    error={suspendedShiftError}
-                    loading={loading}
-                    onSubmit={insertSuspendedShift}
-                    onTextChange={setSuspendedShiftText}
-                    text={suspendedShiftText}
-                  />
-                </details>
-              ) : null}
+              <details
+                className="suspended-shift-disclosure"
+                onToggle={(event) => setManualEntryOpen(event.currentTarget.open)}
+                open={manualEntryOpen}
+              >
+                <summary>
+                  <span>{isSuspendedPreconoscenza ? 'Preconoscenza sospesa' : 'Turno fuori preconoscenza'}</span>
+                  <strong>Inserisci turno comunicato</strong>
+                </summary>
+                <SuspendedShiftEntry
+                  className="suspended-shift-card--embedded"
+                  error={suspendedShiftError}
+                  hint={`Incolla qui il turno ricevuto. Se manca la data, verra usato il giorno ${dateFormatter.format(manualEntryDate)}.`}
+                  loading={loading}
+                  onSubmit={insertSuspendedShift}
+                  onTextChange={setSuspendedShiftText}
+                  subtitle={`Giorno selezionato: ${dateFormatter.format(manualEntryDate)}`}
+                  text={suspendedShiftText}
+                  title={isSuspendedPreconoscenza ? 'Preconoscenza sospesa' : 'Inserimento manuale'}
+                />
+              </details>
 
               <div className="result-list">
                 {searchResults.map((day) => cardForDay(day))}

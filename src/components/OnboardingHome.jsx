@@ -67,10 +67,13 @@ export function OnboardingHome({
 export function SuspendedShiftEntry({
   className = '',
   error = '',
+  hint = 'Incolla qui il turno ricevuto. Se manca la data, verra usata la data di oggi.',
   loading = false,
   onSubmit,
   onTextChange,
+  subtitle = 'In attesa turno',
   text = '',
+  title = 'Preconoscenza sospesa',
 }) {
   return (
     <form
@@ -85,15 +88,15 @@ export function SuspendedShiftEntry({
           <Icon name="question" size={28} />
         </span>
         <div>
-          <strong>Preconoscenza sospesa</strong>
-          <small>In attesa turno</small>
+          <strong>{title}</strong>
+          <small>{subtitle}</small>
         </div>
       </div>
       <label htmlFor="suspended-shift-input">Turno comunicato</label>
       <textarea
         id="suspended-shift-input"
         onChange={(event) => onTextChange?.(event.target.value)}
-        placeholder="Incolla qui il turno ricevuto. Se manca la data, verra usata la data di oggi."
+        placeholder={hint}
         rows={4}
         value={text}
       />
