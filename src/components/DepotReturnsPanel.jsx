@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { CHANGE_POINTS } from '../constants/changePoints.js';
 import { getLineDisplayName } from '../constants/depotGerbido.js';
 import {
+  ANY_PLACE,
   DEPOT_CODE,
   formatClock,
   MAX_RIDE_MINUTES,
@@ -157,13 +158,15 @@ export function DepotReturnsPanel({ developments = {} }) {
       return <p className="result-message">Sei gia al deposito Gerbido: nessun rientro da cercare.</p>;
     }
 
-    const placeLabel = criteria.place;
+    const anyPlace = criteria.place === ANY_PLACE;
+    const placeLabel = anyPlace ? 'nessun posto cambio' : criteria.place;
 
     if (!result.placeKnown) {
       return (
         <p className="result-message">
-          Negli orari caricati non c&apos;e nessuna corsa che passa da {placeLabel}. Controlla di aver caricato il PDF
-          degli orari giusto, oppure scegli un altro posto cambio.
+          {anyPlace
+            ? 'Negli orari caricati non c\u2019e nessuna corsa. Controlla di aver caricato il PDF degli orari giusto.'
+            : `Negli orari caricati non c\u2019e nessuna corsa che passa da ${placeLabel}. Controlla di aver caricato il PDF degli orari giusto, oppure scegli un altro posto cambio.`}
         </p>
       );
     }
@@ -171,7 +174,7 @@ export function DepotReturnsPanel({ developments = {} }) {
     if (!result.passages && otherServices.length) {
       return (
         <p className="result-message">
-          Da {placeLabel} gli orari caricati hanno corse solo per il servizio{' '}
+          {anyPlace ? 'Gli orari caricati hanno' : `Da ${placeLabel} gli orari caricati hanno`} corse solo per il servizio{' '}
           {otherServices.map(([service]) => SERVICE_LABELS[service] || service).join(' e ')}, non per il servizio{' '}
           {SERVICE_LABELS[result.service] || result.service}. Cambia il campo Servizio e riprova.
         </p>
@@ -185,8 +188,8 @@ export function DepotReturnsPanel({ developments = {} }) {
     if (!result.passages) {
       return (
         <p className="result-message">
-          Dopo le {criteria.time} non parte nessuna corsa da {placeLabel}. Sposta l&apos;orario di passaggio o scegli un
-          altro posto cambio.
+          Dopo le {criteria.time} non parte nessuna corsa{anyPlace ? '' : ` da ${placeLabel}`}. Sposta l&apos;orario di
+          passaggio{anyPlace ? '.' : ' o scegli un altro posto cambio.'}
         </p>
       );
     }
@@ -198,7 +201,7 @@ export function DepotReturnsPanel({ developments = {} }) {
     if (result.longRides) {
       return (
         <p className="result-message">
-          Da {placeLabel} {passages} dopo le {criteria.time}:{' '}
+          {anyPlace ? `Dopo le ${criteria.time} ${passages}` : `Da ${placeLabel} ${passages} dopo le ${criteria.time}`}:{' '}
           {result.longRides === 1
             ? 'uno arriva al Gerbido ma dopo '
             : `${result.longRides} arrivano al Gerbido ma dopo `}
@@ -210,7 +213,8 @@ export function DepotReturnsPanel({ developments = {} }) {
 
     return (
       <p className="result-message">
-        Da {placeLabel} {passages} dopo le {criteria.time}, ma nessuno arriva al Gerbido: prova un altro posto cambio.
+        {anyPlace ? `Dopo le ${criteria.time} ${passages}` : `Da ${placeLabel} ${passages} dopo le ${criteria.time}`}, ma
+        nessuno arriva al Gerbido{anyPlace ? '.' : ': prova un altro posto cambio.'}
       </p>
     );
   }
@@ -224,8 +228,9 @@ export function DepotReturnsPanel({ developments = {} }) {
         </span>
         <h2 id="depot-returns-title">Come rientro al Gerbido</h2>
         <p>
-          Mezzi che transitano dal posto cambio nei minuti successivi all&apos;orario indicato e proseguono fino al
-          Gerbido, anche quando il deposito non e il capolinea della corsa.
+          Mezzi che proseguono fino al Gerbido, anche quando il deposito non e il capolinea della corsa. Scegli un posto
+          cambio, oppure Ovunque per vedere tutte le corse in rientro: con Cosa passa qui vicino controlli quali linee
+          fermano dove sei.
         </p>
       </div>
 
@@ -241,6 +246,7 @@ export function DepotReturnsPanel({ developments = {} }) {
             <span>Posto cambio</span>
             <select onChange={(event) => updateForm({ place: event.target.value })} value={form.place}>
               <option value="">Seleziona…</option>
+              <option value={ANY_PLACE}>Ovunque · tutte le corse verso il deposito</option>
               {inTimetable.length ? (
                 <optgroup label="Presenti negli orari caricati">
                   {inTimetable.map((code) => (
@@ -344,7 +350,7 @@ export function DepotReturnsPanel({ developments = {} }) {
             <span className="depot-returns-progress__bar" />
           </span>
           <span className="depot-returns-progress__label">
-            Cerco le linee che passano da {criteria.place || 'qui'} e proseguono fino al Gerbido…
+            Cerco le linee che {criteria.place === ANY_PLACE ? 'proseguono' : `passano da ${criteria.place || 'qui'} e proseguono`} fino al Gerbido…
           </span>
         </div>
       ) : null}
@@ -357,8 +363,8 @@ export function DepotReturnsPanel({ developments = {} }) {
       {!searching && criteria.place && !result.isDepot ? (
         <p className="depot-returns-summary">
           {result.matches.length
-            ? `${result.matches.length} ${result.matches.length === 1 ? 'rientro' : 'rientri'} da ${criteria.place}`
-            : `Nessun rientro da ${criteria.place}`}{' '}
+            ? `${result.matches.length} ${result.matches.length === 1 ? 'rientro' : 'rientri'} ${result.anyPlace ? 'verso il Gerbido' : `da ${criteria.place}`}`
+            : `Nessun rientro ${result.anyPlace ? 'verso il Gerbido' : `da ${criteria.place}`}`}{' '}
           · passaggio alle {criteria.time} · entro {formatWindow(criteria.windowMinutes)} · servizio{' '}
           {SERVICE_LABELS[result.service] || result.service}
         </p>
@@ -369,11 +375,14 @@ export function DepotReturnsPanel({ developments = {} }) {
           result.matches.map((item) => (
               <article
                 className="depot-return-card"
-                key={`${item.line}-${item.shift}-${item.departure}-${item.vehicleShift}`}
+                key={`${item.line}-${item.from}-${item.shift}-${item.departure}-${item.vehicleShift}`}
               >
                 <div>
                   <strong>Linea {getLineDisplayName(item.line)}</strong>
-                  <span>{item.direct ? 'Diretto in deposito' : `${item.legs.length} tratti`}</span>
+                  <span>
+                    {result.anyPlace ? `parte da ${item.from} · ` : ''}
+                    {item.direct ? 'diretto in deposito' : `${item.legs.length} tratti`}
+                  </span>
                 </div>
                 <div>
                   <strong>
@@ -400,8 +409,11 @@ export function DepotReturnsPanel({ developments = {} }) {
           <h3>{result.matches.length ? 'Rientri successivi' : 'Prossimi rientri'}</h3>
           <ul>
             {result.upcoming.slice(0, UPCOMING_LIMIT).map((item) => (
-              <li key={`${item.line}-${item.shift}-${item.departure}-${item.vehicleShift}`}>
-                <strong>Linea {getLineDisplayName(item.line)}</strong>
+              <li key={`${item.line}-${item.from}-${item.shift}-${item.departure}-${item.vehicleShift}`}>
+                <strong>
+                  Linea {getLineDisplayName(item.line)}
+                  {result.anyPlace ? ` · da ${item.from}` : ''}
+                </strong>
                 <span>
                   {item.departure} → {item.arrival}
                 </span>

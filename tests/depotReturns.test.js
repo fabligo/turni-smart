@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  ANY_PLACE,
   buildReturnMatches,
   parseClockMinutes,
   RETURN_WINDOW_MINUTES,
@@ -253,4 +254,27 @@ test('distingue chi non vede il deposito da chi ci arriva dopo un giro lungo', (
   assert.equal(result.noDepotChain, 1);
   assert.equal(result.longRides, 1);
   assert.equal(result.shortestLongRide, 185);
+});
+
+test('cerca le corse verso il deposito da qualsiasi posto cambio', () => {
+  const developments = {
+    '071 12': [segment({ ln: '71', vett: '5', start: '14:10', loc_s: 'PITA', end: '14:35', loc_e: 'GERB' })],
+    '063 04': [segment({ ln: '63', vett: '2', start: '14:05', loc_s: 'CATT', end: '14:40', loc_e: 'GERB' })],
+    // Parte dal deposito: non e' un rientro.
+    '017 08': [segment({ ln: '17', vett: '9', start: '14:07', loc_s: 'GERB', end: '14:30', loc_e: 'ORSA' })],
+  };
+
+  const result = searchReturns(developments, ANY_PLACE, { now: NOW });
+  assert.equal(result.anyPlace, true);
+  assert.deepEqual(result.matches.map((item) => `${item.line} da ${item.from}`), ['63 da CATT', '71 da PITA']);
+  assert.equal(result.matches[0].waitMinutes, 5);
+});
+
+test('la ricerca ovunque non confonde partenze uguali da posti diversi', () => {
+  const developments = {
+    '071 12': [segment({ ln: '71', vett: '5', start: '14:10', loc_s: 'PITA', end: '14:35', loc_e: 'GERB' })],
+    '071 13': [segment({ ln: '71', vett: '5', start: '14:10', loc_s: 'CATT', end: '14:35', loc_e: 'GERB' })],
+  };
+
+  assert.equal(searchReturns(developments, ANY_PLACE, { now: NOW }).matches.length, 2);
 });
