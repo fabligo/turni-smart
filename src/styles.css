@@ -2772,17 +2772,22 @@ a.inline-action {
 }
 
 .depot-returns-fallback {
-  margin: 0;
+  display: grid;
+  gap: var(--s2);
   border-left: 3px solid var(--yellow);
   padding-left: 12px;
+}
+
+.depot-returns-fallback p {
+  margin: 0;
   color: var(--muted);
   font-size: 0.86rem;
   font-weight: 800;
   line-height: 1.4;
 }
 
-.depot-returns-fallback strong {
-  color: #ffffff;
+.depot-returns-fallback a.depot-returns-search {
+  text-decoration: none;
 }
 
 .depot-returns-lines {

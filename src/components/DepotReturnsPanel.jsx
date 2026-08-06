@@ -386,10 +386,34 @@ export function DepotReturnsPanel({ developments = {} }) {
       </div>
 
       {!searching && !result.matches.length ? (
-        <p className="depot-returns-fallback">
-          Nessun mezzo di servizio ti riporta in deposito adesso: con <strong>Come arrivo al Gerbido</strong> la mappa
-          calcola linee e cambi sulla rete GTT partendo da dove sei.
-        </p>
+        <div className="depot-returns-fallback">
+          <p>
+            Nessun mezzo di servizio ti riporta in deposito adesso. La mappa parte da dove sei, prende la fermata piu
+            vicina e ti da linee, orari di passaggio e cambi fino al Gerbido.
+          </p>
+          {positionLink?.kind === 'depot' ? (
+            <a
+              className="depot-returns-search"
+              href={positionLink.url}
+              onClick={() => setPositionLink(null)}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <Icon name="route" size={18} />
+              Apri il percorso al Gerbido
+            </a>
+          ) : (
+            <button
+              className="depot-returns-search"
+              disabled={Boolean(geoBusy)}
+              onClick={() => readPosition(readDepotDirectionsUrl, 'depot')}
+              type="button"
+            >
+              <Icon name="route" size={18} />
+              {geoBusy === 'depot' ? 'Leggo la posizione…' : 'Come arrivo al Gerbido da qui'}
+            </button>
+          )}
+        </div>
       ) : null}
 
       {!searching && result.upcoming.length ? (
