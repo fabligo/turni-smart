@@ -3,7 +3,7 @@ import { formatMinutes, minutesBetween } from '../utils/timeUtils.js';
 import { getDevSegments } from '../parserOrari.js';
 import { getLineDisplayName } from '../constants/depotGerbido.js';
 import { BALLOTTAGGI } from '../constants/shiftClassification.js';
-import { buildGttPassagesTarget, getPrimaryGttChangePoint } from '../utils/gttLinks.js';
+import { buildGttPassagesTarget, buildNearbyStopsUrl, getPrimaryGttChangePoint } from '../utils/gttLinks.js';
 import { AssetIcon, Icon } from './Icon.jsx';
 
 const DIRECTION_LABELS = {
@@ -566,9 +566,34 @@ function CalendarActions({ actions, compact = false, gttTarget = null, shareText
     window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank', 'noopener,noreferrer');
   }
 
+  // La finestra si apre subito, con il clic: aprirla dentro la risposta del GPS
+  // la farebbe bloccare dal browser come popup.
   function openGttPassages() {
     if (!gttTarget?.url) return;
-    window.open(gttTarget.url, '_blank', 'noopener,noreferrer');
+    const target = window.open('', '_blank', 'noopener,noreferrer');
+    const fallback = () => {
+      if (target) target.location.href = gttTarget.url;
+      else window.open(gttTarget.url, '_blank', 'noopener,noreferrer');
+    };
+
+    if (!navigator.geolocation) {
+      fallback();
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const url = buildNearbyStopsUrl({ lat: position.coords.latitude, lng: position.coords.longitude });
+        if (!url) {
+          fallback();
+          return;
+        }
+        if (target) target.location.href = url;
+        else window.open(url, '_blank', 'noopener,noreferrer');
+      },
+      fallback,
+      { enableHighAccuracy: true, maximumAge: 15000, timeout: 8000 },
+    );
   }
 
   return (
@@ -590,13 +615,14 @@ function CalendarActions({ actions, compact = false, gttTarget = null, shareText
         {gttTarget?.url ? (
           <button className="inline-action inline-action--gtt" onClick={openGttPassages} title={gttTarget.title} type="button">
             <AssetIcon name="gttPassages" size={22} />
-            Passaggi GTT
+            Fermate qui vicino
           </button>
         ) : null}
       </div>
       {!compact && gttTarget?.url ? (
         <p className="action-note action-note--gtt">
-          Apre i passaggi GTT della palina del posto cambio. Se la palina non e mappata, apre l'itinerario realtime della linea.
+          Apre le fermate intorno a dove sei adesso. Se la posizione non e disponibile, apre l&apos;itinerario realtime
+          della linea.
         </p>
       ) : null}
     </div>
