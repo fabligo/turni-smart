@@ -2642,9 +2642,14 @@ select:focus-visible {
   line-height: 1.35;
 }
 
+.depot-returns-form {
+  display: grid;
+  gap: var(--s3);
+}
+
 .depot-returns-controls {
   display: grid;
-  grid-template-columns: auto minmax(160px, 1fr) minmax(150px, 0.7fr);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: var(--s3);
   align-items: end;
 }
@@ -2680,11 +2685,54 @@ select:focus-visible {
   opacity: 0.75;
 }
 
+.depot-returns-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  align-items: center;
+}
+
+.depot-returns-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  flex: 1 1 200px;
+  justify-content: center;
+  border: 0;
+  border-radius: 12px 30px 12px 12px;
+  background: linear-gradient(135deg, var(--blue), #2f86cf);
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 950;
+  padding: 0 20px;
+  box-shadow: 0 10px 22px rgba(6, 61, 105, 0.35);
+  transition:
+    filter 160ms ease,
+    transform 160ms ease;
+}
+
+.depot-returns-search:hover {
+  filter: brightness(1.08);
+}
+
+.depot-returns-search:active {
+  transform: scale(0.97);
+}
+
+.depot-returns-summary {
+  margin: 0;
+  color: var(--cyan);
+  font-size: 0.8rem;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
 .depot-returns-quick {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s2);
-  margin-top: var(--s2);
 }
 
 .depot-returns-quick button {
@@ -2711,9 +2759,112 @@ select:focus-visible {
   transform: scale(0.96);
 }
 
+.depot-returns-progress {
+  display: grid;
+  gap: 8px;
+}
+
+.depot-returns-progress__track {
+  position: relative;
+  overflow: hidden;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(47, 134, 207, 0.22);
+}
+
+.depot-returns-progress__bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  animation: depot-returns-scan 900ms linear infinite;
+}
+
+.depot-returns-progress__label {
+  color: var(--cyan);
+  font-size: 0.8rem;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+@keyframes depot-returns-scan {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+/* Chi ha ridotto le animazioni vede comunque la barra, ferma. */
+@media (prefers-reduced-motion: reduce) {
+  .depot-returns-progress__bar {
+    animation: none;
+    width: 100%;
+  }
+}
+
 .depot-returns-results {
   display: grid;
   gap: var(--s2);
+}
+
+.depot-returns-upcoming {
+  display: grid;
+  gap: 8px;
+  border: 1px dashed rgba(47, 134, 207, 0.42);
+  border-radius: 10px 30px 10px 10px;
+  background: rgba(1, 20, 36, 0.5);
+  padding: var(--s3);
+}
+
+.depot-returns-upcoming h3 {
+  margin: 0;
+  color: var(--cyan);
+  font-size: 0.82rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.depot-returns-upcoming p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.depot-returns-upcoming ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.depot-returns-upcoming li {
+  display: grid;
+  grid-template-columns: minmax(88px, 0.7fr) minmax(110px, 0.9fr) minmax(120px, 1fr);
+  gap: var(--s2);
+  align-items: center;
+  min-height: 40px;
+  border-radius: 10px;
+  background: rgba(16, 43, 69, 0.58);
+  padding: 6px 10px;
+}
+
+.depot-returns-upcoming strong {
+  color: #ffffff;
+  font-size: 0.88rem;
+}
+
+.depot-returns-upcoming span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 .depot-return-card {
@@ -4298,7 +4449,17 @@ select:focus-visible {
     grid-template-columns: 1fr;
   }
 
-  .depot-returns-controls .small-button {
+  .depot-returns-upcoming li {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 10px;
+  }
+
+  .depot-returns-upcoming li span:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .depot-returns-actions .small-button,
+  .depot-returns-actions .depot-returns-search {
     width: 100%;
   }
 

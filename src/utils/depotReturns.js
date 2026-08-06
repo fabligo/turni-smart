@@ -2,6 +2,10 @@ import { timeToMinutes } from './timeUtils.js';
 
 export const DEPOT_CODE = 'GERB';
 export const RETURN_WINDOW_MINUTES = 30;
+// Oltre la finestra scelta continuiamo a guardare avanti: serve solo a dire
+// all'utente a che ora passa il primo rientro utile, non a proporlo come esito.
+export const SEARCH_HORIZON_MINUTES = 720;
+export const SERVICE_TYPES = ['feriali', 'sabato', 'festivi'];
 
 // Un rientro utile resta una corsa sola o pochi tratti concatenati dello stesso
 // mezzo: oltre questi limiti non e' piu' un rientro immediato in deposito.
@@ -103,24 +107,9 @@ function buildChain(run, startIndex) {
   return null;
 }
 
-/**
- * Restituisce i mezzi che transitano dal posto cambio indicato entro la
- * finestra richiesta e che proseguono fino al deposito Gerbido, anche quando
- * il deposito non e' il capolinea del primo tratto.
- */
-export function buildReturnMatches(developments = {}, selectedPlace, options = {}) {
-  const place = normalizePlace(selectedPlace);
-  if (!place || place === DEPOT_CODE) return [];
-
-  const {
-    now = new Date(),
-    offsetMinutes = 0,
-    time = '',
-    windowMinutes = RETURN_WINDOW_MINUTES,
-  } = options;
-
-  // Un orario esplicito vince sull'offset: e' l'ora in cui l'utente passa
-  // davvero dal posto cambio.
+// L'orario esplicito vince sull'offset: e' l'ora in cui l'utente passa
+// davvero dal posto cambio.
+function resolveTargetDate({ now, offsetMinutes, time }) {
   const explicitMinutes = parseClockMinutes(time);
   const targetDate = new Date(now.getTime());
   if (explicitMinutes === null) {
@@ -128,11 +117,53 @@ export function buildReturnMatches(developments = {}, selectedPlace, options = {
   } else {
     targetDate.setHours(Math.floor(explicitMinutes / 60), explicitMinutes % 60, 0, 0);
   }
+  return targetDate;
+}
+
+/**
+ * Cerca i rientri e racconta anche perche' una ricerca resta vuota: senza
+ * questi conteggi il pannello puo' solo dire "nessun risultato", che e'
+ * indistinguibile da una funzione rotta.
+ *
+ * Torna i rientri dentro la finestra (`matches`), quelli piu' avanti
+ * nell'orizzonte di ricerca (`upcoming`) e i contatori dei passaggi dal posto
+ * cambio, divisi per tipo di servizio.
+ */
+export function searchReturns(developments = {}, selectedPlace, options = {}) {
+  const place = normalizePlace(selectedPlace);
+
+  const {
+    now = new Date(),
+    offsetMinutes = 0,
+    time = '',
+    windowMinutes = RETURN_WINDOW_MINUTES,
+    horizonMinutes = SEARCH_HORIZON_MINUTES,
+    service: requestedService = '',
+  } = options;
+
+  const targetDate = resolveTargetDate({ now, offsetMinutes, time });
   const targetMinutes = targetDate.getHours() * 60 + targetDate.getMinutes();
-  const service = getTodayServiceType(targetDate);
+  const service = SERVICE_TYPES.includes(requestedService) ? requestedService : getTodayServiceType(targetDate);
+  const horizon = Math.max(windowMinutes, horizonMinutes);
+
+  const result = {
+    isDepot: place === DEPOT_CODE,
+    matches: [],
+    // Passaggi dal posto cambio nell'orizzonte, anche se non portano in deposito.
+    passages: 0,
+    passagesByService: {},
+    place,
+    placeKnown: false,
+    service,
+    targetMinutes,
+    upcoming: [],
+    windowMinutes,
+  };
+
+  if (!place || place === DEPOT_CODE) return result;
 
   const seen = new Set();
-  const matches = [];
+  const found = [];
 
   Object.entries(developments).forEach(([key, segments]) => {
     if (!Array.isArray(segments)) return;
@@ -140,11 +171,18 @@ export function buildReturnMatches(developments = {}, selectedPlace, options = {
 
     groupByRun(segments).forEach((run) => {
       run.forEach((segment, index) => {
+        if (normalizePlace(segment.loc_s) === place || normalizePlace(segment.loc_e) === place) {
+          result.placeKnown = true;
+        }
         if (normalizePlace(segment.loc_s) !== place) return;
-        if (getServiceType(segment.gt) !== service) return;
 
         const waitMinutes = minutesFromNow(segment.start, targetMinutes);
-        if (waitMinutes < 0 || waitMinutes > windowMinutes) return;
+        if (waitMinutes < 0 || waitMinutes > horizon) return;
+
+        const segmentService = getServiceType(segment.gt);
+        result.passagesByService[segmentService] = (result.passagesByService[segmentService] || 0) + 1;
+        if (segmentService !== service) return;
+        result.passages += 1;
 
         const chain = buildChain(run, index);
         if (!chain) return;
@@ -159,7 +197,7 @@ export function buildReturnMatches(developments = {}, selectedPlace, options = {
         if (seen.has(identity)) return;
         seen.add(identity);
 
-        matches.push({
+        found.push({
           arrival: arrival.end,
           departure: segment.start,
           direct: chain.length === 1,
@@ -182,7 +220,21 @@ export function buildReturnMatches(developments = {}, selectedPlace, options = {
     });
   });
 
-  return matches.sort(
+  found.sort(
     (a, b) => a.waitMinutes - b.waitMinutes || a.rideMinutes - b.rideMinutes || timeToMinutes(a.departure) - timeToMinutes(b.departure),
   );
+
+  result.matches = found.filter((item) => item.waitMinutes <= windowMinutes);
+  result.upcoming = found.filter((item) => item.waitMinutes > windowMinutes);
+
+  return result;
+}
+
+/**
+ * Restituisce i mezzi che transitano dal posto cambio indicato entro la
+ * finestra richiesta e che proseguono fino al deposito Gerbido, anche quando
+ * il deposito non e' il capolinea del primo tratto.
+ */
+export function buildReturnMatches(developments = {}, selectedPlace, options = {}) {
+  return searchReturns(developments, selectedPlace, options).matches;
 }

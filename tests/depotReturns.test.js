@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildReturnMatches, parseClockMinutes, RETURN_WINDOW_MINUTES } from '../src/utils/depotReturns.js';
+import {
+  buildReturnMatches,
+  parseClockMinutes,
+  RETURN_WINDOW_MINUTES,
+  searchReturns,
+} from '../src/utils/depotReturns.js';
 
 // Lunedi 4 maggio 2026, ore 14:00: giorno feriale.
 const NOW = new Date(2026, 4, 4, 14, 0, 0);
@@ -176,4 +181,60 @@ test('non propone rientri se il posto cambio e gia il deposito', () => {
   };
 
   assert.deepEqual(buildReturnMatches(developments, 'GERB', { now: NOW }), []);
+  assert.equal(searchReturns(developments, 'GERB', { now: NOW }).isDepot, true);
+});
+
+test('allarga la finestra di ricerca su richiesta', () => {
+  const developments = {
+    '071 12': [segment({ ln: '71', vett: '5', start: '15:20', loc_s: 'PITA', end: '15:45', loc_e: 'GERB' })],
+  };
+
+  assert.deepEqual(buildReturnMatches(developments, 'PITA', { now: NOW }), []);
+  const [match] = buildReturnMatches(developments, 'PITA', { now: NOW, windowMinutes: 120 });
+  assert.equal(match.departure, '15:20');
+  assert.equal(match.waitMinutes, 80);
+});
+
+test('segnala il primo rientro utile oltre la finestra scelta', () => {
+  const developments = {
+    '071 12': [segment({ ln: '71', vett: '5', start: '15:20', loc_s: 'PITA', end: '15:45', loc_e: 'GERB' })],
+  };
+
+  const result = searchReturns(developments, 'PITA', { now: NOW });
+  assert.deepEqual(result.matches, []);
+  assert.equal(result.upcoming.length, 1);
+  assert.equal(result.upcoming[0].departure, '15:20');
+  assert.equal(result.placeKnown, true);
+});
+
+test('distingue un posto cambio assente dagli orari da uno senza rientri', () => {
+  const developments = {
+    '071 12': [segment({ ln: '71', vett: '5', start: '14:10', loc_s: 'PITA', end: '14:35', loc_e: 'CATT' })],
+  };
+
+  const unknown = searchReturns(developments, 'LING', { now: NOW });
+  assert.equal(unknown.placeKnown, false);
+  assert.equal(unknown.passages, 0);
+
+  const known = searchReturns(developments, 'PITA', { now: NOW });
+  assert.equal(known.placeKnown, true);
+  assert.equal(known.passages, 1);
+  assert.deepEqual(known.matches, []);
+});
+
+test('riconosce quando gli orari coprono solo un altro tipo di servizio', () => {
+  const developments = {
+    '071 12': [
+      segment({ ln: '71', vett: '5', start: '14:10', loc_s: 'PITA', end: '14:35', loc_e: 'GERB', gt: 'SABATO' }),
+    ],
+  };
+
+  const result = searchReturns(developments, 'PITA', { now: NOW });
+  assert.equal(result.service, 'feriali');
+  assert.equal(result.passages, 0);
+  assert.equal(result.passagesByService.sabato, 1);
+
+  const forced = searchReturns(developments, 'PITA', { now: NOW, service: 'sabato' });
+  assert.equal(forced.matches.length, 1);
+  assert.equal(forced.matches[0].departure, '14:10');
 });

@@ -52,7 +52,16 @@ export const DEMO_DEVELOPMENTS = {
     { start: '05:54', loc_s: 'GERB', dir: '-', end: '10:53', loc_e: 'PITA', vett: '31', gt: 'LUN - VEN', run_id: 1 },
     { start: '11:56', loc_s: 'PITA', dir: 'R', end: '13:53', loc_e: 'PITA', vett: '32', gt: 'LUN - VEN', run_id: 1 },
   ],
+  // Riprese di altri turni che riportano la vettura in deposito: servono alla
+  // demo dei rientri, altrimenti da Piazza Tasso non risulterebbe mai nulla.
+  '02 45': [
+    { start: '10:53', loc_s: 'PITA', dir: '-', end: '11:41', loc_e: 'GERB', vett: '31', gt: 'LUN - VEN', run_id: 1 },
+  ],
   '05 101': [{ start: '04:00', loc_s: 'GERB', dir: '-', end: '10:15', loc_e: 'GERB', vett: '1', gt: 'LUN - VEN', run_id: 1 }],
+  '05 210': [
+    { start: '12:02', loc_s: 'CATT', dir: 'A', end: '12:29', loc_e: 'PITA', vett: '25', gt: 'LUN - VEN', run_id: 1 },
+    { start: '12:34', loc_s: 'PITA', dir: '-', end: '13:05', loc_e: 'GERB', vett: '25', gt: 'LUN - VEN', run_id: 1 },
+  ],
   '05 203': [
     { start: '08:35', loc_s: 'CATT', dir: 'R', end: '10:21', loc_e: 'CATT', vett: '25', gt: 'LUN - VEN', run_id: 1 },
     { start: '10:45', loc_s: 'CATT', dir: 'R', end: '15:11', loc_e: 'CATT', vett: '3', gt: 'LUN - VEN', run_id: 1 },
