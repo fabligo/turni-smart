@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CHANGE_POINTS, getChangePointStop } from '../src/constants/changePoints.js';
+import { CHANGE_POINTS, getChangePointLabel, getChangePointStop } from '../src/constants/changePoints.js';
 import {
+  buildChangePointDirectionsUrl,
   buildDepotDirectionsUrl,
   buildGttPassagesTarget,
   buildMoovitDirectionsUrl,
@@ -72,7 +73,8 @@ test('il percorso al deposito parte dalla posizione e va in mezzi pubblici', () 
   assert.match(url, /^https:\/\/www\.google\.com\/maps\/dir\/\?/);
   assert.match(url, /origin=45\.066800%2C7\.651300/);
   assert.match(url, /travelmode=transit/);
-  assert.match(url, /destination=Deposito\+GTT\+Gerbido/);
+  // Il deposito e' in via Gorini: lo dice GTT sulla destinazione della 74.
+  assert.match(url, /destination=Via\+Gorini%2C\+Torino/);
 
   assert.equal(buildDepotDirectionsUrl({ lat: 'boh', lng: 7.6 }), '');
   assert.equal(buildDepotDirectionsUrl(), '');
@@ -83,6 +85,7 @@ test('il percorso Moovit usa lo schema dell app, non un indirizzo web', () => {
   assert.match(url, /^moovit:\/\/directions\?/);
   assert.match(url, /orig_lat=45\.066800&orig_lon=7\.651300/);
   assert.match(url, /dest_lat=45\.041900&dest_lon=7\.588600/);
+  assert.match(url, /dest_name=Via%20Gorini/);
   assert.match(url, /auto_run=true/);
   // Gli spazi restano spazi codificati: un piu' non verrebbe riletto come tale.
   assert.match(url, /orig_name=La%20mia%20posizione/);
@@ -98,4 +101,26 @@ test('resta l indirizzo web di Moovit per chi non ha l app', () => {
   assert.match(url, /fll=45\.066800_7\.651300/);
   assert.match(url, /tll=45\.041900_7\.588600/);
   assert.equal(buildMoovitWebUrl(), '');
+});
+
+test('i nomi dei posti cambio sono quelli delle paline GTT', () => {
+  assert.equal(getChangePointLabel('PITA'), 'Pitagora Nord');
+  assert.equal(getChangePointLabel('OSET'), 'Settembrini');
+  assert.equal(getChangePointLabel('CAIO'), 'Caio Mario');
+  assert.equal(getChangePointLabel('BARB'), 'Portofino');
+  assert.equal(getChangePointLabel('CLGR'), 'Gramsci Nord');
+  assert.equal(getChangePointLabel('CLMA'), 'Macedonia');
+  // Un codice che gli orari hanno ma la tabella no resta il codice.
+  assert.equal(getChangePointLabel('BABE'), 'BABE');
+});
+
+test('il percorso fino al posto cambio usa il suo indirizzo', () => {
+  const url = buildChangePointDirectionsUrl({ lat: 45.0668, lng: 7.6513 }, 'CAIO');
+  assert.match(url, /origin=45\.066800%2C7\.651300/);
+  assert.match(url, /destination=Piazzale\+Caio\+Mario%2C\+Torino/);
+  assert.match(url, /travelmode=transit/);
+
+  // Senza indirizzo non si inventa una destinazione.
+  assert.equal(buildChangePointDirectionsUrl({ lat: 45.06, lng: 7.65 }, 'BABE'), '');
+  assert.equal(buildChangePointDirectionsUrl({}, 'CAIO'), '');
 });

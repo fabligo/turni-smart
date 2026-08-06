@@ -8,12 +8,13 @@ import {
   searchReturns,
 } from '../utils/depotReturns.js';
 import {
+  readChangePointDirectionsUrl,
   readDepotDirectionsUrl,
   readDepotMapsDirectionsUrl,
   readMoovitWebUrl,
   readNearbyStopsUrl,
 } from '../utils/nearbyStops.js';
-import { getChangePointStop } from '../constants/changePoints.js';
+import { getChangePointLabel, getChangePointStop } from '../constants/changePoints.js';
 import { formatMinutes } from '../utils/timeUtils.js';
 import { Icon } from './Icon.jsx';
 
@@ -364,9 +365,9 @@ export function DepotReturnsPanel({ developments = {} }) {
                 <div>
                   <strong>Linea {getLineDisplayName(item.line)}</strong>
                   <span>
-                    {result.anyPlace ? `parte da ${item.from} · ` : ''}
-                    {item.direct ? 'diretto in deposito' : `${item.legs.length} tratti`}
+                    parte da {getChangePointLabel(item.from)}
                     {getChangePointStop(item.from, { line: item.line }) ? ` · palina ${getChangePointStop(item.from, { line: item.line })}` : ''}
+                    {` · ${item.direct ? 'diretto in deposito' : `${item.legs.length} tratti`}`}
                   </span>
                 </div>
                 <div>
@@ -381,6 +382,26 @@ export function DepotReturnsPanel({ developments = {} }) {
                     parte {formatWait(item.waitMinutes, waitAnchor)} · {item.rideMinutes} min di viaggio
                     {item.vehicleShift ? ` · vettura ${item.vehicleShift}` : ''}
                   </span>
+                  {positionLink?.kind === `to-${item.from}` ? (
+                    <a
+                      className="depot-returns-maps-link"
+                      href={positionLink.url}
+                      onClick={() => setPositionLink(null)}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                    >
+                      Apri il percorso fino a {getChangePointLabel(item.from)}
+                    </a>
+                  ) : (
+                    <button
+                      className="depot-returns-maps-link"
+                      disabled={Boolean(geoBusy)}
+                      onClick={() => readPosition(() => readChangePointDirectionsUrl(item.from), `to-${item.from}`)}
+                      type="button"
+                    >
+                      {geoBusy === `to-${item.from}` ? 'Leggo la posizione…' : 'ci arrivo in tempo?'}
+                    </button>
+                  )}
                 </div>
             </article>
           ))

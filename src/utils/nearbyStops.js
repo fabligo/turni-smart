@@ -1,4 +1,5 @@
 import {
+  buildChangePointDirectionsUrl,
   buildDepotDirectionsUrl,
   buildMoovitDirectionsUrl,
   buildMoovitWebUrl,
@@ -73,4 +74,8 @@ export function readDepotMapsDirectionsUrl() {
 
 export function readMoovitWebUrl() {
   return readPositionUrl(buildMoovitWebUrl);
+}
+
+export function readChangePointDirectionsUrl(code) {
+  return readPositionUrl((position) => buildChangePointDirectionsUrl(position, code));
 }
