@@ -3,7 +3,6 @@ import { CHANGE_POINTS } from '../constants/changePoints.js';
 import { getLineDisplayName } from '../constants/depotGerbido.js';
 import {
   ANY_PLACE,
-  DEPOT_CODE,
   formatClock,
   MAX_RIDE_MINUTES,
   normalizePlace,
@@ -81,10 +80,12 @@ function formatWindow(windowMinutes) {
 
 export function DepotReturnsPanel({ developments = {} }) {
   const { inTimetable, others } = useMemo(() => getChangePointGroups(developments), [developments]);
-  const defaultPlace = inTimetable.find((code) => code !== DEPOT_CODE) || '';
 
   const [form, setForm] = useState(() => ({
-    place: defaultPlace,
+    // Si apre su Ovunque: a fine turno serve il primo mezzo che rientra, da
+    // qualunque posto cambio. Un posto scelto in ordine alfabetico nasconde
+    // tutto il resto.
+    place: ANY_PLACE,
     service: '',
     time: clockFromNow(0),
     windowMinutes: RETURN_WINDOW_MINUTES,
@@ -144,6 +145,9 @@ export function DepotReturnsPanel({ developments = {} }) {
 
   // "Adesso" vale solo se l'orario cercato e' ancora il minuto corrente.
   const waitAnchor = { anchor: criteria.time, anchorIsNow: criteria.time === clockFromNow(0) };
+  // Le linee che stanno rientrando, in ordine di arrivo: e' la risposta corta
+  // alla domanda "quale linea prendo per tornare al Gerbido".
+  const returningLines = [...new Set(result.matches.map((item) => getLineDisplayName(item.line)))];
   const nextUpcoming = result.upcoming[0];
   const otherServices = Object.entries(result.passagesByService).filter(
     ([service, count]) => service !== result.service && count > 0,
@@ -173,11 +177,20 @@ export function DepotReturnsPanel({ developments = {} }) {
 
     if (!result.passages && otherServices.length) {
       return (
-        <p className="result-message">
-          {anyPlace ? 'Gli orari caricati hanno' : `Da ${placeLabel} gli orari caricati hanno`} corse solo per il servizio{' '}
-          {otherServices.map(([service]) => SERVICE_LABELS[service] || service).join(' e ')}, non per il servizio{' '}
-          {SERVICE_LABELS[result.service] || result.service}. Cambia il campo Servizio e riprova.
-        </p>
+        <div className="result-message">
+          <p>
+            {anyPlace ? 'Gli orari caricati hanno' : `Da ${placeLabel} gli orari caricati hanno`} corse solo per il
+            servizio {otherServices.map(([service]) => SERVICE_LABELS[service] || service).join(' e ')}, non per il
+            servizio {SERVICE_LABELS[result.service] || result.service}.
+          </p>
+          <div className="depot-returns-quick">
+            {otherServices.map(([service]) => (
+              <button key={service} onClick={() => runSearch({ service })} type="button">
+                Cerca nel servizio {SERVICE_LABELS[service] || service}
+              </button>
+            ))}
+          </div>
+        </div>
       );
     }
 
@@ -367,6 +380,15 @@ export function DepotReturnsPanel({ developments = {} }) {
             : `Nessun rientro ${result.anyPlace ? 'verso il Gerbido' : `da ${criteria.place}`}`}{' '}
           · passaggio alle {criteria.time} · entro {formatWindow(criteria.windowMinutes)} · servizio{' '}
           {SERVICE_LABELS[result.service] || result.service}
+        </p>
+      ) : null}
+
+      {!searching && returningLines.length ? (
+        <p className="depot-returns-lines">
+          <span>Linee in rientro</span>
+          {returningLines.map((line) => (
+            <strong key={line}>{line}</strong>
+          ))}
         </p>
       ) : null}
 

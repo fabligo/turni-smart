@@ -2771,6 +2771,33 @@ a.inline-action {
   border: 2px solid var(--yellow);
 }
 
+.depot-returns-lines {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.depot-returns-lines span {
+  color: var(--cyan);
+  font-size: 0.78rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.depot-returns-lines strong {
+  min-width: 38px;
+  border-radius: 999px;
+  background: var(--yellow);
+  color: #04243f;
+  font-size: 0.9rem;
+  font-weight: 950;
+  text-align: center;
+  padding: 4px 10px;
+}
+
 .depot-returns-progress {
   display: grid;
   gap: 8px;
