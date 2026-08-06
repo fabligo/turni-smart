@@ -2790,6 +2790,18 @@ a.inline-action {
   text-decoration: none;
 }
 
+.depot-returns-maps-link {
+  justify-self: start;
+  border: 0;
+  background: none;
+  color: var(--cyan);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 900;
+  padding: 4px 0;
+  text-decoration: underline;
+}
+
 .depot-returns-lines {
   display: flex;
   flex-wrap: wrap;

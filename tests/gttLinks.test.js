@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CHANGE_POINTS, getChangePointStop } from '../src/constants/changePoints.js';
-import { buildDepotDirectionsUrl, buildGttPassagesTarget, buildNearbyStopsUrl } from '../src/utils/gttLinks.js';
+import {
+  buildDepotDirectionsUrl,
+  buildGttPassagesTarget,
+  buildMoovitDirectionsUrl,
+  buildNearbyStopsUrl,
+} from '../src/utils/gttLinks.js';
 
 test('risolve la palina per direzione', () => {
   assert.equal(getChangePointStop('CATT', { direction: 'A' }), '307');
@@ -70,4 +75,15 @@ test('il percorso al deposito parte dalla posizione e va in mezzi pubblici', () 
 
   assert.equal(buildDepotDirectionsUrl({ lat: 'boh', lng: 7.6 }), '');
   assert.equal(buildDepotDirectionsUrl(), '');
+});
+
+test('il percorso su Moovit porta posizione e deposito come coordinate', () => {
+  const url = buildMoovitDirectionsUrl({ lat: 45.0668, lng: 7.6513 });
+  assert.match(url, /^https:\/\/moovitapp\.com\/\?/);
+  assert.match(url, /fll=45\.066800_7\.651300/);
+  assert.match(url, /tll=45\.041900_7\.588600/);
+  assert.match(url, /lang=it/);
+
+  assert.equal(buildMoovitDirectionsUrl({ lat: null, lng: 7.6 }), '');
+  assert.equal(buildMoovitDirectionsUrl(), '');
 });

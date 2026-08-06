@@ -7,7 +7,7 @@ import {
   RETURN_WINDOW_MINUTES,
   searchReturns,
 } from '../utils/depotReturns.js';
-import { readDepotDirectionsUrl, readNearbyStopsUrl } from '../utils/nearbyStops.js';
+import { readDepotDirectionsUrl, readDepotMapsDirectionsUrl, readNearbyStopsUrl } from '../utils/nearbyStops.js';
 import { getChangePointStop } from '../constants/changePoints.js';
 import { formatMinutes } from '../utils/timeUtils.js';
 import { Icon } from './Icon.jsx';
@@ -202,8 +202,8 @@ export function DepotReturnsPanel({ developments = {} }) {
         <h2 id="depot-returns-title">Come rientro al Gerbido</h2>
         <p>
           Tutte le corse di servizio che rientrano al Gerbido dopo l&apos;orario indicato, da qualsiasi posto cambio, con
-          la palina da cui partono. Cosa passa qui vicino elenca le fermate intorno a te; Come arrivo al Gerbido calcola
-          linee e cambi dalla tua posizione fino al deposito.
+          la palina da cui partono. Cosa passa qui vicino elenca le fermate intorno a te; Come arrivo al Gerbido apre su
+          Moovit linee, orari e cambi dalla tua posizione fino al deposito.
         </p>
       </div>
 
@@ -286,14 +286,14 @@ export function DepotReturnsPanel({ developments = {} }) {
               target="_blank"
             >
               <Icon name="route" size={18} />
-              Apri il percorso al Gerbido
+              Apri il percorso su Moovit
             </a>
           ) : (
             <button
               className="small-button"
               disabled={Boolean(geoBusy)}
               onClick={() => readPosition(readDepotDirectionsUrl, 'depot')}
-              title="Linee e cambi per arrivare al deposito da dove sei adesso, sulla rete GTT"
+              title="Linee, orari e cambi per arrivare al deposito da dove sei adesso, su Moovit"
               type="button"
             >
               <Icon name="route" size={18} />
@@ -388,7 +388,7 @@ export function DepotReturnsPanel({ developments = {} }) {
       {!searching && !result.matches.length ? (
         <div className="depot-returns-fallback">
           <p>
-            Nessun mezzo di servizio ti riporta in deposito adesso. La mappa parte da dove sei, prende la fermata piu
+            Nessun mezzo di servizio ti riporta in deposito adesso. Moovit parte da dove sei, prende la fermata piu
             vicina e ti da linee, orari di passaggio e cambi fino al Gerbido.
           </p>
           {positionLink?.kind === 'depot' ? (
@@ -400,7 +400,7 @@ export function DepotReturnsPanel({ developments = {} }) {
               target="_blank"
             >
               <Icon name="route" size={18} />
-              Apri il percorso al Gerbido
+              Apri il percorso su Moovit
             </a>
           ) : (
             <button
@@ -411,6 +411,27 @@ export function DepotReturnsPanel({ developments = {} }) {
             >
               <Icon name="route" size={18} />
               {geoBusy === 'depot' ? 'Leggo la posizione…' : 'Come arrivo al Gerbido da qui'}
+            </button>
+          )}
+          {/* Riserva: se Moovit non risponde come deve, la mappa fa lo stesso. */}
+          {positionLink?.kind === 'maps' ? (
+            <a
+              className="depot-returns-maps-link"
+              href={positionLink.url}
+              onClick={() => setPositionLink(null)}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              Apri lo stesso percorso su Google Maps
+            </a>
+          ) : (
+            <button
+              className="depot-returns-maps-link"
+              disabled={Boolean(geoBusy)}
+              onClick={() => readPosition(readDepotMapsDirectionsUrl, 'maps')}
+              type="button"
+            >
+              {geoBusy === 'maps' ? 'Leggo la posizione…' : 'oppure con Google Maps'}
             </button>
           )}
         </div>
