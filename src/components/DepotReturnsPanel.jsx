@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CHANGE_POINTS, getChangePointLabel } from '../constants/changePoints.js';
+import { CHANGE_POINTS } from '../constants/changePoints.js';
 import { getLineDisplayName } from '../constants/depotGerbido.js';
 import {
   DEPOT_CODE,
@@ -8,6 +8,14 @@ import {
   RETURN_WINDOW_MINUTES,
   searchReturns,
 } from '../utils/depotReturns.js';
+import {
+  clearChangePointPosition,
+  listLocatedChangePoints,
+  loadChangePointDirectory,
+  resolveChangePointName,
+  setChangePointName,
+  setChangePointPosition,
+} from '../utils/changePointDirectory.js';
 import { formatMinutes } from '../utils/timeUtils.js';
 import { Icon } from './Icon.jsx';
 
@@ -51,27 +59,21 @@ function haversineMeters(a, b) {
   return 2 * radius * Math.asin(Math.sqrt(h));
 }
 
-function findNearestChangePoint(position) {
-  const current = { lat: position.coords.latitude, lng: position.coords.longitude };
-  return Object.entries(CHANGE_POINTS)
-    .map(([code, item]) => {
-      if (!item.coordinates) return null;
-      return {
-        code,
-        distance: haversineMeters(current, item.coordinates),
-      };
-    })
-    .filter(Boolean)
+function findNearestChangePoint(current, directory) {
+  return listLocatedChangePoints(directory)
+    .map(({ code, position }) => ({ code, distance: haversineMeters(current, position) }))
     .sort((a, b) => a.distance - b.distance)[0];
 }
 
-function sortByLabel(codes) {
-  return [...codes].sort((a, b) => getChangePointLabel(a).localeCompare(getChangePointLabel(b), 'it'));
+function sortByLabel(codes, directory) {
+  return [...codes].sort((a, b) =>
+    resolveChangePointName(a, directory).localeCompare(resolveChangePointName(b, directory), 'it'),
+  );
 }
 
 // I posti cambio presenti negli orari caricati vanno separati dagli altri:
 // sceglierne uno senza corse e' il modo piu' rapido per non trovare nulla.
-function getChangePointGroups(developments = {}) {
+function getChangePointGroups(developments = {}, directory = {}) {
   const inTimetable = new Set();
   Object.values(developments).forEach((segments) => {
     if (!Array.isArray(segments)) return;
@@ -81,15 +83,20 @@ function getChangePointGroups(developments = {}) {
     });
   });
   const others = Object.keys(CHANGE_POINTS).filter((code) => !inTimetable.has(code));
-  return { inTimetable: sortByLabel(inTimetable), others: sortByLabel(others) };
+  return { inTimetable: sortByLabel(inTimetable, directory), others: sortByLabel(others, directory) };
 }
 
-function formatWait(waitMinutes) {
-  if (waitMinutes <= 0) return 'in transito ora';
-  if (waitMinutes === 1) return 'tra 1 minuto';
-  // Sui rientri lontani "tra 154 minuti" non dice niente: meglio ore e minuti.
-  if (waitMinutes >= 60) return `tra ${formatMinutes(waitMinutes)}`;
-  return `tra ${waitMinutes} minuti`;
+/**
+ * L'attesa e' sempre contata dall'orario di passaggio cercato, non dall'ora
+ * corrente: "tra 49 minuti" si puo' dire solo se i due coincidono, altrimenti
+ * l'attesa va ancorata all'orario cercato o si legge come un conto alla
+ * rovescia da adesso, che sarebbe falso.
+ */
+function formatWait(waitMinutes, { anchor = '', anchorIsNow = false } = {}) {
+  if (waitMinutes <= 0) return anchorIsNow ? 'in transito ora' : `in transito alle ${anchor}`;
+  // Sui rientri lontani "154 minuti" non dice niente: meglio ore e minuti.
+  const amount = waitMinutes >= 60 ? formatMinutes(waitMinutes) : `${waitMinutes} ${waitMinutes === 1 ? 'minuto' : 'minuti'}`;
+  return anchorIsNow ? `tra ${amount}` : `${amount} dopo le ${anchor}`;
 }
 
 function formatWindow(windowMinutes) {
@@ -99,8 +106,15 @@ function formatWindow(windowMinutes) {
 }
 
 export function DepotReturnsPanel({ developments = {} }) {
-  const { inTimetable, others } = useMemo(() => getChangePointGroups(developments), [developments]);
+  // L'anagrafica dei posti cambio: nomi e posizioni li mette chi guida, l'app
+  // non ne inventa nessuno.
+  const [directory, setDirectory] = useState(() => loadChangePointDirectory());
+  const { inTimetable, others } = useMemo(
+    () => getChangePointGroups(developments, directory),
+    [developments, directory],
+  );
   const defaultPlace = inTimetable.find((code) => code !== DEPOT_CODE) || '';
+  const placeName = (code) => resolveChangePointName(code, directory);
 
   const [form, setForm] = useState(() => ({
     place: defaultPlace,
@@ -113,6 +127,7 @@ export function DepotReturnsPanel({ developments = {} }) {
   const [criteria, setCriteria] = useState(form);
   const [geoMessage, setGeoMessage] = useState('');
   const [searching, setSearching] = useState(false);
+  const [renaming, setRenaming] = useState('');
 
   const result = useMemo(
     () =>
@@ -147,27 +162,60 @@ export function DepotReturnsPanel({ developments = {} }) {
     return () => clearTimeout(timer);
   }, [criteria, searching]);
 
-  function useCurrentPosition() {
-    setGeoMessage('');
+  // Sempre una lettura fresca: una posizione in cache registrerebbe il posto
+  // cambio dove eravamo mezzo minuto fa, cioe' altrove.
+  function readPosition(onPosition) {
     if (!navigator.geolocation) {
       setGeoMessage('Geolocalizzazione non disponibile su questo dispositivo.');
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const nearest = findNearestChangePoint(position);
-        if (!nearest || nearest.distance > GEO_MAX_DISTANCE_METERS) {
-          setGeoMessage('Posizione rilevata, ma nessun posto cambio censito vicino. Selezionalo manualmente.');
-          return;
-        }
-        runSearch({ place: nearest.code });
-        setGeoMessage(`Posto cambio rilevato: ${getChangePointLabel(nearest.code)} (${Math.round(nearest.distance)} m).`);
-      },
+      (position) =>
+        onPosition({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        }),
       () => setGeoMessage('Permesso posizione negato o posizione non disponibile. Seleziona il posto cambio manualmente.'),
-      { enableHighAccuracy: true, maximumAge: 30000, timeout: 9000 },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 12000 },
     );
   }
 
+  function useCurrentPosition() {
+    setGeoMessage('Leggo la posizione…');
+    readPosition((current) => {
+      const nearest = findNearestChangePoint(current, directory);
+      if (!nearest || nearest.distance > GEO_MAX_DISTANCE_METERS) {
+        setGeoMessage('Posizione rilevata, ma nessun posto cambio noto qui vicino. Scegli quale sei e registralo.');
+        return;
+      }
+      runSearch({ place: nearest.code });
+      setGeoMessage(`Posto cambio rilevato: ${placeName(nearest.code)} (${Math.round(nearest.distance)} m).`);
+    });
+  }
+
+  function storeCurrentPosition() {
+    if (!form.place) return;
+    setGeoMessage(`Leggo la posizione da registrare per ${placeName(form.place)}…`);
+    readPosition((current) => {
+      setDirectory(setChangePointPosition(form.place, current));
+      const accuracy = Math.round(Number(current.accuracy));
+      const precision = Number.isFinite(accuracy) ? ` con precisione ${accuracy} m` : '';
+      const retry = Number.isFinite(accuracy) && accuracy > 150 ? ' Precisione bassa: se puoi ripeti all’aperto.' : '';
+      setGeoMessage(
+        `Posizione registrata per ${placeName(form.place)}${precision}: da ora viene riconosciuto qui.${retry}`,
+      );
+    });
+  }
+
+  function forgetStoredPosition() {
+    if (!form.place) return;
+    setDirectory(clearChangePointPosition(form.place));
+    setGeoMessage(`Posizione registrata rimossa per ${placeName(form.place)}.`);
+  }
+
+  // "Adesso" vale solo se l'orario cercato e' ancora il minuto corrente.
+  const waitAnchor = { anchor: criteria.time, anchorIsNow: criteria.time === clockFromNow(0) };
   const nextUpcoming = result.upcoming[0];
   const otherServices = Object.entries(result.passagesByService).filter(
     ([service, count]) => service !== result.service && count > 0,
@@ -182,7 +230,7 @@ export function DepotReturnsPanel({ developments = {} }) {
       return <p className="result-message">Sei gia al deposito Gerbido: nessun rientro da cercare.</p>;
     }
 
-    const placeLabel = getChangePointLabel(criteria.place);
+    const placeLabel = placeName(criteria.place);
 
     if (!result.placeKnown) {
       return (
@@ -207,7 +255,7 @@ export function DepotReturnsPanel({ developments = {} }) {
     if (nextUpcoming) {
       return (
         <p className="result-message">
-          Nessun rientro da {placeLabel} nei {formatWindow(criteria.windowMinutes)} dopo le {criteria.time}: i prossimi
+          Nessun rientro da {placeLabel} entro {formatWindow(criteria.windowMinutes)} dalle {criteria.time}: i prossimi
           non passano prima delle {nextUpcoming.departure}.
         </p>
       );
@@ -261,7 +309,7 @@ export function DepotReturnsPanel({ developments = {} }) {
                 <optgroup label="Presenti negli orari caricati">
                   {inTimetable.map((code) => (
                     <option key={code} value={code}>
-                      {code} · {getChangePointLabel(code)}
+                      {placeName(code) === code ? code : `${code} · ${placeName(code)}`}
                     </option>
                   ))}
                 </optgroup>
@@ -270,7 +318,7 @@ export function DepotReturnsPanel({ developments = {} }) {
                 <optgroup label="Senza corse negli orari caricati">
                   {others.map((code) => (
                     <option key={code} value={code}>
-                      {code} · {getChangePointLabel(code)}
+                      {placeName(code) === code ? code : `${code} · ${placeName(code)}`}
                     </option>
                   ))}
                 </optgroup>
@@ -341,7 +389,7 @@ export function DepotReturnsPanel({ developments = {} }) {
             <span className="depot-returns-progress__bar" />
           </span>
           <span className="depot-returns-progress__label">
-            Cerco le linee che passano da {getChangePointLabel(criteria.place) || 'qui'} e proseguono fino al Gerbido…
+            Cerco le linee che passano da {placeName(criteria.place) || 'qui'} e proseguono fino al Gerbido…
           </span>
         </div>
       ) : null}
@@ -351,11 +399,65 @@ export function DepotReturnsPanel({ developments = {} }) {
       ) : null}
       {geoMessage ? <p className="depot-returns-message">{geoMessage}</p> : null}
 
+      {form.place ? (
+        <div className="depot-returns-place-card">
+          <div className="depot-returns-place-card__head">
+            <strong>{form.place}</strong>
+            <span>
+              {directory[form.place]?.name
+                ? `Nome tuo: ${directory[form.place].name}`
+                : 'Senza nome: gli orari lo scrivono solo cosi.'}
+              {directory[form.place]?.position ? ' · posizione registrata' : ' · posizione non registrata'}
+            </span>
+          </div>
+
+          {renaming === form.place ? (
+            <form
+              className="depot-returns-rename"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setDirectory(setChangePointName(form.place, event.target.elements.changePointName.value));
+                setRenaming('');
+              }}
+            >
+              <input
+                aria-label={`Nome del posto cambio ${form.place}`}
+                autoFocus
+                defaultValue={directory[form.place]?.name || ''}
+                maxLength={40}
+                name="changePointName"
+                placeholder="Come lo chiami tu"
+                type="text"
+              />
+              <button type="submit">Salva nome</button>
+              <button className="depot-returns-geo-forget" onClick={() => setRenaming('')} type="button">
+                Annulla
+              </button>
+            </form>
+          ) : (
+            <div className="depot-returns-geo-save">
+              <button onClick={storeCurrentPosition} type="button">
+                <Icon name="mapPin" size={16} />
+                Sono qui adesso: registra la posizione
+              </button>
+              <button className="depot-returns-geo-forget" onClick={() => setRenaming(form.place)} type="button">
+                {directory[form.place]?.name ? 'Cambia nome' : 'Dai un nome'}
+              </button>
+              {directory[form.place]?.position ? (
+                <button className="depot-returns-geo-forget" onClick={forgetStoredPosition} type="button">
+                  Cancella posizione
+                </button>
+              ) : null}
+            </div>
+          )}
+        </div>
+      ) : null}
+
       {!searching && criteria.place && !result.isDepot ? (
         <p className="depot-returns-summary">
           {result.matches.length
-            ? `${result.matches.length} ${result.matches.length === 1 ? 'rientro' : 'rientri'} da ${getChangePointLabel(criteria.place)}`
-            : `Nessun rientro da ${getChangePointLabel(criteria.place)}`}{' '}
+            ? `${result.matches.length} ${result.matches.length === 1 ? 'rientro' : 'rientri'} da ${placeName(criteria.place)}`
+            : `Nessun rientro da ${placeName(criteria.place)}`}{' '}
           · passaggio alle {criteria.time} · entro {formatWindow(criteria.windowMinutes)} · servizio{' '}
           {SERVICE_LABELS[result.service] || result.service}
         </p>
@@ -379,7 +481,7 @@ export function DepotReturnsPanel({ developments = {} }) {
                   <span>{item.route}</span>
                 </div>
                 <div>
-                  <strong>{formatWait(item.waitMinutes)}</strong>
+                  <strong>{formatWait(item.waitMinutes, waitAnchor)}</strong>
                   <span>
                     {item.rideMinutes} min di viaggio
                     {item.vehicleShift ? ` · vettura ${item.vehicleShift}` : ''}
@@ -396,7 +498,7 @@ export function DepotReturnsPanel({ developments = {} }) {
         <div className="depot-returns-upcoming">
           <h3>
             {result.matches.length ? 'Rientri successivi' : 'Prossimi rientri utili'} da{' '}
-            {getChangePointLabel(criteria.place)}
+            {placeName(criteria.place)}
           </h3>
           <p>
             Le prossime linee che passano di qui e rientrano al Gerbido non passano prima delle{' '}
@@ -410,7 +512,7 @@ export function DepotReturnsPanel({ developments = {} }) {
                   {item.departure} → {item.arrival}
                 </span>
                 <span>
-                  {formatWait(item.waitMinutes)} · {item.direct ? 'diretto in deposito' : `${item.legs.length} tratti`}
+                  {formatWait(item.waitMinutes, waitAnchor)} · {item.direct ? 'diretto in deposito' : `${item.legs.length} tratti`}
                 </span>
               </li>
             ))}

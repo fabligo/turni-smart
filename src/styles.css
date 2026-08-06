@@ -2759,6 +2759,105 @@ select:focus-visible {
   transform: scale(0.96);
 }
 
+.depot-returns-place-card {
+  display: grid;
+  gap: var(--s2);
+  border: 1px solid rgba(47, 134, 207, 0.32);
+  border-radius: 10px 30px 10px 10px;
+  background: rgba(1, 20, 36, 0.5);
+  padding: var(--s3);
+}
+
+.depot-returns-place-card__head {
+  display: grid;
+  gap: 2px;
+}
+
+.depot-returns-place-card__head strong {
+  color: #ffffff;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+}
+
+.depot-returns-place-card__head span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.depot-returns-rename {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+.depot-returns-rename input {
+  flex: 1 1 180px;
+  min-height: 42px;
+  border: 1px solid rgba(47, 134, 207, 0.38);
+  border-radius: 10px;
+  background: rgba(1, 20, 36, 0.72);
+  color: #ffffff;
+  font-weight: 900;
+  padding: 0 12px;
+}
+
+.depot-returns-rename button[type='submit'] {
+  min-height: 42px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--blue);
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 900;
+  padding: 0 18px;
+}
+
+.depot-returns-rename .depot-returns-geo-forget {
+  min-height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 900;
+  padding: 0 16px;
+}
+
+.depot-returns-geo-save {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+.depot-returns-geo-save button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1 1 200px;
+  min-height: 42px;
+  border: 1px solid rgba(255, 209, 0, 0.5);
+  border-radius: 999px;
+  background: rgba(255, 209, 0, 0.14);
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 900;
+  padding: 0 16px;
+}
+
+.depot-returns-geo-save button:active {
+  transform: scale(0.97);
+}
+
+.depot-returns-geo-save .depot-returns-geo-forget {
+  flex: 0 1 auto;
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+}
+
 .depot-returns-progress {
   display: grid;
   gap: 8px;

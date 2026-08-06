@@ -1,109 +1,62 @@
+// I codici dei posti cambio arrivano dagli orari GTT: quelli sono dati veri.
+// Nomi e coordinate no: nessuno li ha verificati, quindi qui resta solo cio' che
+// e' certo e tutto il resto lo definisce chi guida, dall'app, con "Rinomina" e
+// "Registra qui" (vedi utils/changePointDirectory.js). Un codice senza nome si
+// mostra com'e' scritto negli orari, senza inventare un luogo.
+// Le paline invece sono verificate: raccolte sul campo da chi guida queste
+// linee, non dedotte dai codici. A = andata, R = ritorno.
 export const CHANGE_POINTS = {
   GERB: {
     coordinates: { lat: 45.0419, lng: 7.5886 },
     label: 'Deposito Gerbido',
-    mapSearch: 'Deposito Gerbido GTT Torino',
-    searchLabel: 'Deposito Gerbido',
   },
   CATT: {
-    label: 'Cattaneo',
-    stops: {
-      A: { palina: '307', label: 'Cattaneo' },
-      R: { palina: '308', label: 'Cattaneo' },
-    },
+    stops: { A: '307', R: '308' },
   },
   ORSN: {
-    coordinates: null,
-    label: 'Orbassano',
-    mapSearch: 'Orbassano fermata GTT',
-    searchLabel: 'Orbassano',
-    stops: {
-      A: { palina: '317', label: 'Orbassano' },
-      R: { palina: '318', label: 'Orbassano' },
-    },
+    stops: { A: '317', R: '318' },
   },
   ORSA: {
-    coordinates: null,
-    label: 'Orbassano',
-    mapSearch: 'Orbassano fermata GTT',
-    searchLabel: 'Orbassano',
-    stops: {
-      A: { palina: '728', label: 'Orbassano' },
-      R: { palina: '729', label: 'Orbassano' },
-    },
-    stopsByLine: {
-      '62': {
-        A: { palina: '729', label: 'Orbassano' },
-        R: { palina: '728', label: 'Orbassano' },
-      },
-    },
+    stops: { A: '728', R: '729' },
+    // Sulla 62 le due direzioni sono invertite rispetto alle altre linee.
+    stopsByLine: { 62: { A: '729', R: '728' } },
   },
   PITA: {
-    coordinates: null,
-    label: 'Piazza Tasso',
-    mapSearch: 'Piazza Tasso Torino fermata GTT',
-    searchLabel: 'Piazza Tasso',
-    stops: {
-      A: { palina: '134', label: 'Piazza Tasso' },
-      R: { palina: '135', label: 'Piazza Tasso' },
-    },
+    stops: { A: '134', R: '135' },
   },
-  FILA: {
-    coordinates: null,
-    label: 'Filadelfia',
-    mapSearch: 'Filadelfia Torino fermata GTT',
-    searchLabel: 'Filadelfia',
-  },
+  FILA: {},
   LING: {
-    label: 'Lingotto',
-    stops: {
-      A: { palina: '2604', label: 'Lingotto' },
-      R: { palina: '2603', label: 'Lingotto' },
-    },
+    stops: { A: '2604', R: '2603' },
   },
   BENS: {
-    label: 'Bengasi',
-    stops: {
-      A: { palina: '3628', label: 'Bengasi' },
-      R: { palina: '1023', label: 'Bengasi' },
-    },
+    stops: { A: '3628', R: '1023' },
   },
   OSET: {
-    label: 'Ospedale San Luigi',
-    stops: {
-      A: { palina: '299', label: 'Ospedale San Luigi' },
-      R: { palina: '300', label: 'Ospedale San Luigi' },
-    },
+    stops: { A: '299', R: '300' },
   },
   CAIO: {
-    label: 'Cairoli',
-    stops: {
-      A: { palina: '1119', label: 'Cairoli' },
-      R: { palina: '1119', label: 'Cairoli' },
-    },
+    stops: { A: '1119', R: '1119' },
   },
   BARB: {
-    label: 'Barbaroux',
-    stops: {
-      A: { palina: '1169', label: 'Barbaroux' },
-      R: { palina: '1170', label: 'Barbaroux' },
-    },
+    stops: { A: '1169', R: '1170' },
   },
   CLGR: {
-    label: 'Claviere/Grosseto',
-    stops: {
-      A: { palina: '969', label: 'Claviere/Grosseto' },
-      R: { palina: '968', label: 'Claviere/Grosseto' },
-    },
+    stops: { A: '969', R: '968' },
   },
   CLMA: {
-    label: 'Claviere/Madonna di Campagna',
-    stops: {
-      A: { palina: '853', label: 'Claviere/Madonna di Campagna' },
-      R: { palina: '852', label: 'Claviere/Madonna di Campagna' },
-    },
+    stops: { A: '853', R: '852' },
   },
 };
+
+export function getChangePointStop(code, { direction = '', line = '' } = {}) {
+  const meta = CHANGE_POINTS[normalizeChangePoint(code)];
+  if (!meta) return '';
+  const byLine = meta.stopsByLine?.[String(line).trim()];
+  const stops = byLine || meta.stops;
+  if (!stops) return '';
+  const normalizedDirection = String(direction || '').trim().toUpperCase().startsWith('R') ? 'R' : 'A';
+  return stops[normalizedDirection] || stops.A || stops.R || '';
+}
 
 export function normalizeChangePoint(code) {
   return String(code ?? '').trim().toUpperCase();

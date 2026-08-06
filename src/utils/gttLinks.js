@@ -1,26 +1,12 @@
-import { CHANGE_POINTS, normalizeChangePoint } from '../constants/changePoints.js';
+import { getChangePointStop, normalizeChangePoint } from '../constants/changePoints.js';
 import { getLineDisplayName, normalizeLineCode } from '../constants/depotGerbido.js';
 
 const GTT_ARRIVALS_BASE_URL = 'https://www.gtt.to.it/cms/percorari/arrivi';
 const GTT_URBAN_BASE_URL = 'https://www.gtt.to.it/cms/percorari/urbano';
+const MAPS_SEARCH_BASE_URL = 'https://www.google.com/maps/search/';
 
 function sanitizeToken(value = '') {
   return String(value ?? '').trim();
-}
-
-function getChangePointMeta(place = '') {
-  const code = normalizeChangePoint(place);
-  return {
-    code,
-    ...(CHANGE_POINTS[code] || {}),
-  };
-}
-
-function normalizeDirection(value = '') {
-  const normalized = String(value || '').trim().toUpperCase();
-  if (normalized.startsWith('A')) return 'A';
-  if (normalized.startsWith('R')) return 'R';
-  return '-';
 }
 
 function buildLineUrl(line) {
@@ -34,24 +20,14 @@ function buildLineUrl(line) {
   return `${GTT_URBAN_BASE_URL}?${params.toString()}`;
 }
 
-function buildStopUrl(line, palina) {
-  const normalizedLine = normalizeLineCode(line);
-  const params = new URLSearchParams({
-    option: 'com_gtt',
-    view: 'palina',
-    palina: sanitizeToken(palina),
-    linea: normalizedLine || sanitizeToken(line),
-  });
-  return `${GTT_ARRIVALS_BASE_URL}?${params.toString()}`;
-}
-
-function resolveStopByContext({ direction, line, meta }) {
-  const normalizedLine = normalizeLineCode(line);
-  const normalizedDirection = normalizeDirection(direction);
-  const byLine = meta.stopsByLine?.[normalizedLine] || meta.stopsByLine?.[getLineDisplayName(line)] || null;
-  const candidates = byLine || meta.stops || null;
-  if (!candidates) return null;
-  return candidates[normalizedDirection] || candidates['-'] || candidates.A || candidates.R || null;
+/**
+ * Le fermate intorno a dove ci si trova adesso: e' l'unico dato di posizione
+ * che non richiede una mappa di paline scritta a mano, e quindi l'unico che non
+ * puo' mandare su una fermata sbagliata.
+ */
+export function buildNearbyStopsUrl({ lat, lng } = {}) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return '';
+  return `${MAPS_SEARCH_BASE_URL}fermate+GTT/@${lat.toFixed(6)},${lng.toFixed(6)},16z`;
 }
 
 export function getPrimaryGttChangePoint({ shift, dayData, segments = [] }) {
@@ -69,29 +45,37 @@ export function getPrimaryGttChangePoint({ shift, dayData, segments = [] }) {
   };
 }
 
+function buildStopUrl(line, palina) {
+  const params = new URLSearchParams({
+    option: 'com_gtt',
+    view: 'palina',
+    palina: sanitizeToken(palina),
+    linea: normalizeLineCode(line) || sanitizeToken(line),
+  });
+  return `${GTT_ARRIVALS_BASE_URL}?${params.toString()}`;
+}
+
+/**
+ * I passaggi della palina del posto cambio dove inizia il turno: la palina e'
+ * un dato raccolto sul campo, quindi si puo' puntare la fermata esatta. Il
+ * nome del posto cambio invece arriva da fuori, perche' lo decide chi guida.
+ */
 export function buildGttPassagesTarget(input = {}) {
   const line = sanitizeToken(input.line);
-  const place = sanitizeToken(input.place);
-  if (!line || !place) return null;
+  if (!line) return null;
 
-  const meta = getChangePointMeta(place);
-  const label = meta.label || place;
+  const place = normalizeChangePoint(input.place);
   const lineLabel = getLineDisplayName(line);
-  const resolvedStop = resolveStopByContext({
-    direction: input.direction,
-    line,
-    meta,
-  });
-  const palina = resolvedStop?.palina || meta.palina || '';
-  const hasDirectStop = Boolean(palina);
+  const placeLabel = sanitizeToken(input.placeLabel) || place;
+  const palina = getChangePointStop(place, { direction: input.direction, line: normalizeLineCode(line) });
 
   return {
-    direct: hasDirectStop,
-    label: `Linea ${lineLabel} · ${resolvedStop?.label || label}`,
+    label: palina ? `Linea ${lineLabel} · ${placeLabel}` : `Linea ${lineLabel}`,
+    line: lineLabel,
     palina,
-    title: hasDirectStop
-      ? `Apri i passaggi GTT per la linea ${lineLabel} alla palina ${palina}`
+    title: palina
+      ? `Apri i passaggi GTT della linea ${lineLabel} alla palina ${palina}${placeLabel ? ` (${placeLabel})` : ''}`
       : `Apri l'itinerario realtime GTT della linea ${lineLabel}`,
-    url: hasDirectStop ? buildStopUrl(line, palina) : buildLineUrl(line),
+    url: palina ? buildStopUrl(line, palina) : buildLineUrl(line),
   };
 }
