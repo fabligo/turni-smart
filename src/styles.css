@@ -2759,40 +2759,6 @@ select:focus-visible {
   transform: scale(0.96);
 }
 
-.depot-returns-geo-save {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2);
-}
-
-.depot-returns-geo-save button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  flex: 1 1 200px;
-  min-height: 42px;
-  border: 1px solid rgba(255, 209, 0, 0.5);
-  border-radius: 999px;
-  background: rgba(255, 209, 0, 0.14);
-  color: #ffffff;
-  cursor: pointer;
-  font-size: 0.82rem;
-  font-weight: 900;
-  padding: 0 16px;
-}
-
-.depot-returns-geo-save button:active {
-  transform: scale(0.97);
-}
-
-.depot-returns-geo-save .depot-returns-geo-forget {
-  flex: 0 1 auto;
-  border-color: rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--muted);
-}
-
 .depot-returns-progress {
   display: grid;
   gap: 8px;
@@ -4492,7 +4458,6 @@ select:focus-visible {
     grid-column: 1 / -1;
   }
 
-  .depot-returns-actions .small-button,
   .depot-returns-actions .depot-returns-search {
     width: 100%;
   }
