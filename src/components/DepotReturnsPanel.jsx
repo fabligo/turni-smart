@@ -7,7 +7,12 @@ import {
   RETURN_WINDOW_MINUTES,
   searchReturns,
 } from '../utils/depotReturns.js';
-import { readDepotDirectionsUrl, readDepotMapsDirectionsUrl, readNearbyStopsUrl } from '../utils/nearbyStops.js';
+import {
+  readDepotDirectionsUrl,
+  readDepotMapsDirectionsUrl,
+  readMoovitWebUrl,
+  readNearbyStopsUrl,
+} from '../utils/nearbyStops.js';
 import { getChangePointStop } from '../constants/changePoints.js';
 import { formatMinutes } from '../utils/timeUtils.js';
 import { Icon } from './Icon.jsx';
@@ -283,17 +288,16 @@ export function DepotReturnsPanel({ developments = {} }) {
               href={positionLink.url}
               onClick={() => setPositionLink(null)}
               rel="noopener noreferrer"
-              target="_blank"
             >
               <Icon name="route" size={18} />
-              Apri il percorso su Moovit
+              Apri il percorso nell&apos;app Moovit
             </a>
           ) : (
             <button
               className="small-button"
               disabled={Boolean(geoBusy)}
               onClick={() => readPosition(readDepotDirectionsUrl, 'depot')}
-              title="Linee, orari e cambi per arrivare al deposito da dove sei adesso, su Moovit"
+              title="Linee, orari e cambi per arrivare al deposito da dove sei adesso, nell'app Moovit"
               type="button"
             >
               <Icon name="route" size={18} />
@@ -397,10 +401,9 @@ export function DepotReturnsPanel({ developments = {} }) {
               href={positionLink.url}
               onClick={() => setPositionLink(null)}
               rel="noopener noreferrer"
-              target="_blank"
             >
               <Icon name="route" size={18} />
-              Apri il percorso su Moovit
+              Apri il percorso nell&apos;app Moovit
             </a>
           ) : (
             <button
@@ -432,6 +435,26 @@ export function DepotReturnsPanel({ developments = {} }) {
               type="button"
             >
               {geoBusy === 'maps' ? 'Leggo la posizione…' : 'oppure con Google Maps'}
+            </button>
+          )}
+          {positionLink?.kind === 'moovitWeb' ? (
+            <a
+              className="depot-returns-maps-link"
+              href={positionLink.url}
+              onClick={() => setPositionLink(null)}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              Apri Moovit nel browser
+            </a>
+          ) : (
+            <button
+              className="depot-returns-maps-link"
+              disabled={Boolean(geoBusy)}
+              onClick={() => readPosition(readMoovitWebUrl, 'moovitWeb')}
+              type="button"
+            >
+              {geoBusy === 'moovitWeb' ? 'Leggo la posizione…' : 'oppure Moovit nel browser'}
             </button>
           )}
         </div>

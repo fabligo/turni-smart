@@ -1,4 +1,9 @@
-import { buildDepotDirectionsUrl, buildMoovitDirectionsUrl, buildNearbyStopsUrl } from './gttLinks.js';
+import {
+  buildDepotDirectionsUrl,
+  buildMoovitDirectionsUrl,
+  buildMoovitWebUrl,
+  buildNearbyStopsUrl,
+} from './gttLinks.js';
 
 // Una lettura recente va benissimo per sapere cosa passa intorno: pretenderne
 // una nuova di zecca fa solo scadere il GPS al chiuso.
@@ -64,4 +69,8 @@ export function readDepotDirectionsUrl() {
 
 export function readDepotMapsDirectionsUrl() {
   return readPositionUrl(buildDepotDirectionsUrl);
+}
+
+export function readMoovitWebUrl() {
+  return readPositionUrl(buildMoovitWebUrl);
 }

@@ -5,6 +5,7 @@ import {
   buildDepotDirectionsUrl,
   buildGttPassagesTarget,
   buildMoovitDirectionsUrl,
+  buildMoovitWebUrl,
   buildNearbyStopsUrl,
 } from '../src/utils/gttLinks.js';
 
@@ -77,13 +78,24 @@ test('il percorso al deposito parte dalla posizione e va in mezzi pubblici', () 
   assert.equal(buildDepotDirectionsUrl(), '');
 });
 
-test('il percorso su Moovit porta posizione e deposito come coordinate', () => {
+test('il percorso Moovit usa lo schema dell app, non un indirizzo web', () => {
   const url = buildMoovitDirectionsUrl({ lat: 45.0668, lng: 7.6513 });
-  assert.match(url, /^https:\/\/moovitapp\.com\/\?/);
-  assert.match(url, /fll=45\.066800_7\.651300/);
-  assert.match(url, /tll=45\.041900_7\.588600/);
-  assert.match(url, /lang=it/);
+  assert.match(url, /^moovit:\/\/directions\?/);
+  assert.match(url, /orig_lat=45\.066800&orig_lon=7\.651300/);
+  assert.match(url, /dest_lat=45\.041900&dest_lon=7\.588600/);
+  assert.match(url, /auto_run=true/);
+  // Gli spazi restano spazi codificati: un piu' non verrebbe riletto come tale.
+  assert.match(url, /orig_name=La%20mia%20posizione/);
+  assert.ok(!url.includes('+'));
 
   assert.equal(buildMoovitDirectionsUrl({ lat: null, lng: 7.6 }), '');
   assert.equal(buildMoovitDirectionsUrl(), '');
+});
+
+test('resta l indirizzo web di Moovit per chi non ha l app', () => {
+  const url = buildMoovitWebUrl({ lat: 45.0668, lng: 7.6513 });
+  assert.match(url, /^https:\/\/moovitapp\.com\/\?/);
+  assert.match(url, /fll=45\.066800_7\.651300/);
+  assert.match(url, /tll=45\.041900_7\.588600/);
+  assert.equal(buildMoovitWebUrl(), '');
 });
