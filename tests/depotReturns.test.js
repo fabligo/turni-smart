@@ -238,3 +238,19 @@ test('riconosce quando gli orari coprono solo un altro tipo di servizio', () => 
   assert.equal(forced.matches.length, 1);
   assert.equal(forced.matches[0].departure, '14:10');
 });
+
+test('distingue chi non vede il deposito da chi ci arriva dopo un giro lungo', () => {
+  const developments = {
+    // Passa dal posto cambio e finisce altrove: il deposito non lo vede.
+    '071 12': [segment({ ln: '71', vett: '5', start: '14:10', loc_s: 'PITA', end: '14:35', loc_e: 'CATT' })],
+    // Passa dal posto cambio e in deposito ci arriva, ma dopo tre ore di giro.
+    '071 13': [segment({ ln: '71', vett: '6', start: '14:15', loc_s: 'PITA', end: '17:20', loc_e: 'GERB' })],
+  };
+
+  const result = searchReturns(developments, 'PITA', { now: NOW });
+  assert.deepEqual(result.matches, []);
+  assert.equal(result.passages, 2);
+  assert.equal(result.noDepotChain, 1);
+  assert.equal(result.longRides, 1);
+  assert.equal(result.shortestLongRide, 185);
+});

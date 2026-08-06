@@ -11,7 +11,7 @@ export const SERVICE_TYPES = ['feriali', 'sabato', 'festivi'];
 // mezzo: oltre questi limiti non e' piu' un rientro immediato in deposito.
 const MAX_LEGS = 4;
 const MAX_LAYOVER_MINUTES = 20;
-const MAX_RIDE_MINUTES = 90;
+export const MAX_RIDE_MINUTES = 90;
 
 export function normalizePlace(value = '') {
   return String(value || '').trim().toUpperCase();
@@ -152,6 +152,12 @@ export function searchReturns(developments = {}, selectedPlace, options = {}) {
     // Passaggi dal posto cambio nell'orizzonte, anche se non portano in deposito.
     passages: 0,
     passagesByService: {},
+    // Perche' un passaggio non e' diventato un rientro: senza questi numeri
+    // "nessuno prosegue" non distingue un mezzo che il deposito non lo vede
+    // proprio da uno che ci arriva dopo mezza giornata di giro.
+    noDepotChain: 0,
+    longRides: 0,
+    shortestLongRide: null,
     place,
     placeKnown: false,
     service,
@@ -185,11 +191,19 @@ export function searchReturns(developments = {}, selectedPlace, options = {}) {
         result.passages += 1;
 
         const chain = buildChain(run, index);
-        if (!chain) return;
+        if (!chain) {
+          result.noDepotChain += 1;
+          return;
+        }
 
         const arrival = chain[chain.length - 1];
         const rideMinutes = durationMinutes(segment.start, arrival.end);
-        if (rideMinutes > MAX_RIDE_MINUTES) return;
+        if (rideMinutes > MAX_RIDE_MINUTES) {
+          result.longRides += 1;
+          result.shortestLongRide =
+            result.shortestLongRide === null ? rideMinutes : Math.min(result.shortestLongRide, rideMinutes);
+          return;
+        }
 
         const line = segment.lineaNorm || segment.ln || keyLine;
         const vehicleShift = segment.vett || segment.turnoVettura || '';
