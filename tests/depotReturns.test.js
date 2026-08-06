@@ -266,8 +266,9 @@ test('cerca le corse verso il deposito da qualsiasi posto cambio', () => {
 
   const result = searchReturns(developments, ANY_PLACE, { now: NOW });
   assert.equal(result.anyPlace, true);
-  assert.deepEqual(result.matches.map((item) => `${item.line} da ${item.from}`), ['63 da CATT', '71 da PITA']);
-  assert.equal(result.matches[0].waitMinutes, 5);
+  // Il 63 parte prima ma arriva alle 14:40; il 71 parte dopo e arriva alle 14:35.
+  assert.deepEqual(result.matches.map((item) => `${item.line} da ${item.from}`), ['71 da PITA', '63 da CATT']);
+  assert.deepEqual(result.matches.map((item) => item.arrival), ['14:35', '14:40']);
 });
 
 test('la ricerca ovunque non confonde partenze uguali da posti diversi', () => {
@@ -277,4 +278,18 @@ test('la ricerca ovunque non confonde partenze uguali da posti diversi', () => {
   };
 
   assert.equal(searchReturns(developments, ANY_PLACE, { now: NOW }).matches.length, 2);
+});
+
+test('mette per primo chi arriva in deposito prima, non chi parte prima', () => {
+  const developments = {
+    // Parte subito ma gira: in deposito alle 15:20.
+    '071 12': [segment({ ln: '71', vett: '5', start: '14:05', loc_s: 'PITA', end: '15:20', loc_e: 'GERB' })],
+    // Parte dopo ma diretto: in deposito alle 14:50.
+    '063 04': [segment({ ln: '63', vett: '2', start: '14:25', loc_s: 'PITA', end: '14:50', loc_e: 'GERB' })],
+  };
+
+  const matches = buildReturnMatches(developments, 'PITA', { now: NOW });
+  assert.deepEqual(matches.map((item) => item.arrival), ['14:50', '15:20']);
+  assert.equal(matches[0].totalMinutes, 50);
+  assert.equal(matches[1].totalMinutes, 80);
 });

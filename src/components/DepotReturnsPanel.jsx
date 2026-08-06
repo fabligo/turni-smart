@@ -391,9 +391,9 @@ export function DepotReturnsPanel({ developments = {} }) {
                   <span>{item.route}</span>
                 </div>
                 <div>
-                  <strong>{formatWait(item.waitMinutes, waitAnchor)}</strong>
+                  <strong>Al Gerbido {formatWait(item.totalMinutes, waitAnchor)}</strong>
                   <span>
-                    {item.rideMinutes} min di viaggio
+                    parte {formatWait(item.waitMinutes, waitAnchor)} · {item.rideMinutes} min di viaggio
                     {item.vehicleShift ? ` · vettura ${item.vehicleShift}` : ''}
                   </span>
                 </div>
@@ -418,7 +418,7 @@ export function DepotReturnsPanel({ developments = {} }) {
                   {item.departure} → {item.arrival}
                 </span>
                 <span>
-                  {formatWait(item.waitMinutes, waitAnchor)} · {item.direct ? 'diretto in deposito' : `${item.legs.length} tratti`}
+                  al Gerbido {formatWait(item.totalMinutes, waitAnchor)} · {item.direct ? 'diretto' : `${item.legs.length} tratti`}
                 </span>
               </li>
             ))}

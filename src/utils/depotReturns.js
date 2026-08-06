@@ -239,6 +239,9 @@ export function searchReturns(developments = {}, selectedPlace, options = {}) {
           route: [normalizePlace(segment.loc_s), ...chain.map((leg) => normalizePlace(leg.loc_e))].join(' → '),
           service,
           shift,
+          // Quanto manca a essere in deposito: attesa piu' viaggio. E' il
+          // numero che conta a fine turno, non l'ora di partenza.
+          totalMinutes: waitMinutes + rideMinutes,
           vehicleShift,
           waitMinutes,
         });
@@ -246,8 +249,13 @@ export function searchReturns(developments = {}, selectedPlace, options = {}) {
     });
   });
 
+  // Primo chi ti porta in deposito prima, non chi parte prima: un mezzo che
+  // parte subito ma gira un'ora arriva dopo uno che parte fra un quarto d'ora.
   found.sort(
-    (a, b) => a.waitMinutes - b.waitMinutes || a.rideMinutes - b.rideMinutes || timeToMinutes(a.departure) - timeToMinutes(b.departure),
+    (a, b) =>
+      a.totalMinutes - b.totalMinutes ||
+      a.waitMinutes - b.waitMinutes ||
+      timeToMinutes(a.departure) - timeToMinutes(b.departure),
   );
 
   result.matches = found.filter((item) => item.waitMinutes <= windowMinutes);
