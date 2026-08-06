@@ -1,6 +1,10 @@
 import { timeToMinutes } from './timeUtils.js';
 
 export const DEPOT_CODE = 'GERB';
+// "Ovunque": tutte le corse dirette al deposito, da qualsiasi posto cambio.
+// E' la ricerca da fare a fine turno, quando conta solo rientrare presto e
+// qualsiasi linea che passa di li' va bene.
+export const ANY_PLACE = '*';
 export const RETURN_WINDOW_MINUTES = 30;
 // Oltre la finestra scelta continuiamo a guardare avanti: serve solo a dire
 // all'utente a che ora passa il primo rientro utile, non a proporlo come esito.
@@ -131,6 +135,7 @@ function resolveTargetDate({ now, offsetMinutes, time }) {
  */
 export function searchReturns(developments = {}, selectedPlace, options = {}) {
   const place = normalizePlace(selectedPlace);
+  const anyPlace = place === ANY_PLACE;
 
   const {
     now = new Date(),
@@ -158,6 +163,7 @@ export function searchReturns(developments = {}, selectedPlace, options = {}) {
     noDepotChain: 0,
     longRides: 0,
     shortestLongRide: null,
+    anyPlace,
     place,
     placeKnown: false,
     service,
@@ -177,10 +183,15 @@ export function searchReturns(developments = {}, selectedPlace, options = {}) {
 
     groupByRun(segments).forEach((run) => {
       run.forEach((segment, index) => {
-        if (normalizePlace(segment.loc_s) === place || normalizePlace(segment.loc_e) === place) {
+        const from = normalizePlace(segment.loc_s);
+        if (anyPlace) {
           result.placeKnown = true;
+          // Una corsa che parte dal deposito non e' un rientro.
+          if (from === DEPOT_CODE) return;
+        } else {
+          if (from === place || normalizePlace(segment.loc_e) === place) result.placeKnown = true;
+          if (from !== place) return;
         }
-        if (normalizePlace(segment.loc_s) !== place) return;
 
         const waitMinutes = minutesFromNow(segment.start, targetMinutes);
         if (waitMinutes < 0 || waitMinutes > horizon) return;
@@ -207,7 +218,7 @@ export function searchReturns(developments = {}, selectedPlace, options = {}) {
 
         const line = segment.lineaNorm || segment.ln || keyLine;
         const vehicleShift = segment.vett || segment.turnoVettura || '';
-        const identity = [line, segment.start, arrival.end, vehicleShift, chain.length].join('|');
+        const identity = [line, normalizePlace(segment.loc_s), segment.start, arrival.end, vehicleShift, chain.length].join('|');
         if (seen.has(identity)) return;
         seen.add(identity);
 
@@ -215,6 +226,7 @@ export function searchReturns(developments = {}, selectedPlace, options = {}) {
           arrival: arrival.end,
           departure: segment.start,
           direct: chain.length === 1,
+          from: normalizePlace(segment.loc_s),
           legs: chain.map((leg) => ({
             end: leg.end,
             from: normalizePlace(leg.loc_s),

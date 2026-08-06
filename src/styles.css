@@ -2759,6 +2759,18 @@ select:focus-visible {
   transform: scale(0.96);
 }
 
+/* Il link pronto deve leggersi come "tocca qui": bordo giallo e niente
+   sottolineatura, ma resta un <a> per aprirsi col gesto dell'utente. */
+.depot-returns-nearby-link,
+a.inline-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  border: 2px solid var(--yellow);
+}
+
 .depot-returns-progress {
   display: grid;
   gap: 8px;
