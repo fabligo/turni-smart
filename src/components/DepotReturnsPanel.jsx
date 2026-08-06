@@ -9,7 +9,8 @@ import {
   RETURN_WINDOW_MINUTES,
   searchReturns,
 } from '../utils/depotReturns.js';
-import { readNearbyStopsUrl } from '../utils/nearbyStops.js';
+import { readDepotDirectionsUrl, readNearbyStopsUrl } from '../utils/nearbyStops.js';
+import { getChangePointStop } from '../constants/changePoints.js';
 import { formatMinutes } from '../utils/timeUtils.js';
 import { Icon } from './Icon.jsx';
 
@@ -95,19 +96,21 @@ export function DepotReturnsPanel({ developments = {} }) {
   const [criteria, setCriteria] = useState(form);
   const [searching, setSearching] = useState(false);
   const [geoMessage, setGeoMessage] = useState('');
-  const [geoBusy, setGeoBusy] = useState(false);
-  // Il link alla mappa si prepara prima e si apre con un tocco a parte: aprire
-  // una scheda in attesa del GPS la lascia bianca su iOS.
-  const [nearbyUrl, setNearbyUrl] = useState('');
+  const [geoBusy, setGeoBusy] = useState('');
+  // Il link si prepara prima e si apre con un tocco a parte: aprire una scheda
+  // in attesa del GPS la lascia bianca su iOS.
+  const [positionLink, setPositionLink] = useState(null);
 
-  function findNearbyStops() {
+  // Due link diversi, uno solo alla volta: le fermate intorno, oppure il
+  // percorso in mezzi fino al deposito calcolato sulla rete GTT vera.
+  function readPosition(reader, kind) {
     setGeoMessage('');
-    setNearbyUrl('');
-    setGeoBusy(true);
-    readNearbyStopsUrl()
-      .then((url) => setNearbyUrl(url))
+    setPositionLink(null);
+    setGeoBusy(kind);
+    reader()
+      .then((url) => setPositionLink({ kind, url }))
       .catch((error) => setGeoMessage(error.message))
-      .finally(() => setGeoBusy(false));
+      .finally(() => setGeoBusy(''));
   }
 
   const result = useMemo(
@@ -319,11 +322,11 @@ export function DepotReturnsPanel({ developments = {} }) {
             <Icon name="search" size={18} />
             Trova rientri
           </button>
-          {nearbyUrl ? (
+          {positionLink?.kind === 'stops' ? (
             <a
               className="small-button depot-returns-nearby-link"
-              href={nearbyUrl}
-              onClick={() => setNearbyUrl('')}
+              href={positionLink.url}
+              onClick={() => setPositionLink(null)}
               rel="noopener noreferrer"
               target="_blank"
             >
@@ -333,13 +336,36 @@ export function DepotReturnsPanel({ developments = {} }) {
           ) : (
             <button
               className="small-button"
-              disabled={geoBusy}
-              onClick={findNearbyStops}
+              disabled={Boolean(geoBusy)}
+              onClick={() => readPosition(readNearbyStopsUrl, 'stops')}
               title="Trova le fermate intorno a dove sei adesso, per vedere quali linee ci passano"
               type="button"
             >
               <Icon name="mapPin" size={18} />
-              {geoBusy ? 'Leggo la posizione…' : 'Cosa passa qui vicino'}
+              {geoBusy === 'stops' ? 'Leggo la posizione…' : 'Cosa passa qui vicino'}
+            </button>
+          )}
+          {positionLink?.kind === 'depot' ? (
+            <a
+              className="small-button depot-returns-nearby-link"
+              href={positionLink.url}
+              onClick={() => setPositionLink(null)}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <Icon name="route" size={18} />
+              Apri il percorso al Gerbido
+            </a>
+          ) : (
+            <button
+              className="small-button"
+              disabled={Boolean(geoBusy)}
+              onClick={() => readPosition(readDepotDirectionsUrl, 'depot')}
+              title="Linee e cambi per arrivare al deposito da dove sei adesso, sulla rete GTT"
+              type="button"
+            >
+              <Icon name="route" size={18} />
+              {geoBusy === 'depot' ? 'Leggo la posizione…' : 'Come arrivo al Gerbido'}
             </button>
           )}
         </div>
@@ -404,6 +430,7 @@ export function DepotReturnsPanel({ developments = {} }) {
                   <span>
                     {result.anyPlace ? `parte da ${item.from} · ` : ''}
                     {item.direct ? 'diretto in deposito' : `${item.legs.length} tratti`}
+                    {getChangePointStop(item.from, { line: item.line }) ? ` · palina ${getChangePointStop(item.from, { line: item.line })}` : ''}
                   </span>
                 </div>
                 <div>
@@ -425,6 +452,13 @@ export function DepotReturnsPanel({ developments = {} }) {
           renderEmptyState()
         )}
       </div>
+
+      {!searching && criteria.place && !result.matches.length ? (
+        <p className="depot-returns-fallback">
+          Nessun mezzo di servizio ti riporta in deposito adesso: con <strong>Come arrivo al Gerbido</strong> la mappa
+          calcola linee e cambi sulla rete GTT partendo da dove sei.
+        </p>
+      ) : null}
 
       {!searching && result.upcoming.length ? (
         <div className="depot-returns-upcoming">

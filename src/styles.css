@@ -2771,6 +2771,20 @@ a.inline-action {
   border: 2px solid var(--yellow);
 }
 
+.depot-returns-fallback {
+  margin: 0;
+  border-left: 3px solid var(--yellow);
+  padding-left: 12px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.depot-returns-fallback strong {
+  color: #ffffff;
+}
+
 .depot-returns-lines {
   display: flex;
   flex-wrap: wrap;

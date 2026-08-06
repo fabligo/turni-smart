@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CHANGE_POINTS, getChangePointStop } from '../src/constants/changePoints.js';
-import { buildGttPassagesTarget, buildNearbyStopsUrl } from '../src/utils/gttLinks.js';
+import { buildDepotDirectionsUrl, buildGttPassagesTarget, buildNearbyStopsUrl } from '../src/utils/gttLinks.js';
 
 test('risolve la palina per direzione', () => {
   assert.equal(getChangePointStop('CATT', { direction: 'A' }), '307');
@@ -59,4 +59,15 @@ test('nessun posto cambio porta coordinate non verificate', () => {
   Object.values(CHANGE_POINTS).forEach((meta) => {
     assert.equal(meta.coordinates, undefined);
   });
+});
+
+test('il percorso al deposito parte dalla posizione e va in mezzi pubblici', () => {
+  const url = buildDepotDirectionsUrl({ lat: 45.0668, lng: 7.6513 });
+  assert.match(url, /^https:\/\/www\.google\.com\/maps\/dir\/\?/);
+  assert.match(url, /origin=45\.066800%2C7\.651300/);
+  assert.match(url, /travelmode=transit/);
+  assert.match(url, /destination=Deposito\+GTT\+Gerbido/);
+
+  assert.equal(buildDepotDirectionsUrl({ lat: 'boh', lng: 7.6 }), '');
+  assert.equal(buildDepotDirectionsUrl(), '');
 });
