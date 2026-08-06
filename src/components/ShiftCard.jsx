@@ -3,7 +3,8 @@ import { formatMinutes, minutesBetween } from '../utils/timeUtils.js';
 import { getDevSegments } from '../parserOrari.js';
 import { getLineDisplayName } from '../constants/depotGerbido.js';
 import { BALLOTTAGGI } from '../constants/shiftClassification.js';
-import { buildGttPassagesTarget, buildNearbyStopsUrl, getPrimaryGttChangePoint } from '../utils/gttLinks.js';
+import { buildGttPassagesTarget, getPrimaryGttChangePoint } from '../utils/gttLinks.js';
+import { openNearbyStops as openNearbyStopsAround } from '../utils/nearbyStops.js';
 import { AssetIcon, Icon } from './Icon.jsx';
 
 const DIRECTION_LABELS = {
@@ -13,6 +14,7 @@ const DIRECTION_LABELS = {
 };
 
 const SEGMENT_VEHICLES_KEY = 'ts_segment_vehicles_v1';
+const GTT_LINES_URL = 'https://www.gtt.to.it/cms/percorari/urbano';
 
 function readSegmentVehicles() {
   try {
@@ -571,33 +573,8 @@ function CalendarActions({ actions, compact = false, gttTarget = null, shareText
     window.open(gttTarget.url, '_blank', 'noopener,noreferrer');
   }
 
-  // La finestra si apre subito, con il clic: aprirla dentro la risposta del GPS
-  // la farebbe bloccare dal browser come popup.
   function openNearbyStops() {
-    // Niente noopener qui: con quello window.open torna null e la scheda
-    // resterebbe bianca. L'opener si stacca subito dopo, stesso effetto.
-    const target = window.open('', '_blank');
-    if (target) target.opener = null;
-    const openUrl = (url) => {
-      if (target) target.location.href = url;
-      else window.open(url, '_blank', 'noopener,noreferrer');
-    };
-    const fallback = () => openUrl(gttTarget?.url || 'https://www.gtt.to.it/cms/percorari/urbano');
-
-    if (!navigator.geolocation) {
-      fallback();
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const url = buildNearbyStopsUrl({ lat: position.coords.latitude, lng: position.coords.longitude });
-        if (url) openUrl(url);
-        else fallback();
-      },
-      fallback,
-      { enableHighAccuracy: true, maximumAge: 15000, timeout: 8000 },
-    );
+    openNearbyStopsAround({ fallbackUrl: gttTarget?.url || GTT_LINES_URL });
   }
 
   return (

@@ -9,6 +9,7 @@ import {
   RETURN_WINDOW_MINUTES,
   searchReturns,
 } from '../utils/depotReturns.js';
+import { openNearbyStops } from '../utils/nearbyStops.js';
 import { formatMinutes } from '../utils/timeUtils.js';
 import { Icon } from './Icon.jsx';
 
@@ -91,6 +92,7 @@ export function DepotReturnsPanel({ developments = {} }) {
   // preme Trova, non a ogni tasto premuto.
   const [criteria, setCriteria] = useState(form);
   const [searching, setSearching] = useState(false);
+  const [geoMessage, setGeoMessage] = useState('');
 
   const result = useMemo(
     () =>
@@ -284,6 +286,18 @@ export function DepotReturnsPanel({ developments = {} }) {
             <Icon name="search" size={18} />
             Trova rientri
           </button>
+          <button
+            className="small-button"
+            onClick={() => {
+              setGeoMessage('');
+              openNearbyStops({ onError: setGeoMessage });
+            }}
+            title="Apre le fermate intorno a dove sei adesso, per vedere quali linee ci passano"
+            type="button"
+          >
+            <Icon name="mapPin" size={18} />
+            Cosa passa qui vicino
+          </button>
         </div>
 
         <div className="depot-returns-quick">
@@ -309,6 +323,8 @@ export function DepotReturnsPanel({ developments = {} }) {
           </span>
         </div>
       ) : null}
+
+      {geoMessage ? <p className="depot-returns-message">{geoMessage}</p> : null}
 
       {!searching && isDirty ? (
         <p className="depot-returns-message">Criteri cambiati: premi Trova rientri per aggiornare.</p>
