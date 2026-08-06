@@ -4,10 +4,12 @@ import { getLineDisplayName } from '../constants/depotGerbido.js';
 import {
   DEPOT_CODE,
   formatClock,
+  MAX_RIDE_MINUTES,
   normalizePlace,
   RETURN_WINDOW_MINUTES,
   searchReturns,
 } from '../utils/depotReturns.js';
+import { openNearbyStops } from '../utils/nearbyStops.js';
 import { formatMinutes } from '../utils/timeUtils.js';
 import { Icon } from './Icon.jsx';
 
@@ -90,6 +92,7 @@ export function DepotReturnsPanel({ developments = {} }) {
   // preme Trova, non a ogni tasto premuto.
   const [criteria, setCriteria] = useState(form);
   const [searching, setSearching] = useState(false);
+  const [geoMessage, setGeoMessage] = useState('');
 
   const result = useMemo(
     () =>
@@ -174,10 +177,26 @@ export function DepotReturnsPanel({ developments = {} }) {
       );
     }
 
+    const passages = result.passages === 1 ? 'passa 1 mezzo' : `passano ${result.passages} mezzi`;
+
+    // Distinguere i due casi conta: uno dice che di qui al deposito non ci si
+    // va, l'altro che ci si va ma facendo mezzo giro di linea.
+    if (result.longRides) {
+      return (
+        <p className="result-message">
+          Da {placeLabel} {passages} dopo le {criteria.time}:{' '}
+          {result.longRides === 1
+            ? 'uno arriva al Gerbido ma dopo '
+            : `${result.longRides} arrivano al Gerbido ma dopo `}
+          {result.shortestLongRide ? formatMinutes(result.shortestLongRide) : `piu di ${MAX_RIDE_MINUTES} minuti`} di
+          viaggio, {result.longRides === 1 ? 'e un giro di linea' : 'sono giri di linea'}, non un rientro.
+        </p>
+      );
+    }
+
     return (
       <p className="result-message">
-        Da {placeLabel} {result.passages === 1 ? 'passa 1 mezzo' : `passano ${result.passages} mezzi`}, ma nessuno
-        prosegue fino al Gerbido: prova un altro posto cambio.
+        Da {placeLabel} {passages} dopo le {criteria.time}, ma nessuno arriva al Gerbido: prova un altro posto cambio.
       </p>
     );
   }
@@ -267,6 +286,18 @@ export function DepotReturnsPanel({ developments = {} }) {
             <Icon name="search" size={18} />
             Trova rientri
           </button>
+          <button
+            className="small-button"
+            onClick={() => {
+              setGeoMessage('');
+              openNearbyStops({ onError: setGeoMessage });
+            }}
+            title="Apre le fermate intorno a dove sei adesso, per vedere quali linee ci passano"
+            type="button"
+          >
+            <Icon name="mapPin" size={18} />
+            Cosa passa qui vicino
+          </button>
         </div>
 
         <div className="depot-returns-quick">
@@ -292,6 +323,8 @@ export function DepotReturnsPanel({ developments = {} }) {
           </span>
         </div>
       ) : null}
+
+      {geoMessage ? <p className="depot-returns-message">{geoMessage}</p> : null}
 
       {!searching && isDirty ? (
         <p className="depot-returns-message">Criteri cambiati: premi Trova rientri per aggiornare.</p>
