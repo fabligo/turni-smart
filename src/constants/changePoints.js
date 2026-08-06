@@ -1,3 +1,8 @@
+// Le coordinate servono solo a "Usa posizione", che accetta il posto cambio
+// piu' vicino entro 900 metri. Quelle qui sotto sono approssimate a livello di
+// piazzale o capolinea: dove mancano, o dove sbagliano, si registrano sul posto
+// col GPS del telefono (vedi utils/changePointPositions.js) e da quel momento
+// vincono su queste.
 export const CHANGE_POINTS = {
   GERB: {
     coordinates: { lat: 45.0419, lng: 7.5886 },
@@ -39,7 +44,8 @@ export const CHANGE_POINTS = {
     },
   },
   PITA: {
-    coordinates: null,
+    // Approssimata: piazza Tasso, quartiere San Paolo.
+    coordinates: { lat: 45.0668, lng: 7.6513 },
     label: 'Piazza Tasso',
     mapSearch: 'Piazza Tasso Torino fermata GTT',
     searchLabel: 'Piazza Tasso',
@@ -55,6 +61,8 @@ export const CHANGE_POINTS = {
     searchLabel: 'Filadelfia',
   },
   LING: {
+    // Approssimata: capolinea di via Nizza davanti al Lingotto.
+    coordinates: { lat: 45.0301, lng: 7.664 },
     label: 'Lingotto',
     stops: {
       A: { palina: '2604', label: 'Lingotto' },
@@ -62,6 +70,8 @@ export const CHANGE_POINTS = {
     },
   },
   BENS: {
+    // Approssimata: piazza Bengasi.
+    coordinates: { lat: 45.0197, lng: 7.6653 },
     label: 'Bengasi',
     stops: {
       A: { palina: '3628', label: 'Bengasi' },
@@ -69,6 +79,8 @@ export const CHANGE_POINTS = {
     },
   },
   OSET: {
+    // Approssimata: ospedale San Luigi Gonzaga, regione Gonzole (Orbassano).
+    coordinates: { lat: 45.0175, lng: 7.565 },
     label: 'Ospedale San Luigi',
     stops: {
       A: { palina: '299', label: 'Ospedale San Luigi' },

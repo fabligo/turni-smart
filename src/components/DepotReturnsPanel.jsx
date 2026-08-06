@@ -8,6 +8,12 @@ import {
   RETURN_WINDOW_MINUTES,
   searchReturns,
 } from '../utils/depotReturns.js';
+import {
+  clearChangePointPosition,
+  listLocatedChangePoints,
+  loadSavedPositions,
+  saveChangePointPosition,
+} from '../utils/changePointPositions.js';
 import { formatMinutes } from '../utils/timeUtils.js';
 import { Icon } from './Icon.jsx';
 
@@ -51,17 +57,9 @@ function haversineMeters(a, b) {
   return 2 * radius * Math.asin(Math.sqrt(h));
 }
 
-function findNearestChangePoint(position) {
-  const current = { lat: position.coords.latitude, lng: position.coords.longitude };
-  return Object.entries(CHANGE_POINTS)
-    .map(([code, item]) => {
-      if (!item.coordinates) return null;
-      return {
-        code,
-        distance: haversineMeters(current, item.coordinates),
-      };
-    })
-    .filter(Boolean)
+function findNearestChangePoint(current, savedPositions) {
+  return listLocatedChangePoints(savedPositions)
+    .map(({ code, coordinates }) => ({ code, distance: haversineMeters(current, coordinates) }))
     .sort((a, b) => a.distance - b.distance)[0];
 }
 
@@ -113,6 +111,9 @@ export function DepotReturnsPanel({ developments = {} }) {
   const [criteria, setCriteria] = useState(form);
   const [geoMessage, setGeoMessage] = useState('');
   const [searching, setSearching] = useState(false);
+  // Le posizioni registrate sul posto col GPS: sostituiscono quelle di serie,
+  // che sono solo approssimative.
+  const [savedPositions, setSavedPositions] = useState(() => loadSavedPositions());
 
   const result = useMemo(
     () =>
@@ -147,25 +148,56 @@ export function DepotReturnsPanel({ developments = {} }) {
     return () => clearTimeout(timer);
   }, [criteria, searching]);
 
-  function useCurrentPosition() {
-    setGeoMessage('');
+  // Sempre una lettura fresca: una posizione in cache registrerebbe il posto
+  // cambio dove eravamo mezzo minuto fa, cioe' altrove.
+  function readPosition(onPosition) {
     if (!navigator.geolocation) {
       setGeoMessage('Geolocalizzazione non disponibile su questo dispositivo.');
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const nearest = findNearestChangePoint(position);
-        if (!nearest || nearest.distance > GEO_MAX_DISTANCE_METERS) {
-          setGeoMessage('Posizione rilevata, ma nessun posto cambio censito vicino. Selezionalo manualmente.');
-          return;
-        }
-        runSearch({ place: nearest.code });
-        setGeoMessage(`Posto cambio rilevato: ${getChangePointLabel(nearest.code)} (${Math.round(nearest.distance)} m).`);
-      },
+      (position) =>
+        onPosition({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        }),
       () => setGeoMessage('Permesso posizione negato o posizione non disponibile. Seleziona il posto cambio manualmente.'),
-      { enableHighAccuracy: true, maximumAge: 30000, timeout: 9000 },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 12000 },
     );
+  }
+
+  function useCurrentPosition() {
+    setGeoMessage('Leggo la posizione…');
+    readPosition((current) => {
+      const nearest = findNearestChangePoint(current, savedPositions);
+      if (!nearest || nearest.distance > GEO_MAX_DISTANCE_METERS) {
+        setGeoMessage('Posizione rilevata, ma nessun posto cambio noto qui vicino. Scegli quale sei e registralo.');
+        return;
+      }
+      runSearch({ place: nearest.code });
+      setGeoMessage(`Posto cambio rilevato: ${getChangePointLabel(nearest.code)} (${Math.round(nearest.distance)} m).`);
+    });
+  }
+
+  function storeCurrentPosition() {
+    if (!form.place) return;
+    setGeoMessage(`Leggo la posizione da registrare per ${getChangePointLabel(form.place)}…`);
+    readPosition((current) => {
+      setSavedPositions(saveChangePointPosition(form.place, current));
+      const accuracy = Math.round(Number(current.accuracy));
+      const precision = Number.isFinite(accuracy) ? ` con precisione ${accuracy} m` : '';
+      const retry = Number.isFinite(accuracy) && accuracy > 150 ? ' Precisione bassa: se puoi ripeti all’aperto.' : '';
+      setGeoMessage(
+        `Posizione registrata per ${getChangePointLabel(form.place)}${precision}: da ora viene riconosciuto qui.${retry}`,
+      );
+    });
+  }
+
+  function forgetStoredPosition() {
+    if (!form.place) return;
+    setSavedPositions(clearChangePointPosition(form.place, undefined));
+    setGeoMessage(`Posizione registrata rimossa per ${getChangePointLabel(form.place)}.`);
   }
 
   const nextUpcoming = result.upcoming[0];
@@ -350,6 +382,20 @@ export function DepotReturnsPanel({ developments = {} }) {
         <p className="depot-returns-message">Criteri cambiati: premi Trova rientri per aggiornare.</p>
       ) : null}
       {geoMessage ? <p className="depot-returns-message">{geoMessage}</p> : null}
+
+      {form.place ? (
+        <div className="depot-returns-geo-save">
+          <button onClick={storeCurrentPosition} type="button">
+            <Icon name="mapPin" size={16} />
+            Sono a {getChangePointLabel(form.place)}: registra qui
+          </button>
+          {savedPositions[form.place] ? (
+            <button className="depot-returns-geo-forget" onClick={forgetStoredPosition} type="button">
+              Cancella posizione registrata
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       {!searching && criteria.place && !result.isDepot ? (
         <p className="depot-returns-summary">
