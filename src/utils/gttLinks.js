@@ -1,4 +1,4 @@
-import { getChangePointStop, normalizeChangePoint } from '../constants/changePoints.js';
+import { getChangePointAddress, getChangePointStop, normalizeChangePoint } from '../constants/changePoints.js';
 import { getLineDisplayName, normalizeLineCode } from '../constants/depotGerbido.js';
 
 const GTT_ARRIVALS_BASE_URL = 'https://www.gtt.to.it/cms/percorari/arrivi';
@@ -10,7 +10,9 @@ const MOOVIT_WEB_URL = 'https://moovitapp.com/';
 // apre come tale, con dentro il tasto "apri l'app". Con moovit:// il sistema
 // consegna direttamente all'app installata.
 const MOOVIT_APP_URL = 'moovit://directions';
-const DEPOT_DESTINATION = 'Deposito GTT Gerbido, Grugliasco';
+// Il deposito e' in via Gorini: lo dice GTT stessa, che sulla 74 scrive come
+// destinazione "Gerbido / Via Gorini".
+const DEPOT_DESTINATION = 'Via Gorini, Torino';
 // Moovit vuole la destinazione come coordinate, un nome non gli basta. Questa
 // posizione del deposito e' quella con cui il progetto e' nato e nessuno l'ha
 // verificata: si vede subito sulla mappa dove cade il segnaposto, ed e' il solo
@@ -93,6 +95,23 @@ export function buildMoovitDirectionsUrl({ lat, lng } = {}) {
     .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
     .join('&');
   return `${MOOVIT_APP_URL}?${query}`;
+}
+
+/**
+ * Il percorso da dove ci si trova fino al posto cambio da cui parte un rientro:
+ * serve a sapere se si fa in tempo a prenderlo. La destinazione e' l'indirizzo
+ * che GTT stampa sulla fermata, quindi non servono coordinate.
+ */
+export function buildChangePointDirectionsUrl({ lat, lng } = {}, code = '') {
+  const address = getChangePointAddress(code);
+  if (!address || !Number.isFinite(lat) || !Number.isFinite(lng)) return '';
+  const params = new URLSearchParams({
+    api: '1',
+    origin: `${lat.toFixed(6)},${lng.toFixed(6)}`,
+    destination: address,
+    travelmode: 'transit',
+  });
+  return `${MAPS_DIRECTIONS_URL}?${params.toString()}`;
 }
 
 export function getPrimaryGttChangePoint({ shift, dayData, segments = [] }) {
