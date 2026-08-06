@@ -8,16 +8,8 @@ import {
   RETURN_WINDOW_MINUTES,
   searchReturns,
 } from '../utils/depotReturns.js';
-import {
-  clearChangePointPosition,
-  listLocatedChangePoints,
-  loadChangePointDirectory,
-  setChangePointPosition,
-} from '../utils/changePointDirectory.js';
 import { formatMinutes } from '../utils/timeUtils.js';
 import { Icon } from './Icon.jsx';
-
-const GEO_MAX_DISTANCE_METERS = 900;
 
 // La ricerca e' istantanea: la barra resta visibile il minimo che basta a
 // vedere che qualcosa e' partito, altrimenti premere Trova sembra inutile.
@@ -44,23 +36,6 @@ function clockFromNow(offsetMinutes = 0) {
   const date = new Date();
   date.setMinutes(date.getMinutes() + offsetMinutes);
   return formatClock(date);
-}
-
-function haversineMeters(a, b) {
-  const radius = 6371000;
-  const toRad = (value) => (value * Math.PI) / 180;
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const lat1 = toRad(a.lat);
-  const lat2 = toRad(b.lat);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-  return 2 * radius * Math.asin(Math.sqrt(h));
-}
-
-function findNearestChangePoint(current, directory) {
-  return listLocatedChangePoints(directory)
-    .map(({ code, position }) => ({ code, distance: haversineMeters(current, position) }))
-    .sort((a, b) => a.distance - b.distance)[0];
 }
 
 function sortByCode(codes) {
@@ -102,8 +77,6 @@ function formatWindow(windowMinutes) {
 }
 
 export function DepotReturnsPanel({ developments = {} }) {
-  // Le posizioni dei posti cambio le registra chi guida: l'app non ne inventa.
-  const [directory, setDirectory] = useState(() => loadChangePointDirectory());
   const { inTimetable, others } = useMemo(() => getChangePointGroups(developments), [developments]);
   const defaultPlace = inTimetable.find((code) => code !== DEPOT_CODE) || '';
 
@@ -116,7 +89,6 @@ export function DepotReturnsPanel({ developments = {} }) {
   // I criteri confermati restano separati dal form: la ricerca parte quando si
   // preme Trova, non a ogni tasto premuto.
   const [criteria, setCriteria] = useState(form);
-  const [geoMessage, setGeoMessage] = useState('');
   const [searching, setSearching] = useState(false);
 
   const result = useMemo(
@@ -151,58 +123,6 @@ export function DepotReturnsPanel({ developments = {} }) {
     const timer = setTimeout(() => setSearching(false), SEARCH_FEEDBACK_MS);
     return () => clearTimeout(timer);
   }, [criteria, searching]);
-
-  // Sempre una lettura fresca: una posizione in cache registrerebbe il posto
-  // cambio dove eravamo mezzo minuto fa, cioe' altrove.
-  function readPosition(onPosition) {
-    if (!navigator.geolocation) {
-      setGeoMessage('Geolocalizzazione non disponibile su questo dispositivo.');
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (position) =>
-        onPosition({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          accuracy: position.coords.accuracy,
-        }),
-      () => setGeoMessage('Permesso posizione negato o posizione non disponibile. Seleziona il posto cambio manualmente.'),
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 12000 },
-    );
-  }
-
-  function useCurrentPosition() {
-    setGeoMessage('Leggo la posizione…');
-    readPosition((current) => {
-      const nearest = findNearestChangePoint(current, directory);
-      if (!nearest || nearest.distance > GEO_MAX_DISTANCE_METERS) {
-        setGeoMessage('Posizione rilevata, ma nessun posto cambio noto qui vicino. Scegli quale sei e registralo.');
-        return;
-      }
-      runSearch({ place: nearest.code });
-      setGeoMessage(`Posto cambio rilevato: ${nearest.code} (${Math.round(nearest.distance)} m).`);
-    });
-  }
-
-  function storeCurrentPosition() {
-    if (!form.place) return;
-    setGeoMessage(`Leggo la posizione da registrare per ${form.place}…`);
-    readPosition((current) => {
-      setDirectory(setChangePointPosition(form.place, current));
-      const accuracy = Math.round(Number(current.accuracy));
-      const precision = Number.isFinite(accuracy) ? ` con precisione ${accuracy} m` : '';
-      const retry = Number.isFinite(accuracy) && accuracy > 150 ? ' Precisione bassa: se puoi ripeti all’aperto.' : '';
-      setGeoMessage(
-        `Posizione registrata per ${form.place}${precision}: da ora viene riconosciuto qui.${retry}`,
-      );
-    });
-  }
-
-  function forgetStoredPosition() {
-    if (!form.place) return;
-    setDirectory(clearChangePointPosition(form.place));
-    setGeoMessage(`Posizione registrata rimossa per ${form.place}.`);
-  }
 
   // "Adesso" vale solo se l'orario cercato e' ancora il minuto corrente.
   const waitAnchor = { anchor: criteria.time, anchorIsNow: criteria.time === clockFromNow(0) };
@@ -347,10 +267,6 @@ export function DepotReturnsPanel({ developments = {} }) {
             <Icon name="search" size={18} />
             Trova rientri
           </button>
-          <button className="small-button" onClick={useCurrentPosition} type="button">
-            <Icon name="mapPin" size={18} />
-            Usa posizione
-          </button>
         </div>
 
         <div className="depot-returns-quick">
@@ -380,22 +296,6 @@ export function DepotReturnsPanel({ developments = {} }) {
       {!searching && isDirty ? (
         <p className="depot-returns-message">Criteri cambiati: premi Trova rientri per aggiornare.</p>
       ) : null}
-      {geoMessage ? <p className="depot-returns-message">{geoMessage}</p> : null}
-
-      {form.place ? (
-        <div className="depot-returns-geo-save">
-          <button onClick={storeCurrentPosition} type="button">
-            <Icon name="mapPin" size={16} />
-            Sono a {form.place}: registra la posizione
-          </button>
-          {directory[form.place]?.position ? (
-            <button className="depot-returns-geo-forget" onClick={forgetStoredPosition} type="button">
-              Cancella posizione di {form.place}
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-
       {!searching && criteria.place && !result.isDepot ? (
         <p className="depot-returns-summary">
           {result.matches.length

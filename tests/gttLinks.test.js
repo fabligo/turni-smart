@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getChangePointStop } from '../src/constants/changePoints.js';
+import { CHANGE_POINTS, getChangePointStop } from '../src/constants/changePoints.js';
 import { buildGttPassagesTarget, buildNearbyStopsUrl } from '../src/utils/gttLinks.js';
 
 test('risolve la palina per direzione', () => {
@@ -53,4 +53,10 @@ test('le fermate vicine richiedono coordinate valide', () => {
   assert.equal(buildNearbyStopsUrl({ lat: 45.07, lng: 7.68 }), 'https://www.google.com/maps/search/fermate+GTT/@45.070000,7.680000,16z');
   assert.equal(buildNearbyStopsUrl({ lat: 'boh', lng: 7.68 }), '');
   assert.equal(buildNearbyStopsUrl(), '');
+});
+
+test('nessun posto cambio porta coordinate non verificate', () => {
+  Object.values(CHANGE_POINTS).forEach((meta) => {
+    assert.equal(meta.coordinates, undefined);
+  });
 });
