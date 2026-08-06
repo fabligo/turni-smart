@@ -174,6 +174,19 @@ function getCategoryIconName(category, shift) {
   return 'busMark';
 }
 
+/**
+ * Sul chip resta il nome della fascia; la codifica e la finestra oraria che
+ * l'accordo le assegna stanno nel titolo, per chi vuole controllarle.
+ */
+function buildCategoryTitle(category) {
+  if (!category?.code) return category?.label || '';
+  const parts = [`${category.label} · codifica ${category.range || category.code}`];
+  if (category.earliestStart && category.latestEnd) {
+    parts.push(`inizio non prima delle ${category.earliestStart}, termine entro le ${category.latestEnd}`);
+  }
+  return parts.join(' · ');
+}
+
 function getSegmentVehicleStorageKey({ dayData, date, index, segment, shift }) {
   return [
     dayData?.iso || date || shift?.date || 'giorno',
@@ -315,6 +328,7 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
   const canFlipDevelopment = isSplit && hasSegments;
   const showEveningBadge = isEvening && category?.badge !== 'Serale';
   const categoryIconName = getCategoryIconName(category, { ...shift, isEvening, isShortRest, isSplit });
+  const categoryTitle = buildCategoryTitle(category);
   const shareText = buildShareText(shift, segments);
   const gttTarget = buildGttPassagesTarget(getPrimaryGttChangePoint({ dayData, segments, shift }));
 
@@ -404,9 +418,10 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
 
           <div className="shift-meta">
             {category?.label ? (
-              <span className="shift-meta-chip shift-meta-chip--category">
+              <span className="shift-meta-chip shift-meta-chip--category" title={categoryTitle}>
                 <AssetIcon name={categoryIconName} size={24} />
                 {category.label}
+                {category.code ? <em className="shift-meta-code">{category.code}</em> : null}
               </span>
             ) : null}
             <span className="shift-meta-chip">

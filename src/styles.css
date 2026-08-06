@@ -2080,6 +2080,19 @@ select:focus-visible {
   color: #d9ecff;
 }
 
+/* La codifica dell'accordo (T2R, 100, 300...): sta accanto al nome della fascia
+   senza rubargli la scena. */
+.shift-meta-code {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.14);
+  font-size: 0.78em;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 .shift-meta-chip--rest {
   min-height: 0;
   padding: 0;
