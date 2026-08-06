@@ -5,9 +5,13 @@ const GTT_ARRIVALS_BASE_URL = 'https://www.gtt.to.it/cms/percorari/arrivi';
 const GTT_URBAN_BASE_URL = 'https://www.gtt.to.it/cms/percorari/urbano';
 const MAPS_SEARCH_BASE_URL = 'https://www.google.com/maps/search/';
 const MAPS_DIRECTIONS_URL = 'https://www.google.com/maps/dir/';
-// Destinazione come testo, non come coordinate: del deposito non abbiamo una
-// posizione verificata, e una ricerca sbagliata si corregge dentro la mappa.
+const MOOVIT_DIRECTIONS_URL = 'https://moovitapp.com/';
 const DEPOT_DESTINATION = 'Deposito GTT Gerbido, Grugliasco';
+// Moovit vuole la destinazione come coordinate, un nome non gli basta. Questa
+// posizione del deposito e' quella con cui il progetto e' nato e nessuno l'ha
+// verificata: si vede subito sulla mappa dove cade il segnaposto, ed e' il solo
+// punto in cui viene usata.
+const DEPOT_POSITION = { lat: 45.0419, lng: 7.5886 };
 
 function sanitizeToken(value = '') {
   return String(value ?? '').trim();
@@ -48,6 +52,22 @@ export function buildDepotDirectionsUrl({ lat, lng } = {}) {
     travelmode: 'transit',
   });
   return `${MAPS_DIRECTIONS_URL}?${params.toString()}`;
+}
+
+/**
+ * Lo stesso percorso su Moovit, che sui trasporti di Torino e' quello che si
+ * usa davvero. Sul telefono l'indirizzo apre l'app se e' installata.
+ */
+export function buildMoovitDirectionsUrl({ lat, lng } = {}) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return '';
+  const params = new URLSearchParams({
+    from: 'La mia posizione',
+    fll: `${lat.toFixed(6)}_${lng.toFixed(6)}`,
+    to: DEPOT_DESTINATION,
+    tll: `${DEPOT_POSITION.lat.toFixed(6)}_${DEPOT_POSITION.lng.toFixed(6)}`,
+    lang: 'it',
+  });
+  return `${MOOVIT_DIRECTIONS_URL}?${params.toString()}`;
 }
 
 export function getPrimaryGttChangePoint({ shift, dayData, segments = [] }) {
