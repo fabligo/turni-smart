@@ -12,8 +12,6 @@ import {
   clearChangePointPosition,
   listLocatedChangePoints,
   loadChangePointDirectory,
-  resolveChangePointName,
-  setChangePointName,
   setChangePointPosition,
 } from '../utils/changePointDirectory.js';
 import { formatMinutes } from '../utils/timeUtils.js';
@@ -65,15 +63,13 @@ function findNearestChangePoint(current, directory) {
     .sort((a, b) => a.distance - b.distance)[0];
 }
 
-function sortByLabel(codes, directory) {
-  return [...codes].sort((a, b) =>
-    resolveChangePointName(a, directory).localeCompare(resolveChangePointName(b, directory), 'it'),
-  );
+function sortByCode(codes) {
+  return [...codes].sort((a, b) => a.localeCompare(b, 'it'));
 }
 
 // I posti cambio presenti negli orari caricati vanno separati dagli altri:
 // sceglierne uno senza corse e' il modo piu' rapido per non trovare nulla.
-function getChangePointGroups(developments = {}, directory = {}) {
+function getChangePointGroups(developments = {}) {
   const inTimetable = new Set();
   Object.values(developments).forEach((segments) => {
     if (!Array.isArray(segments)) return;
@@ -83,7 +79,7 @@ function getChangePointGroups(developments = {}, directory = {}) {
     });
   });
   const others = Object.keys(CHANGE_POINTS).filter((code) => !inTimetable.has(code));
-  return { inTimetable: sortByLabel(inTimetable, directory), others: sortByLabel(others, directory) };
+  return { inTimetable: sortByCode(inTimetable), others: sortByCode(others) };
 }
 
 /**
@@ -106,15 +102,10 @@ function formatWindow(windowMinutes) {
 }
 
 export function DepotReturnsPanel({ developments = {} }) {
-  // L'anagrafica dei posti cambio: nomi e posizioni li mette chi guida, l'app
-  // non ne inventa nessuno.
+  // Le posizioni dei posti cambio le registra chi guida: l'app non ne inventa.
   const [directory, setDirectory] = useState(() => loadChangePointDirectory());
-  const { inTimetable, others } = useMemo(
-    () => getChangePointGroups(developments, directory),
-    [developments, directory],
-  );
+  const { inTimetable, others } = useMemo(() => getChangePointGroups(developments), [developments]);
   const defaultPlace = inTimetable.find((code) => code !== DEPOT_CODE) || '';
-  const placeName = (code) => resolveChangePointName(code, directory);
 
   const [form, setForm] = useState(() => ({
     place: defaultPlace,
@@ -127,7 +118,6 @@ export function DepotReturnsPanel({ developments = {} }) {
   const [criteria, setCriteria] = useState(form);
   const [geoMessage, setGeoMessage] = useState('');
   const [searching, setSearching] = useState(false);
-  const [renaming, setRenaming] = useState('');
 
   const result = useMemo(
     () =>
@@ -190,20 +180,20 @@ export function DepotReturnsPanel({ developments = {} }) {
         return;
       }
       runSearch({ place: nearest.code });
-      setGeoMessage(`Posto cambio rilevato: ${placeName(nearest.code)} (${Math.round(nearest.distance)} m).`);
+      setGeoMessage(`Posto cambio rilevato: ${nearest.code} (${Math.round(nearest.distance)} m).`);
     });
   }
 
   function storeCurrentPosition() {
     if (!form.place) return;
-    setGeoMessage(`Leggo la posizione da registrare per ${placeName(form.place)}…`);
+    setGeoMessage(`Leggo la posizione da registrare per ${form.place}…`);
     readPosition((current) => {
       setDirectory(setChangePointPosition(form.place, current));
       const accuracy = Math.round(Number(current.accuracy));
       const precision = Number.isFinite(accuracy) ? ` con precisione ${accuracy} m` : '';
       const retry = Number.isFinite(accuracy) && accuracy > 150 ? ' Precisione bassa: se puoi ripeti all’aperto.' : '';
       setGeoMessage(
-        `Posizione registrata per ${placeName(form.place)}${precision}: da ora viene riconosciuto qui.${retry}`,
+        `Posizione registrata per ${form.place}${precision}: da ora viene riconosciuto qui.${retry}`,
       );
     });
   }
@@ -211,7 +201,7 @@ export function DepotReturnsPanel({ developments = {} }) {
   function forgetStoredPosition() {
     if (!form.place) return;
     setDirectory(clearChangePointPosition(form.place));
-    setGeoMessage(`Posizione registrata rimossa per ${placeName(form.place)}.`);
+    setGeoMessage(`Posizione registrata rimossa per ${form.place}.`);
   }
 
   // "Adesso" vale solo se l'orario cercato e' ancora il minuto corrente.
@@ -230,7 +220,7 @@ export function DepotReturnsPanel({ developments = {} }) {
       return <p className="result-message">Sei gia al deposito Gerbido: nessun rientro da cercare.</p>;
     }
 
-    const placeLabel = placeName(criteria.place);
+    const placeLabel = criteria.place;
 
     if (!result.placeKnown) {
       return (
@@ -251,30 +241,23 @@ export function DepotReturnsPanel({ developments = {} }) {
       );
     }
 
-    // Il dettaglio dei rientri successivi lo elenca la lista qui sotto.
-    if (nextUpcoming) {
-      return (
-        <p className="result-message">
-          Nessun rientro da {placeLabel} entro {formatWindow(criteria.windowMinutes)} dalle {criteria.time}: i prossimi
-          non passano prima delle {nextUpcoming.departure}.
-        </p>
-      );
-    }
+    // Il riepilogo sopra ha gia' detto posto, orario e finestra, e l'elenco
+    // qui sotto dice quando passano i prossimi: qui non serve altro.
+    if (nextUpcoming) return null;
 
     if (!result.passages) {
       return (
         <p className="result-message">
-          Dopo le {criteria.time} negli orari caricati non parte nessuna corsa da {placeLabel}. Sposta l&apos;orario di
-          passaggio o scegli un altro posto cambio.
+          Dopo le {criteria.time} non parte nessuna corsa da {placeLabel}. Sposta l&apos;orario di passaggio o scegli un
+          altro posto cambio.
         </p>
       );
     }
 
     return (
       <p className="result-message">
-        Nessun mezzo diretto al Gerbido da {placeLabel} dopo le {criteria.time}. Da qui{' '}
-        {result.passages === 1 ? 'passa 1 mezzo' : `passano ${result.passages} mezzi`}, ma nessuno prosegue fino al
-        deposito: prova un altro posto cambio.
+        Da {placeLabel} {result.passages === 1 ? 'passa 1 mezzo' : `passano ${result.passages} mezzi`}, ma nessuno
+        prosegue fino al Gerbido: prova un altro posto cambio.
       </p>
     );
   }
@@ -309,7 +292,7 @@ export function DepotReturnsPanel({ developments = {} }) {
                 <optgroup label="Presenti negli orari caricati">
                   {inTimetable.map((code) => (
                     <option key={code} value={code}>
-                      {placeName(code) === code ? code : `${code} · ${placeName(code)}`}
+                      {(code) === code ? code : `${code} · ${(code)}`}
                     </option>
                   ))}
                 </optgroup>
@@ -318,7 +301,7 @@ export function DepotReturnsPanel({ developments = {} }) {
                 <optgroup label="Senza corse negli orari caricati">
                   {others.map((code) => (
                     <option key={code} value={code}>
-                      {placeName(code) === code ? code : `${code} · ${placeName(code)}`}
+                      {(code) === code ? code : `${code} · ${(code)}`}
                     </option>
                   ))}
                 </optgroup>
@@ -389,7 +372,7 @@ export function DepotReturnsPanel({ developments = {} }) {
             <span className="depot-returns-progress__bar" />
           </span>
           <span className="depot-returns-progress__label">
-            Cerco le linee che passano da {placeName(criteria.place) || 'qui'} e proseguono fino al Gerbido…
+            Cerco le linee che passano da {criteria.place || 'qui'} e proseguono fino al Gerbido…
           </span>
         </div>
       ) : null}
@@ -400,64 +383,24 @@ export function DepotReturnsPanel({ developments = {} }) {
       {geoMessage ? <p className="depot-returns-message">{geoMessage}</p> : null}
 
       {form.place ? (
-        <div className="depot-returns-place-card">
-          <div className="depot-returns-place-card__head">
-            <strong>{form.place}</strong>
-            <span>
-              {directory[form.place]?.name
-                ? `Nome tuo: ${directory[form.place].name}`
-                : 'Senza nome: gli orari lo scrivono solo cosi.'}
-              {directory[form.place]?.position ? ' · posizione registrata' : ' · posizione non registrata'}
-            </span>
-          </div>
-
-          {renaming === form.place ? (
-            <form
-              className="depot-returns-rename"
-              onSubmit={(event) => {
-                event.preventDefault();
-                setDirectory(setChangePointName(form.place, event.target.elements.changePointName.value));
-                setRenaming('');
-              }}
-            >
-              <input
-                aria-label={`Nome del posto cambio ${form.place}`}
-                autoFocus
-                defaultValue={directory[form.place]?.name || ''}
-                maxLength={40}
-                name="changePointName"
-                placeholder="Come lo chiami tu"
-                type="text"
-              />
-              <button type="submit">Salva nome</button>
-              <button className="depot-returns-geo-forget" onClick={() => setRenaming('')} type="button">
-                Annulla
-              </button>
-            </form>
-          ) : (
-            <div className="depot-returns-geo-save">
-              <button onClick={storeCurrentPosition} type="button">
-                <Icon name="mapPin" size={16} />
-                Sono qui adesso: registra la posizione
-              </button>
-              <button className="depot-returns-geo-forget" onClick={() => setRenaming(form.place)} type="button">
-                {directory[form.place]?.name ? 'Cambia nome' : 'Dai un nome'}
-              </button>
-              {directory[form.place]?.position ? (
-                <button className="depot-returns-geo-forget" onClick={forgetStoredPosition} type="button">
-                  Cancella posizione
-                </button>
-              ) : null}
-            </div>
-          )}
+        <div className="depot-returns-geo-save">
+          <button onClick={storeCurrentPosition} type="button">
+            <Icon name="mapPin" size={16} />
+            Sono a {form.place}: registra la posizione
+          </button>
+          {directory[form.place]?.position ? (
+            <button className="depot-returns-geo-forget" onClick={forgetStoredPosition} type="button">
+              Cancella posizione di {form.place}
+            </button>
+          ) : null}
         </div>
       ) : null}
 
       {!searching && criteria.place && !result.isDepot ? (
         <p className="depot-returns-summary">
           {result.matches.length
-            ? `${result.matches.length} ${result.matches.length === 1 ? 'rientro' : 'rientri'} da ${placeName(criteria.place)}`
-            : `Nessun rientro da ${placeName(criteria.place)}`}{' '}
+            ? `${result.matches.length} ${result.matches.length === 1 ? 'rientro' : 'rientri'} da ${criteria.place}`
+            : `Nessun rientro da ${criteria.place}`}{' '}
           · passaggio alle {criteria.time} · entro {formatWindow(criteria.windowMinutes)} · servizio{' '}
           {SERVICE_LABELS[result.service] || result.service}
         </p>
@@ -496,14 +439,7 @@ export function DepotReturnsPanel({ developments = {} }) {
 
       {!searching && result.upcoming.length ? (
         <div className="depot-returns-upcoming">
-          <h3>
-            {result.matches.length ? 'Rientri successivi' : 'Prossimi rientri utili'} da{' '}
-            {placeName(criteria.place)}
-          </h3>
-          <p>
-            Le prossime linee che passano di qui e rientrano al Gerbido non passano prima delle{' '}
-            {result.upcoming[0].departure}.
-          </p>
+          <h3>{result.matches.length ? 'Rientri successivi' : 'Prossimi rientri'}</h3>
           <ul>
             {result.upcoming.slice(0, UPCOMING_LIMIT).map((item) => (
               <li key={`${item.line}-${item.shift}-${item.departure}-${item.vehicleShift}`}>

@@ -43,13 +43,10 @@ test('il link punta alla palina quando c e, altrimenti alla linea', () => {
   assert.equal(withoutStop.palina, '');
 });
 
-test('usa il nome scelto da chi guida nell etichetta', () => {
-  const target = buildGttPassagesTarget({ line: '71', place: 'CATT', direction: 'A', placeLabel: 'Cattaneo' });
-  assert.match(target.label, /Cattaneo/);
+test('l etichetta usa il codice del posto cambio', () => {
+  const target = buildGttPassagesTarget({ line: '71', place: 'CATT', direction: 'A' });
+  assert.match(target.label, /CATT/);
   assert.match(target.title, /palina 307/);
-
-  const unnamed = buildGttPassagesTarget({ line: '71', place: 'CATT', direction: 'A' });
-  assert.match(unnamed.label, /CATT/);
 });
 
 test('le fermate vicine richiedono coordinate valide', () => {

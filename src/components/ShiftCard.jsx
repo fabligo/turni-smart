@@ -4,7 +4,6 @@ import { getDevSegments } from '../parserOrari.js';
 import { getLineDisplayName } from '../constants/depotGerbido.js';
 import { BALLOTTAGGI } from '../constants/shiftClassification.js';
 import { buildGttPassagesTarget, buildNearbyStopsUrl, getPrimaryGttChangePoint } from '../utils/gttLinks.js';
-import { loadChangePointDirectory, resolveChangePointName } from '../utils/changePointDirectory.js';
 import { AssetIcon, Icon } from './Icon.jsx';
 
 const DIRECTION_LABELS = {
@@ -316,12 +315,7 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
   const showEveningBadge = isEvening && category?.badge !== 'Serale';
   const categoryIconName = getCategoryIconName(category, { ...shift, isEvening, isShortRest, isSplit });
   const shareText = buildShareText(shift, segments);
-  const gttChangePoint = getPrimaryGttChangePoint({ dayData, segments, shift });
-  const gttTarget = buildGttPassagesTarget({
-    ...gttChangePoint,
-    // Il nome del posto cambio e' quello scelto da chi guida, se l'ha messo.
-    placeLabel: resolveChangePointName(gttChangePoint.place, loadChangePointDirectory()),
-  });
+  const gttTarget = buildGttPassagesTarget(getPrimaryGttChangePoint({ dayData, segments, shift }));
 
   function updateSegmentVehicle(index, segment, values) {
     const normalized = Array.isArray(values) ? serializeVehicleInputs(values) : sanitizeVehicleNumbersInput(values);
