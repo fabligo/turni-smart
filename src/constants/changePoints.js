@@ -24,11 +24,6 @@ export const CHANGE_POINTS = {
     // Sulla 62 le due direzioni sono invertite rispetto alle altre linee.
     stopsByLine: { 62: { A: '729', R: '728' } },
   },
-  PITA: {
-    label: 'Pitagora Nord',
-    address: 'Corso Siracusa, Piazzale Pitagora, Torino',
-    stops: { A: '134', R: '135' },
-  },
   FILA: {
     label: 'Filadelfia',
     address: 'Via Filadelfia, Torino',

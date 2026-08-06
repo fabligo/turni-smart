@@ -9,7 +9,7 @@ export function createDemoPreconoscenza() {
     '2026-04-03': day('2026-04-03', { t: 'turno', l: '17', n: '8', i: '0641', e: '1534', li: 'GERB', le: 'ORSA', di: '-', c: 'LV', g: 'VEN' }),
     '2026-04-04': day('2026-04-04', { t: 'RP' }),
     '2026-04-05': day('2026-04-05', { t: 'RP' }),
-    '2026-04-06': day('2026-04-06', { t: 'turno', l: '02', n: '31', i: '0554', e: '1353', li: 'GERB', le: 'PITA', di: '-', c: 'LV', g: 'LUN' }),
+    '2026-04-06': day('2026-04-06', { t: 'turno', l: '05', n: '31', i: '0554', e: '1353', li: 'GERB', le: 'CATT', di: '-', c: 'LV', g: 'LUN' }),
     '2026-04-07': day('2026-04-07', { t: 'turno', l: '14', n: '102', i: '0437', e: '1104', li: 'GERB', le: 'GERB', di: '-', c: 'LV', g: 'MAR' }),
     '2026-04-08': day('2026-04-08', { t: 'turno', l: '05', n: '203', i: '0835', e: '1511', li: 'CATT', le: 'CATT', di: 'R', c: 'LV', g: 'MER' }),
     '2026-04-09': day('2026-04-09', { t: 'turno', l: '17', n: '107', i: '0546', e: '1234', li: 'GERB', le: 'ORSA', di: '-', c: 'LV', g: 'GIO' }),
@@ -19,7 +19,7 @@ export function createDemoPreconoscenza() {
     '2026-04-13': day('2026-04-13', { t: 'turno', l: '05', n: '121', i: '0640', e: '1310', li: 'GERB', le: 'CATT', di: '-', c: 'LV', g: 'LUN' }),
     '2026-04-14': day('2026-04-14', { t: 'turno', l: '17', n: '113', i: '0448', e: '1106', li: 'GERB', le: 'GERB', di: '-', c: 'LV', g: 'MAR' }),
     '2026-04-15': day('2026-04-15', { t: 'RIS', ball: 'B03', n: 'B03', c: 'RIS' }),
-    '2026-04-16': day('2026-04-16', { t: 'turno', l: '02', n: '134', i: '0617', e: '1213', li: 'GERB', le: 'PITA', di: '-', c: 'LV', g: 'GIO' }),
+    '2026-04-16': day('2026-04-16', { t: 'turno', l: '05', n: '134', i: '0617', e: '1213', li: 'GERB', le: 'CATT', di: '-', c: 'LV', g: 'GIO' }),
     '2026-04-17': day('2026-04-17', { t: 'turno', l: '14', n: '103', i: '0634', e: '1252', li: 'GERB', le: 'LING', di: '-', c: 'LV', g: 'VEN' }),
     '2026-04-18': day('2026-04-18', { t: 'RP' }),
     '2026-04-19': day('2026-04-19', { t: 'RP' }),
@@ -32,7 +32,7 @@ export function createDemoPreconoscenza() {
     '2026-04-26': day('2026-04-26', { t: 'RP' }),
     '2026-04-27': day('2026-04-27', { t: 'turno', l: '17', n: '114', i: '0558', e: '1245', li: 'GERB', le: 'ORSA', di: '-', c: 'LV', g: 'LUN' }),
     '2026-04-28': day('2026-04-28', { t: 'turno', l: '05', n: '225', i: '0723', e: '1354', li: 'GERB', le: 'CATT', di: '-', c: 'LV', g: 'MAR' }),
-    '2026-04-29': day('2026-04-29', { t: 'turno', l: '02', n: '132', i: '0601', e: '1156', li: 'GERB', le: 'PITA', di: '-', c: 'LV', g: 'MER' }),
+    '2026-04-29': day('2026-04-29', { t: 'turno', l: '05', n: '132', i: '0601', e: '1156', li: 'GERB', le: 'CATT', di: '-', c: 'LV', g: 'MER' }),
     '2026-04-30': day('2026-04-30', { t: 'turno', l: '17', n: '204', i: '0913', e: '1449', li: 'ORSA', le: 'ORSA', di: 'R', c: 'LV', g: 'GIO' }),
   };
 
@@ -48,19 +48,19 @@ export function createDemoPreconoscenza() {
 }
 
 export const DEMO_DEVELOPMENTS = {
-  '02 31': [
-    { start: '05:54', loc_s: 'GERB', dir: '-', end: '10:53', loc_e: 'PITA', vett: '31', gt: 'LUN - VEN', run_id: 1 },
-    { start: '11:56', loc_s: 'PITA', dir: 'R', end: '13:53', loc_e: 'PITA', vett: '32', gt: 'LUN - VEN', run_id: 1 },
+  '05 31': [
+    { start: '05:54', loc_s: 'GERB', dir: '-', end: '10:53', loc_e: 'CATT', vett: '31', gt: 'LUN - VEN', run_id: 1 },
+    { start: '11:56', loc_s: 'CATT', dir: 'R', end: '13:53', loc_e: 'CATT', vett: '32', gt: 'LUN - VEN', run_id: 1 },
   ],
   // Riprese di altri turni che riportano la vettura in deposito: servono alla
-  // demo dei rientri, altrimenti da Piazza Tasso non risulterebbe mai nulla.
-  '02 45': [
-    { start: '10:53', loc_s: 'PITA', dir: '-', end: '11:41', loc_e: 'GERB', vett: '31', gt: 'LUN - VEN', run_id: 1 },
+  // demo dei rientri, altrimenti nessun posto cambio ne produrrebbe uno.
+  '05 45': [
+    { start: '10:53', loc_s: 'CATT', dir: '-', end: '11:41', loc_e: 'GERB', vett: '31', gt: 'LUN - VEN', run_id: 1 },
   ],
   '05 101': [{ start: '04:00', loc_s: 'GERB', dir: '-', end: '10:15', loc_e: 'GERB', vett: '1', gt: 'LUN - VEN', run_id: 1 }],
   '05 210': [
-    { start: '12:02', loc_s: 'CATT', dir: 'A', end: '12:29', loc_e: 'PITA', vett: '25', gt: 'LUN - VEN', run_id: 1 },
-    { start: '12:34', loc_s: 'PITA', dir: '-', end: '13:05', loc_e: 'GERB', vett: '25', gt: 'LUN - VEN', run_id: 1 },
+    { start: '12:02', loc_s: 'ORSA', dir: 'A', end: '12:29', loc_e: 'CATT', vett: '25', gt: 'LUN - VEN', run_id: 1 },
+    { start: '12:34', loc_s: 'CATT', dir: '-', end: '13:05', loc_e: 'GERB', vett: '25', gt: 'LUN - VEN', run_id: 1 },
   ],
   '05 203': [
     { start: '08:35', loc_s: 'CATT', dir: 'R', end: '10:21', loc_e: 'CATT', vett: '25', gt: 'LUN - VEN', run_id: 1 },

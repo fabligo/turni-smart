@@ -1,5 +1,4 @@
 export const GERBIDO_LINES = [
-  '2',
   '5',
   '5B',
   '10',

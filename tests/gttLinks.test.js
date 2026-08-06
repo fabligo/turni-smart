@@ -13,8 +13,6 @@ import {
 test('risolve la palina per direzione', () => {
   assert.equal(getChangePointStop('CATT', { direction: 'A' }), '307');
   assert.equal(getChangePointStop('CATT', { direction: 'R' }), '308');
-  assert.equal(getChangePointStop('PITA', { direction: 'A' }), '134');
-  assert.equal(getChangePointStop('PITA', { direction: 'R' }), '135');
   assert.equal(getChangePointStop('LING', { direction: 'R' }), '2603');
   assert.equal(getChangePointStop('BENS', { direction: 'A' }), '3628');
   assert.equal(getChangePointStop('CLMA', { direction: 'R' }), '852');
@@ -25,6 +23,12 @@ test('sulla linea 62 le direzioni di Orbassano sono invertite', () => {
   assert.equal(getChangePointStop('ORSA', { direction: 'R' }), '729');
   assert.equal(getChangePointStop('ORSA', { direction: 'A', line: '62' }), '729');
   assert.equal(getChangePointStop('ORSA', { direction: 'R', line: '62' }), '728');
+});
+
+test('la linea 2 non e piu del Gerbido, e con lei il posto cambio Pitagora', () => {
+  assert.equal(CHANGE_POINTS.PITA, undefined);
+  assert.equal(getChangePointStop('PITA', { direction: 'A' }), '');
+  assert.equal(getChangePointLabel('PITA'), 'PITA');
 });
 
 test('senza direzione usa l andata, e Cairoli ha la stessa palina nei due sensi', () => {
@@ -104,7 +108,6 @@ test('resta l indirizzo web di Moovit per chi non ha l app', () => {
 });
 
 test('i nomi dei posti cambio sono quelli delle paline GTT', () => {
-  assert.equal(getChangePointLabel('PITA'), 'Pitagora Nord');
   assert.equal(getChangePointLabel('OSET'), 'Settembrini');
   assert.equal(getChangePointLabel('CAIO'), 'Caio Mario');
   assert.equal(getChangePointLabel('BARB'), 'Portofino');
