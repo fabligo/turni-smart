@@ -1,7 +1,6 @@
-import { CHANGE_POINTS, getChangePointLabel, normalizeChangePoint } from '../constants/changePoints.js';
+import { CHANGE_POINTS, normalizeChangePoint } from '../constants/changePoints.js';
 
 const STORAGE_KEY = 'ts_change_points_v1';
-const MAX_NAME_LENGTH = 40;
 
 function getStorage(storage) {
   if (storage) return storage;
@@ -15,11 +14,6 @@ function getStorage(storage) {
 function isValidCoordinate(lat, lng) {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
   return Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
-}
-
-export function normalizeName(value) {
-  const name = String(value ?? '').replace(/\s+/g, ' ').trim();
-  return name ? name.slice(0, MAX_NAME_LENGTH) : '';
 }
 
 export function normalizePosition(value) {
@@ -36,17 +30,6 @@ export function normalizePosition(value) {
   };
 }
 
-function normalizeEntry(value) {
-  if (!value || typeof value !== 'object') return null;
-  const name = normalizeName(value.name);
-  const position = normalizePosition(value.position);
-  if (!name && !position) return null;
-  return {
-    ...(name ? { name } : {}),
-    ...(position ? { position } : {}),
-  };
-}
-
 export function loadChangePointDirectory(storage) {
   const store = getStorage(storage);
   if (!store) return {};
@@ -55,8 +38,8 @@ export function loadChangePointDirectory(storage) {
     const parsed = raw ? JSON.parse(raw) : {};
     if (!parsed || typeof parsed !== 'object') return {};
     return Object.entries(parsed).reduce((directory, [code, entry]) => {
-      const normalized = normalizeEntry(entry);
-      if (normalized) directory[normalizeChangePoint(code)] = normalized;
+      const position = normalizePosition(entry?.position);
+      if (position) directory[normalizeChangePoint(code)] = { position };
       return directory;
     }, {});
   } catch {
@@ -75,39 +58,26 @@ function writeDirectory(directory, storage) {
   return directory;
 }
 
-function updateEntry(code, changes, storage) {
-  const normalizedCode = normalizeChangePoint(code);
-  const directory = loadChangePointDirectory(storage);
-  if (!normalizedCode) return directory;
-  const merged = normalizeEntry({ ...directory[normalizedCode], ...changes });
-  if (merged) directory[normalizedCode] = merged;
-  else delete directory[normalizedCode];
-  return writeDirectory(directory, storage);
-}
-
-export function setChangePointName(code, name, storage) {
-  return updateEntry(code, { name: normalizeName(name) }, storage);
-}
-
 export function setChangePointPosition(code, position, storage) {
+  const normalizedCode = normalizeChangePoint(code);
   const normalized = normalizePosition(position);
-  if (!normalized) return loadChangePointDirectory(storage);
-  return updateEntry(code, { position: normalized }, storage);
+  const directory = loadChangePointDirectory(storage);
+  if (!normalizedCode || !normalized) return directory;
+  return writeDirectory({ ...directory, [normalizedCode]: { position: normalized } }, storage);
 }
 
 export function clearChangePointPosition(code, storage) {
-  return updateEntry(code, { position: null }, storage);
+  const normalizedCode = normalizeChangePoint(code);
+  const directory = loadChangePointDirectory(storage);
+  if (!directory[normalizedCode]) return directory;
+  delete directory[normalizedCode];
+  return writeDirectory(directory, storage);
 }
 
 /**
- * Il nome scelto da chi guida vince sempre: le etichette di serie sono solo
- * quelle che risultano certe, e per la maggior parte dei codici non esistono.
+ * La posizione registrata sul posto vince su quella di serie: e' presa col GPS
+ * dove il posto cambio si trova davvero.
  */
-export function resolveChangePointName(code, directory = {}) {
-  const normalizedCode = normalizeChangePoint(code);
-  return directory[normalizedCode]?.name || getChangePointLabel(normalizedCode);
-}
-
 export function resolveChangePointPosition(code, directory = {}) {
   const normalizedCode = normalizeChangePoint(code);
   const saved = directory[normalizedCode]?.position;
