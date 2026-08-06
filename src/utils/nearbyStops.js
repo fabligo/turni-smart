@@ -1,4 +1,4 @@
-import { buildNearbyStopsUrl } from './gttLinks.js';
+import { buildDepotDirectionsUrl, buildNearbyStopsUrl } from './gttLinks.js';
 
 // Una lettura recente va benissimo per sapere cosa passa intorno: pretenderne
 // una nuova di zecca fa solo scadere il GPS al chiuso.
@@ -19,13 +19,12 @@ export function describeGeolocationError(error) {
 }
 
 /**
- * Legge la posizione e risolve con l'indirizzo della mappa delle fermate
- * intorno. Niente window.open qui dentro: aprire una scheda vuota in attesa
- * del GPS la lascia bianca su iOS, perche' il telefono passa alla scheda nuova
- * e la richiesta di permesso resta in quella vecchia. La pagina la apre chi
- * chiama, con un tocco dell'utente sul link pronto.
+ * Legge la posizione e la passa a `buildUrl`. Niente window.open qui dentro:
+ * aprire una scheda in attesa del GPS la lascia bianca su iOS, perche' il
+ * telefono passa alla scheda nuova e la richiesta di permesso resta in quella
+ * vecchia. La pagina la apre chi chiama, con un tocco dell'utente sul link.
  */
-export function readNearbyStopsUrl() {
+export function readPositionUrl(buildUrl) {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       reject(new Error('Geolocalizzazione non disponibile su questo dispositivo.'));
@@ -33,7 +32,7 @@ export function readNearbyStopsUrl() {
     }
 
     const success = (position) => {
-      const url = buildNearbyStopsUrl({ lat: position.coords.latitude, lng: position.coords.longitude });
+      const url = buildUrl({ lat: position.coords.latitude, lng: position.coords.longitude });
       if (url) resolve(url);
       else reject(new Error(describeGeolocationError(null)));
     };
@@ -53,4 +52,12 @@ export function readNearbyStopsUrl() {
       FIRST_TRY,
     );
   });
+}
+
+export function readNearbyStopsUrl() {
+  return readPositionUrl(buildNearbyStopsUrl);
+}
+
+export function readDepotDirectionsUrl() {
+  return readPositionUrl(buildDepotDirectionsUrl);
 }

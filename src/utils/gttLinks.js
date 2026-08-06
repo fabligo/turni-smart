@@ -4,6 +4,10 @@ import { getLineDisplayName, normalizeLineCode } from '../constants/depotGerbido
 const GTT_ARRIVALS_BASE_URL = 'https://www.gtt.to.it/cms/percorari/arrivi';
 const GTT_URBAN_BASE_URL = 'https://www.gtt.to.it/cms/percorari/urbano';
 const MAPS_SEARCH_BASE_URL = 'https://www.google.com/maps/search/';
+const MAPS_DIRECTIONS_URL = 'https://www.google.com/maps/dir/';
+// Destinazione come testo, non come coordinate: del deposito non abbiamo una
+// posizione verificata, e una ricerca sbagliata si corregge dentro la mappa.
+const DEPOT_DESTINATION = 'Deposito GTT Gerbido, Grugliasco';
 
 function sanitizeToken(value = '') {
   return String(value ?? '').trim();
@@ -28,6 +32,22 @@ function buildLineUrl(line) {
 export function buildNearbyStopsUrl({ lat, lng } = {}) {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return '';
   return `${MAPS_SEARCH_BASE_URL}fermate+GTT/@${lat.toFixed(6)},${lng.toFixed(6)},16z`;
+}
+
+/**
+ * Il percorso in mezzi pubblici da dove ci si trova fino al deposito: linee da
+ * prendere e cambi da fare li calcola la mappa sulla rete GTT vera, che qui non
+ * abbiamo. E' la risposta quando nessuna corsa di servizio rientra utile.
+ */
+export function buildDepotDirectionsUrl({ lat, lng } = {}) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return '';
+  const params = new URLSearchParams({
+    api: '1',
+    origin: `${lat.toFixed(6)},${lng.toFixed(6)}`,
+    destination: DEPOT_DESTINATION,
+    travelmode: 'transit',
+  });
+  return `${MAPS_DIRECTIONS_URL}?${params.toString()}`;
 }
 
 export function getPrimaryGttChangePoint({ shift, dayData, segments = [] }) {

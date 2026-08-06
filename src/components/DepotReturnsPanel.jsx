@@ -1,16 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CHANGE_POINTS } from '../constants/changePoints.js';
 import { getLineDisplayName } from '../constants/depotGerbido.js';
 import {
   ANY_PLACE,
-  DEPOT_CODE,
   formatClock,
   MAX_RIDE_MINUTES,
-  normalizePlace,
   RETURN_WINDOW_MINUTES,
   searchReturns,
 } from '../utils/depotReturns.js';
-import { readNearbyStopsUrl } from '../utils/nearbyStops.js';
+import { readDepotDirectionsUrl, readNearbyStopsUrl } from '../utils/nearbyStops.js';
+import { getChangePointStop } from '../constants/changePoints.js';
 import { formatMinutes } from '../utils/timeUtils.js';
 import { Icon } from './Icon.jsx';
 
@@ -41,25 +39,6 @@ function clockFromNow(offsetMinutes = 0) {
   return formatClock(date);
 }
 
-function sortByCode(codes) {
-  return [...codes].sort((a, b) => a.localeCompare(b, 'it'));
-}
-
-// I posti cambio presenti negli orari caricati vanno separati dagli altri:
-// sceglierne uno senza corse e' il modo piu' rapido per non trovare nulla.
-function getChangePointGroups(developments = {}) {
-  const inTimetable = new Set();
-  Object.values(developments).forEach((segments) => {
-    if (!Array.isArray(segments)) return;
-    segments.forEach((segment) => {
-      if (normalizePlace(segment.loc_s)) inTimetable.add(normalizePlace(segment.loc_s));
-      if (normalizePlace(segment.loc_e)) inTimetable.add(normalizePlace(segment.loc_e));
-    });
-  });
-  const others = Object.keys(CHANGE_POINTS).filter((code) => !inTimetable.has(code));
-  return { inTimetable: sortByCode(inTimetable), others: sortByCode(others) };
-}
-
 /**
  * L'attesa e' sempre contata dall'orario di passaggio cercato, non dall'ora
  * corrente: "tra 49 minuti" si puo' dire solo se i due coincidono, altrimenti
@@ -80,11 +59,7 @@ function formatWindow(windowMinutes) {
 }
 
 export function DepotReturnsPanel({ developments = {} }) {
-  const { inTimetable, others } = useMemo(() => getChangePointGroups(developments), [developments]);
-  const defaultPlace = inTimetable.find((code) => code !== DEPOT_CODE) || '';
-
   const [form, setForm] = useState(() => ({
-    place: defaultPlace,
     service: '',
     time: clockFromNow(0),
     windowMinutes: RETURN_WINDOW_MINUTES,
@@ -94,24 +69,28 @@ export function DepotReturnsPanel({ developments = {} }) {
   const [criteria, setCriteria] = useState(form);
   const [searching, setSearching] = useState(false);
   const [geoMessage, setGeoMessage] = useState('');
-  const [geoBusy, setGeoBusy] = useState(false);
-  // Il link alla mappa si prepara prima e si apre con un tocco a parte: aprire
-  // una scheda in attesa del GPS la lascia bianca su iOS.
-  const [nearbyUrl, setNearbyUrl] = useState('');
+  const [geoBusy, setGeoBusy] = useState('');
+  // Il link si prepara prima e si apre con un tocco a parte: aprire una scheda
+  // in attesa del GPS la lascia bianca su iOS.
+  const [positionLink, setPositionLink] = useState(null);
 
-  function findNearbyStops() {
+  // Due link diversi, uno solo alla volta: le fermate intorno, oppure il
+  // percorso in mezzi fino al deposito calcolato sulla rete GTT vera.
+  function readPosition(reader, kind) {
     setGeoMessage('');
-    setNearbyUrl('');
-    setGeoBusy(true);
-    readNearbyStopsUrl()
-      .then((url) => setNearbyUrl(url))
+    setPositionLink(null);
+    setGeoBusy(kind);
+    reader()
+      .then((url) => setPositionLink({ kind, url }))
       .catch((error) => setGeoMessage(error.message))
-      .finally(() => setGeoBusy(false));
+      .finally(() => setGeoBusy(''));
   }
 
   const result = useMemo(
     () =>
-      searchReturns(developments, criteria.place, {
+      // Sempre tutti i posti cambio: il punto di partenza e' dove si e' adesso,
+      // non un codice scelto da un elenco.
+      searchReturns(developments, ANY_PLACE, {
         service: criteria.service,
         time: criteria.time,
         windowMinutes: criteria.windowMinutes,
@@ -120,7 +99,6 @@ export function DepotReturnsPanel({ developments = {} }) {
   );
 
   const isDirty =
-    form.place !== criteria.place ||
     form.service !== criteria.service ||
     form.time !== criteria.time ||
     form.windowMinutes !== criteria.windowMinutes;
@@ -144,40 +122,39 @@ export function DepotReturnsPanel({ developments = {} }) {
 
   // "Adesso" vale solo se l'orario cercato e' ancora il minuto corrente.
   const waitAnchor = { anchor: criteria.time, anchorIsNow: criteria.time === clockFromNow(0) };
+  // Le linee che stanno rientrando, in ordine di arrivo: e' la risposta corta
+  // alla domanda "quale linea prendo per tornare al Gerbido".
+  const returningLines = [...new Set(result.matches.map((item) => getLineDisplayName(item.line)))];
   const nextUpcoming = result.upcoming[0];
   const otherServices = Object.entries(result.passagesByService).filter(
     ([service, count]) => service !== result.service && count > 0,
   );
 
   function renderEmptyState() {
-    if (!criteria.place) {
-      return <p className="result-message">Scegli il posto cambio da cui parti, poi premi Trova rientri.</p>;
-    }
-
-    if (result.isDepot) {
-      return <p className="result-message">Sei gia al deposito Gerbido: nessun rientro da cercare.</p>;
-    }
-
-    const anyPlace = criteria.place === ANY_PLACE;
-    const placeLabel = anyPlace ? 'nessun posto cambio' : criteria.place;
-
     if (!result.placeKnown) {
       return (
         <p className="result-message">
-          {anyPlace
-            ? 'Negli orari caricati non c\u2019e nessuna corsa. Controlla di aver caricato il PDF degli orari giusto.'
-            : `Negli orari caricati non c\u2019e nessuna corsa che passa da ${placeLabel}. Controlla di aver caricato il PDF degli orari giusto, oppure scegli un altro posto cambio.`}
+          Negli orari caricati non c&apos;e nessuna corsa. Controlla di aver caricato il PDF degli orari giusto.
         </p>
       );
     }
 
     if (!result.passages && otherServices.length) {
       return (
-        <p className="result-message">
-          {anyPlace ? 'Gli orari caricati hanno' : `Da ${placeLabel} gli orari caricati hanno`} corse solo per il servizio{' '}
-          {otherServices.map(([service]) => SERVICE_LABELS[service] || service).join(' e ')}, non per il servizio{' '}
-          {SERVICE_LABELS[result.service] || result.service}. Cambia il campo Servizio e riprova.
-        </p>
+        <div className="result-message">
+          <p>
+            Gli orari caricati hanno corse solo per il servizio{' '}
+            {otherServices.map(([service]) => SERVICE_LABELS[service] || service).join(' e ')}, non per il servizio{' '}
+            {SERVICE_LABELS[result.service] || result.service}.
+          </p>
+          <div className="depot-returns-quick">
+            {otherServices.map(([service]) => (
+              <button key={service} onClick={() => runSearch({ service })} type="button">
+                Cerca nel servizio {SERVICE_LABELS[service] || service}
+              </button>
+            ))}
+          </div>
+        </div>
       );
     }
 
@@ -187,10 +164,7 @@ export function DepotReturnsPanel({ developments = {} }) {
 
     if (!result.passages) {
       return (
-        <p className="result-message">
-          Dopo le {criteria.time} non parte nessuna corsa{anyPlace ? '' : ` da ${placeLabel}`}. Sposta l&apos;orario di
-          passaggio{anyPlace ? '.' : ' o scegli un altro posto cambio.'}
-        </p>
+        <p className="result-message">Dopo le {criteria.time} non parte nessuna corsa. Sposta l&apos;orario.</p>
       );
     }
 
@@ -201,7 +175,7 @@ export function DepotReturnsPanel({ developments = {} }) {
     if (result.longRides) {
       return (
         <p className="result-message">
-          {anyPlace ? `Dopo le ${criteria.time} ${passages}` : `Da ${placeLabel} ${passages} dopo le ${criteria.time}`}:{' '}
+          Dopo le {criteria.time} {passages}:{' '}
           {result.longRides === 1
             ? 'uno arriva al Gerbido ma dopo '
             : `${result.longRides} arrivano al Gerbido ma dopo `}
@@ -213,8 +187,7 @@ export function DepotReturnsPanel({ developments = {} }) {
 
     return (
       <p className="result-message">
-        {anyPlace ? `Dopo le ${criteria.time} ${passages}` : `Da ${placeLabel} ${passages} dopo le ${criteria.time}`}, ma
-        nessuno arriva al Gerbido{anyPlace ? '.' : ': prova un altro posto cambio.'}
+        Dopo le {criteria.time} {passages}, ma nessuno arriva al Gerbido.
       </p>
     );
   }
@@ -228,9 +201,9 @@ export function DepotReturnsPanel({ developments = {} }) {
         </span>
         <h2 id="depot-returns-title">Come rientro al Gerbido</h2>
         <p>
-          Mezzi che proseguono fino al Gerbido, anche quando il deposito non e il capolinea della corsa. Scegli un posto
-          cambio, oppure Ovunque per vedere tutte le corse in rientro: con Cosa passa qui vicino controlli quali linee
-          fermano dove sei.
+          Tutte le corse di servizio che rientrano al Gerbido dopo l&apos;orario indicato, da qualsiasi posto cambio, con
+          la palina da cui partono. Cosa passa qui vicino elenca le fermate intorno a te; Come arrivo al Gerbido calcola
+          linee e cambi dalla tua posizione fino al deposito.
         </p>
       </div>
 
@@ -243,34 +216,9 @@ export function DepotReturnsPanel({ developments = {} }) {
       >
         <div className="depot-returns-controls">
           <label>
-            <span>Posto cambio</span>
-            <select onChange={(event) => updateForm({ place: event.target.value })} value={form.place}>
-              <option value="">Seleziona…</option>
-              <option value={ANY_PLACE}>Ovunque · tutte le corse verso il deposito</option>
-              {inTimetable.length ? (
-                <optgroup label="Presenti negli orari caricati">
-                  {inTimetable.map((code) => (
-                    <option key={code} value={code}>
-                      {(code) === code ? code : `${code} · ${(code)}`}
-                    </option>
-                  ))}
-                </optgroup>
-              ) : null}
-              {others.length ? (
-                <optgroup label="Senza corse negli orari caricati">
-                  {others.map((code) => (
-                    <option key={code} value={code}>
-                      {(code) === code ? code : `${code} · ${(code)}`}
-                    </option>
-                  ))}
-                </optgroup>
-              ) : null}
-            </select>
-          </label>
-          <label>
-            <span>Passo di qui alle</span>
+            <span>Fine servizio alle</span>
             <input
-              aria-label="Orario di passaggio dal posto cambio"
+              aria-label="Orario da cui cercare i rientri"
               onChange={(event) => updateForm({ time: event.target.value })}
               type="time"
               value={form.time}
@@ -306,11 +254,11 @@ export function DepotReturnsPanel({ developments = {} }) {
             <Icon name="search" size={18} />
             Trova rientri
           </button>
-          {nearbyUrl ? (
+          {positionLink?.kind === 'stops' ? (
             <a
               className="small-button depot-returns-nearby-link"
-              href={nearbyUrl}
-              onClick={() => setNearbyUrl('')}
+              href={positionLink.url}
+              onClick={() => setPositionLink(null)}
               rel="noopener noreferrer"
               target="_blank"
             >
@@ -320,13 +268,36 @@ export function DepotReturnsPanel({ developments = {} }) {
           ) : (
             <button
               className="small-button"
-              disabled={geoBusy}
-              onClick={findNearbyStops}
+              disabled={Boolean(geoBusy)}
+              onClick={() => readPosition(readNearbyStopsUrl, 'stops')}
               title="Trova le fermate intorno a dove sei adesso, per vedere quali linee ci passano"
               type="button"
             >
               <Icon name="mapPin" size={18} />
-              {geoBusy ? 'Leggo la posizione…' : 'Cosa passa qui vicino'}
+              {geoBusy === 'stops' ? 'Leggo la posizione…' : 'Cosa passa qui vicino'}
+            </button>
+          )}
+          {positionLink?.kind === 'depot' ? (
+            <a
+              className="small-button depot-returns-nearby-link"
+              href={positionLink.url}
+              onClick={() => setPositionLink(null)}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <Icon name="route" size={18} />
+              Apri il percorso al Gerbido
+            </a>
+          ) : (
+            <button
+              className="small-button"
+              disabled={Boolean(geoBusy)}
+              onClick={() => readPosition(readDepotDirectionsUrl, 'depot')}
+              title="Linee e cambi per arrivare al deposito da dove sei adesso, sulla rete GTT"
+              type="button"
+            >
+              <Icon name="route" size={18} />
+              {geoBusy === 'depot' ? 'Leggo la posizione…' : 'Come arrivo al Gerbido'}
             </button>
           )}
         </div>
@@ -350,7 +321,7 @@ export function DepotReturnsPanel({ developments = {} }) {
             <span className="depot-returns-progress__bar" />
           </span>
           <span className="depot-returns-progress__label">
-            Cerco le linee che {criteria.place === ANY_PLACE ? 'proseguono' : `passano da ${criteria.place || 'qui'} e proseguono`} fino al Gerbido…
+            Cerco le corse che rientrano al Gerbido…
           </span>
         </div>
       ) : null}
@@ -360,13 +331,22 @@ export function DepotReturnsPanel({ developments = {} }) {
       {!searching && isDirty ? (
         <p className="depot-returns-message">Criteri cambiati: premi Trova rientri per aggiornare.</p>
       ) : null}
-      {!searching && criteria.place && !result.isDepot ? (
+      {!searching ? (
         <p className="depot-returns-summary">
           {result.matches.length
-            ? `${result.matches.length} ${result.matches.length === 1 ? 'rientro' : 'rientri'} ${result.anyPlace ? 'verso il Gerbido' : `da ${criteria.place}`}`
-            : `Nessun rientro ${result.anyPlace ? 'verso il Gerbido' : `da ${criteria.place}`}`}{' '}
-          · passaggio alle {criteria.time} · entro {formatWindow(criteria.windowMinutes)} · servizio{' '}
+            ? `${result.matches.length} ${result.matches.length === 1 ? 'rientro' : 'rientri'} verso il Gerbido`
+            : 'Nessun rientro verso il Gerbido'}{' '}
+          · dalle {criteria.time} · entro {formatWindow(criteria.windowMinutes)} · servizio{' '}
           {SERVICE_LABELS[result.service] || result.service}
+        </p>
+      ) : null}
+
+      {!searching && returningLines.length ? (
+        <p className="depot-returns-lines">
+          <span>Linee in rientro</span>
+          {returningLines.map((line) => (
+            <strong key={line}>{line}</strong>
+          ))}
         </p>
       ) : null}
 
@@ -382,6 +362,7 @@ export function DepotReturnsPanel({ developments = {} }) {
                   <span>
                     {result.anyPlace ? `parte da ${item.from} · ` : ''}
                     {item.direct ? 'diretto in deposito' : `${item.legs.length} tratti`}
+                    {getChangePointStop(item.from, { line: item.line }) ? ` · palina ${getChangePointStop(item.from, { line: item.line })}` : ''}
                   </span>
                 </div>
                 <div>
@@ -403,6 +384,37 @@ export function DepotReturnsPanel({ developments = {} }) {
           renderEmptyState()
         )}
       </div>
+
+      {!searching && !result.matches.length ? (
+        <div className="depot-returns-fallback">
+          <p>
+            Nessun mezzo di servizio ti riporta in deposito adesso. La mappa parte da dove sei, prende la fermata piu
+            vicina e ti da linee, orari di passaggio e cambi fino al Gerbido.
+          </p>
+          {positionLink?.kind === 'depot' ? (
+            <a
+              className="depot-returns-search"
+              href={positionLink.url}
+              onClick={() => setPositionLink(null)}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <Icon name="route" size={18} />
+              Apri il percorso al Gerbido
+            </a>
+          ) : (
+            <button
+              className="depot-returns-search"
+              disabled={Boolean(geoBusy)}
+              onClick={() => readPosition(readDepotDirectionsUrl, 'depot')}
+              type="button"
+            >
+              <Icon name="route" size={18} />
+              {geoBusy === 'depot' ? 'Leggo la posizione…' : 'Come arrivo al Gerbido da qui'}
+            </button>
+          )}
+        </div>
+      ) : null}
 
       {!searching && result.upcoming.length ? (
         <div className="depot-returns-upcoming">
