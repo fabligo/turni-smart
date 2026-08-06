@@ -9,7 +9,7 @@ import {
   RETURN_WINDOW_MINUTES,
   searchReturns,
 } from '../utils/depotReturns.js';
-import { openNearbyStops } from '../utils/nearbyStops.js';
+import { readNearbyStopsUrl } from '../utils/nearbyStops.js';
 import { formatMinutes } from '../utils/timeUtils.js';
 import { Icon } from './Icon.jsx';
 
@@ -93,6 +93,20 @@ export function DepotReturnsPanel({ developments = {} }) {
   const [criteria, setCriteria] = useState(form);
   const [searching, setSearching] = useState(false);
   const [geoMessage, setGeoMessage] = useState('');
+  const [geoBusy, setGeoBusy] = useState(false);
+  // Il link alla mappa si prepara prima e si apre con un tocco a parte: aprire
+  // una scheda in attesa del GPS la lascia bianca su iOS.
+  const [nearbyUrl, setNearbyUrl] = useState('');
+
+  function findNearbyStops() {
+    setGeoMessage('');
+    setNearbyUrl('');
+    setGeoBusy(true);
+    readNearbyStopsUrl()
+      .then((url) => setNearbyUrl(url))
+      .catch((error) => setGeoMessage(error.message))
+      .finally(() => setGeoBusy(false));
+  }
 
   const result = useMemo(
     () =>
@@ -286,18 +300,29 @@ export function DepotReturnsPanel({ developments = {} }) {
             <Icon name="search" size={18} />
             Trova rientri
           </button>
-          <button
-            className="small-button"
-            onClick={() => {
-              setGeoMessage('');
-              openNearbyStops({ onError: setGeoMessage });
-            }}
-            title="Apre le fermate intorno a dove sei adesso, per vedere quali linee ci passano"
-            type="button"
-          >
-            <Icon name="mapPin" size={18} />
-            Cosa passa qui vicino
-          </button>
+          {nearbyUrl ? (
+            <a
+              className="small-button depot-returns-nearby-link"
+              href={nearbyUrl}
+              onClick={() => setNearbyUrl('')}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <Icon name="mapPin" size={18} />
+              Apri la mappa delle fermate
+            </a>
+          ) : (
+            <button
+              className="small-button"
+              disabled={geoBusy}
+              onClick={findNearbyStops}
+              title="Trova le fermate intorno a dove sei adesso, per vedere quali linee ci passano"
+              type="button"
+            >
+              <Icon name="mapPin" size={18} />
+              {geoBusy ? 'Leggo la posizione…' : 'Cosa passa qui vicino'}
+            </button>
+          )}
         </div>
 
         <div className="depot-returns-quick">

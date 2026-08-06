@@ -19,46 +19,38 @@ export function describeGeolocationError(error) {
 }
 
 /**
- * Apre le fermate intorno a dove ci si trova adesso. La finestra si apre col
- * clic e non dentro la risposta del GPS, altrimenti il browser la blocca come
- * popup; se la posizione non arriva si ripiega su `fallbackUrl` quando c'e'.
+ * Legge la posizione e risolve con l'indirizzo della mappa delle fermate
+ * intorno. Niente window.open qui dentro: aprire una scheda vuota in attesa
+ * del GPS la lascia bianca su iOS, perche' il telefono passa alla scheda nuova
+ * e la richiesta di permesso resta in quella vecchia. La pagina la apre chi
+ * chiama, con un tocco dell'utente sul link pronto.
  */
-export function openNearbyStops({ fallbackUrl = '', onError } = {}) {
-  const target = window.open('', '_blank');
-  if (target) target.opener = null;
+export function readNearbyStopsUrl() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('Geolocalizzazione non disponibile su questo dispositivo.'));
+      return;
+    }
 
-  const go = (url) => {
-    if (target) target.location.href = url;
-    else window.open(url, '_blank', 'noopener,noreferrer');
-  };
+    const success = (position) => {
+      const url = buildNearbyStopsUrl({ lat: position.coords.latitude, lng: position.coords.longitude });
+      if (url) resolve(url);
+      else reject(new Error(describeGeolocationError(null)));
+    };
 
-  const fail = (error) => {
-    if (fallbackUrl) go(fallbackUrl);
-    else if (target) target.close();
-    onError?.(describeGeolocationError(error));
-  };
+    const fail = (error) => reject(new Error(describeGeolocationError(error)));
 
-  if (!navigator.geolocation) {
-    fail({ code: 0 });
-    return;
-  }
-
-  const success = (position) => {
-    const url = buildNearbyStopsUrl({ lat: position.coords.latitude, lng: position.coords.longitude });
-    if (url) go(url);
-    else fail({ code: 0 });
-  };
-
-  navigator.geolocation.getCurrentPosition(
-    success,
-    (error) => {
-      // Un timeout non e' un rifiuto: si riprova senza alta precisione.
-      if (error?.code === TIMEOUT) {
-        navigator.geolocation.getCurrentPosition(success, fail, RETRY);
-        return;
-      }
-      fail(error);
-    },
-    FIRST_TRY,
-  );
+    navigator.geolocation.getCurrentPosition(
+      success,
+      (error) => {
+        // Un timeout non e' un rifiuto: si riprova senza alta precisione.
+        if (error?.code === TIMEOUT) {
+          navigator.geolocation.getCurrentPosition(success, fail, RETRY);
+          return;
+        }
+        fail(error);
+      },
+      FIRST_TRY,
+    );
+  });
 }

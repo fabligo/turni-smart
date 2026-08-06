@@ -4,7 +4,7 @@ import { getDevSegments } from '../parserOrari.js';
 import { getLineDisplayName } from '../constants/depotGerbido.js';
 import { BALLOTTAGGI } from '../constants/shiftClassification.js';
 import { buildGttPassagesTarget, getPrimaryGttChangePoint } from '../utils/gttLinks.js';
-import { openNearbyStops as openNearbyStopsAround } from '../utils/nearbyStops.js';
+import { readNearbyStopsUrl } from '../utils/nearbyStops.js';
 import { AssetIcon, Icon } from './Icon.jsx';
 
 const DIRECTION_LABELS = {
@@ -14,7 +14,6 @@ const DIRECTION_LABELS = {
 };
 
 const SEGMENT_VEHICLES_KEY = 'ts_segment_vehicles_v1';
-const GTT_LINES_URL = 'https://www.gtt.to.it/cms/percorari/urbano';
 
 function readSegmentVehicles() {
   try {
@@ -539,6 +538,9 @@ function getReminderNote(shift) {
 }
 
 function CalendarActions({ actions, compact = false, gttTarget = null, shareText = '', shift = null }) {
+  const [nearbyUrl, setNearbyUrl] = useState('');
+  const [nearbyBusy, setNearbyBusy] = useState(false);
+  const [nearbyError, setNearbyError] = useState('');
   const [copied, setCopied] = useState(false);
   if (!actions) return null;
 
@@ -573,8 +575,14 @@ function CalendarActions({ actions, compact = false, gttTarget = null, shareText
     window.open(gttTarget.url, '_blank', 'noopener,noreferrer');
   }
 
-  function openNearbyStops() {
-    openNearbyStopsAround({ fallbackUrl: gttTarget?.url || GTT_LINES_URL });
+  function findNearbyStops() {
+    setNearbyError('');
+    setNearbyUrl('');
+    setNearbyBusy(true);
+    readNearbyStopsUrl()
+      .then((url) => setNearbyUrl(url))
+      .catch((error) => setNearbyError(error.message))
+      .finally(() => setNearbyBusy(false));
   }
 
   return (
@@ -599,16 +607,36 @@ function CalendarActions({ actions, compact = false, gttTarget = null, shareText
             {gttTarget.palina ? 'Passaggi GTT' : 'Itinerario linea'}
           </button>
         ) : null}
-        <button className="inline-action inline-action--gtt" onClick={openNearbyStops} title="Fermate intorno a dove sei adesso" type="button">
-          <Icon name="mapPin" size={18} />
-          Qui vicino
-        </button>
+        {nearbyUrl ? (
+          <a
+            className="inline-action inline-action--gtt"
+            href={nearbyUrl}
+            onClick={() => setNearbyUrl('')}
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            <Icon name="mapPin" size={18} />
+            Apri la mappa
+          </a>
+        ) : (
+          <button
+            className="inline-action inline-action--gtt"
+            disabled={nearbyBusy}
+            onClick={findNearbyStops}
+            title="Trova le fermate intorno a dove sei adesso"
+            type="button"
+          >
+            <Icon name="mapPin" size={18} />
+            {nearbyBusy ? 'Leggo…' : 'Qui vicino'}
+          </button>
+        )}
       </div>
-      {!compact ? (
+      {nearbyError ? <p className="action-note action-note--gtt">{nearbyError}</p> : null}
+      {!compact && !nearbyError ? (
         <p className="action-note action-note--gtt">
           {gttTarget?.palina
-            ? `Passaggi GTT apre la palina ${gttTarget.palina} del posto cambio di inizio turno. Qui vicino apre le fermate intorno a dove sei adesso.`
-            : 'Qui vicino apre le fermate intorno a dove sei adesso.'}
+            ? `Passaggi GTT apre la palina ${gttTarget.palina} del posto cambio di inizio turno. Qui vicino trova le fermate intorno a dove sei adesso.`
+            : 'Qui vicino trova le fermate intorno a dove sei adesso.'}
         </p>
       ) : null}
     </div>
