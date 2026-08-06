@@ -5,7 +5,11 @@ const GTT_ARRIVALS_BASE_URL = 'https://www.gtt.to.it/cms/percorari/arrivi';
 const GTT_URBAN_BASE_URL = 'https://www.gtt.to.it/cms/percorari/urbano';
 const MAPS_SEARCH_BASE_URL = 'https://www.google.com/maps/search/';
 const MAPS_DIRECTIONS_URL = 'https://www.google.com/maps/dir/';
-const MOOVIT_DIRECTIONS_URL = 'https://moovitapp.com/';
+const MOOVIT_WEB_URL = 'https://moovitapp.com/';
+// Lo schema dell'app: un indirizzo https resta una pagina web e il telefono la
+// apre come tale, con dentro il tasto "apri l'app". Con moovit:// il sistema
+// consegna direttamente all'app installata.
+const MOOVIT_APP_URL = 'moovit://directions';
 const DEPOT_DESTINATION = 'Deposito GTT Gerbido, Grugliasco';
 // Moovit vuole la destinazione come coordinate, un nome non gli basta. Questa
 // posizione del deposito e' quella con cui il progetto e' nato e nessuno l'ha
@@ -58,7 +62,7 @@ export function buildDepotDirectionsUrl({ lat, lng } = {}) {
  * Lo stesso percorso su Moovit, che sui trasporti di Torino e' quello che si
  * usa davvero. Sul telefono l'indirizzo apre l'app se e' installata.
  */
-export function buildMoovitDirectionsUrl({ lat, lng } = {}) {
+export function buildMoovitWebUrl({ lat, lng } = {}) {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return '';
   const params = new URLSearchParams({
     from: 'La mia posizione',
@@ -67,7 +71,28 @@ export function buildMoovitDirectionsUrl({ lat, lng } = {}) {
     tll: `${DEPOT_POSITION.lat.toFixed(6)}_${DEPOT_POSITION.lng.toFixed(6)}`,
     lang: 'it',
   });
-  return `${MOOVIT_DIRECTIONS_URL}?${params.toString()}`;
+  return `${MOOVIT_WEB_URL}?${params.toString()}`;
+}
+
+/**
+ * Lo stesso percorso ma consegnato all'app Moovit. I parametri vanno scritti a
+ * mano: URLSearchParams mette il piu' al posto dello spazio, che dentro uno
+ * schema personalizzato non viene riletto come spazio.
+ */
+export function buildMoovitDirectionsUrl({ lat, lng } = {}) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return '';
+  const query = [
+    ['orig_lat', lat.toFixed(6)],
+    ['orig_lon', lng.toFixed(6)],
+    ['orig_name', 'La mia posizione'],
+    ['dest_lat', DEPOT_POSITION.lat.toFixed(6)],
+    ['dest_lon', DEPOT_POSITION.lng.toFixed(6)],
+    ['dest_name', DEPOT_DESTINATION],
+    ['auto_run', 'true'],
+  ]
+    .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+    .join('&');
+  return `${MOOVIT_APP_URL}?${query}`;
 }
 
 export function getPrimaryGttChangePoint({ shift, dayData, segments = [] }) {
