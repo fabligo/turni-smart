@@ -3,24 +3,60 @@
 // e' certo e tutto il resto lo definisce chi guida, dall'app, con "Rinomina" e
 // "Registra qui" (vedi utils/changePointDirectory.js). Un codice senza nome si
 // mostra com'e' scritto negli orari, senza inventare un luogo.
+// Le paline invece sono verificate: raccolte sul campo da chi guida queste
+// linee, non dedotte dai codici. A = andata, R = ritorno.
 export const CHANGE_POINTS = {
   GERB: {
     coordinates: { lat: 45.0419, lng: 7.5886 },
     label: 'Deposito Gerbido',
   },
-  CATT: {},
-  ORSN: {},
-  ORSA: {},
-  PITA: {},
+  CATT: {
+    stops: { A: '307', R: '308' },
+  },
+  ORSN: {
+    stops: { A: '317', R: '318' },
+  },
+  ORSA: {
+    stops: { A: '728', R: '729' },
+    // Sulla 62 le due direzioni sono invertite rispetto alle altre linee.
+    stopsByLine: { 62: { A: '729', R: '728' } },
+  },
+  PITA: {
+    stops: { A: '134', R: '135' },
+  },
   FILA: {},
-  LING: {},
-  BENS: {},
-  OSET: {},
-  CAIO: {},
-  BARB: {},
-  CLGR: {},
-  CLMA: {},
+  LING: {
+    stops: { A: '2604', R: '2603' },
+  },
+  BENS: {
+    stops: { A: '3628', R: '1023' },
+  },
+  OSET: {
+    stops: { A: '299', R: '300' },
+  },
+  CAIO: {
+    stops: { A: '1119', R: '1119' },
+  },
+  BARB: {
+    stops: { A: '1169', R: '1170' },
+  },
+  CLGR: {
+    stops: { A: '969', R: '968' },
+  },
+  CLMA: {
+    stops: { A: '853', R: '852' },
+  },
 };
+
+export function getChangePointStop(code, { direction = '', line = '' } = {}) {
+  const meta = CHANGE_POINTS[normalizeChangePoint(code)];
+  if (!meta) return '';
+  const byLine = meta.stopsByLine?.[String(line).trim()];
+  const stops = byLine || meta.stops;
+  if (!stops) return '';
+  const normalizedDirection = String(direction || '').trim().toUpperCase().startsWith('R') ? 'R' : 'A';
+  return stops[normalizedDirection] || stops.A || stops.R || '';
+}
 
 export function normalizeChangePoint(code) {
   return String(code ?? '').trim().toUpperCase();

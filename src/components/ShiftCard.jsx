@@ -4,6 +4,7 @@ import { getDevSegments } from '../parserOrari.js';
 import { getLineDisplayName } from '../constants/depotGerbido.js';
 import { BALLOTTAGGI } from '../constants/shiftClassification.js';
 import { buildGttPassagesTarget, buildNearbyStopsUrl, getPrimaryGttChangePoint } from '../utils/gttLinks.js';
+import { loadChangePointDirectory, resolveChangePointName } from '../utils/changePointDirectory.js';
 import { AssetIcon, Icon } from './Icon.jsx';
 
 const DIRECTION_LABELS = {
@@ -315,7 +316,12 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
   const showEveningBadge = isEvening && category?.badge !== 'Serale';
   const categoryIconName = getCategoryIconName(category, { ...shift, isEvening, isShortRest, isSplit });
   const shareText = buildShareText(shift, segments);
-  const gttTarget = buildGttPassagesTarget(getPrimaryGttChangePoint({ dayData, segments, shift }));
+  const gttChangePoint = getPrimaryGttChangePoint({ dayData, segments, shift });
+  const gttTarget = buildGttPassagesTarget({
+    ...gttChangePoint,
+    // Il nome del posto cambio e' quello scelto da chi guida, se l'ha messo.
+    placeLabel: resolveChangePointName(gttChangePoint.place, loadChangePointDirectory()),
+  });
 
   function updateSegmentVehicle(index, segment, values) {
     const normalized = Array.isArray(values) ? serializeVehicleInputs(values) : sanitizeVehicleNumbersInput(values);
@@ -566,15 +572,23 @@ function CalendarActions({ actions, compact = false, gttTarget = null, shareText
     window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank', 'noopener,noreferrer');
   }
 
-  // La finestra si apre subito, con il clic: aprirla dentro la risposta del GPS
-  // la farebbe bloccare dal browser come popup.
   function openGttPassages() {
     if (!gttTarget?.url) return;
-    const target = window.open('', '_blank', 'noopener,noreferrer');
-    const fallback = () => {
-      if (target) target.location.href = gttTarget.url;
-      else window.open(gttTarget.url, '_blank', 'noopener,noreferrer');
+    window.open(gttTarget.url, '_blank', 'noopener,noreferrer');
+  }
+
+  // La finestra si apre subito, con il clic: aprirla dentro la risposta del GPS
+  // la farebbe bloccare dal browser come popup.
+  function openNearbyStops() {
+    // Niente noopener qui: con quello window.open torna null e la scheda
+    // resterebbe bianca. L'opener si stacca subito dopo, stesso effetto.
+    const target = window.open('', '_blank');
+    if (target) target.opener = null;
+    const openUrl = (url) => {
+      if (target) target.location.href = url;
+      else window.open(url, '_blank', 'noopener,noreferrer');
     };
+    const fallback = () => openUrl(gttTarget?.url || 'https://www.gtt.to.it/cms/percorari/urbano');
 
     if (!navigator.geolocation) {
       fallback();
@@ -584,12 +598,8 @@ function CalendarActions({ actions, compact = false, gttTarget = null, shareText
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const url = buildNearbyStopsUrl({ lat: position.coords.latitude, lng: position.coords.longitude });
-        if (!url) {
-          fallback();
-          return;
-        }
-        if (target) target.location.href = url;
-        else window.open(url, '_blank', 'noopener,noreferrer');
+        if (url) openUrl(url);
+        else fallback();
       },
       fallback,
       { enableHighAccuracy: true, maximumAge: 15000, timeout: 8000 },
@@ -615,14 +625,19 @@ function CalendarActions({ actions, compact = false, gttTarget = null, shareText
         {gttTarget?.url ? (
           <button className="inline-action inline-action--gtt" onClick={openGttPassages} title={gttTarget.title} type="button">
             <AssetIcon name="gttPassages" size={22} />
-            Fermate qui vicino
+            {gttTarget.palina ? 'Passaggi GTT' : 'Itinerario linea'}
           </button>
         ) : null}
+        <button className="inline-action inline-action--gtt" onClick={openNearbyStops} title="Fermate intorno a dove sei adesso" type="button">
+          <Icon name="mapPin" size={18} />
+          Qui vicino
+        </button>
       </div>
-      {!compact && gttTarget?.url ? (
+      {!compact ? (
         <p className="action-note action-note--gtt">
-          Apre le fermate intorno a dove sei adesso. Se la posizione non e disponibile, apre l&apos;itinerario realtime
-          della linea.
+          {gttTarget?.palina
+            ? `Passaggi GTT apre la palina ${gttTarget.palina} del posto cambio di inizio turno. Qui vicino apre le fermate intorno a dove sei adesso.`
+            : 'Qui vicino apre le fermate intorno a dove sei adesso.'}
         </p>
       ) : null}
     </div>

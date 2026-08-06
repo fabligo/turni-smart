@@ -1,5 +1,7 @@
+import { getChangePointStop, normalizeChangePoint } from '../constants/changePoints.js';
 import { getLineDisplayName, normalizeLineCode } from '../constants/depotGerbido.js';
 
+const GTT_ARRIVALS_BASE_URL = 'https://www.gtt.to.it/cms/percorari/arrivi';
 const GTT_URBAN_BASE_URL = 'https://www.gtt.to.it/cms/percorari/urbano';
 const MAPS_SEARCH_BASE_URL = 'https://www.google.com/maps/search/';
 
@@ -43,15 +45,37 @@ export function getPrimaryGttChangePoint({ shift, dayData, segments = [] }) {
   };
 }
 
+function buildStopUrl(line, palina) {
+  const params = new URLSearchParams({
+    option: 'com_gtt',
+    view: 'palina',
+    palina: sanitizeToken(palina),
+    linea: normalizeLineCode(line) || sanitizeToken(line),
+  });
+  return `${GTT_ARRIVALS_BASE_URL}?${params.toString()}`;
+}
+
+/**
+ * I passaggi della palina del posto cambio dove inizia il turno: la palina e'
+ * un dato raccolto sul campo, quindi si puo' puntare la fermata esatta. Il
+ * nome del posto cambio invece arriva da fuori, perche' lo decide chi guida.
+ */
 export function buildGttPassagesTarget(input = {}) {
   const line = sanitizeToken(input.line);
   if (!line) return null;
 
+  const place = normalizeChangePoint(input.place);
   const lineLabel = getLineDisplayName(line);
+  const placeLabel = sanitizeToken(input.placeLabel) || place;
+  const palina = getChangePointStop(place, { direction: input.direction, line: normalizeLineCode(line) });
+
   return {
-    label: `Linea ${lineLabel}`,
+    label: palina ? `Linea ${lineLabel} · ${placeLabel}` : `Linea ${lineLabel}`,
     line: lineLabel,
-    title: `Fermate intorno a dove sei adesso, con l'itinerario realtime della linea ${lineLabel} come alternativa`,
-    url: buildLineUrl(line),
+    palina,
+    title: palina
+      ? `Apri i passaggi GTT della linea ${lineLabel} alla palina ${palina}${placeLabel ? ` (${placeLabel})` : ''}`
+      : `Apri l'itinerario realtime GTT della linea ${lineLabel}`,
+    url: palina ? buildStopUrl(line, palina) : buildLineUrl(line),
   };
 }

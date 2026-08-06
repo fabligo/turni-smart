@@ -32,12 +32,12 @@ test('senza nome scelto il posto cambio resta il codice degli orari', () => {
 });
 
 test('nessun posto cambio porta con se un nome o una posizione non verificati', () => {
-  const invented = Object.entries(CHANGE_POINTS).filter(([code]) => code !== 'GERB');
-  assert.ok(invented.length > 0);
-  invented.forEach(([, meta]) => {
+  const others = Object.entries(CHANGE_POINTS).filter(([code]) => code !== 'GERB');
+  assert.ok(others.length > 0);
+  others.forEach(([, meta]) => {
+    // Le paline sono dati raccolti sul campo e restano; nomi e coordinate no.
     assert.equal(meta.label, undefined);
     assert.equal(meta.coordinates, undefined);
-    assert.equal(meta.stops, undefined);
   });
 });
 
