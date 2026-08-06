@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CHANGE_POINTS, getChangePointLabel } from '../constants/changePoints.js';
 import { getLineDisplayName } from '../constants/depotGerbido.js';
 import {
@@ -8,9 +8,16 @@ import {
   RETURN_WINDOW_MINUTES,
   searchReturns,
 } from '../utils/depotReturns.js';
+import { formatMinutes } from '../utils/timeUtils.js';
 import { Icon } from './Icon.jsx';
 
 const GEO_MAX_DISTANCE_METERS = 900;
+
+// La ricerca e' istantanea: la barra resta visibile il minimo che basta a
+// vedere che qualcosa e' partito, altrimenti premere Trova sembra inutile.
+const SEARCH_FEEDBACK_MS = 520;
+
+const UPCOMING_LIMIT = 5;
 
 const WINDOW_OPTIONS = [30, 60, 90, 120];
 
@@ -80,6 +87,8 @@ function getChangePointGroups(developments = {}) {
 function formatWait(waitMinutes) {
   if (waitMinutes <= 0) return 'in transito ora';
   if (waitMinutes === 1) return 'tra 1 minuto';
+  // Sui rientri lontani "tra 154 minuti" non dice niente: meglio ore e minuti.
+  if (waitMinutes >= 60) return `tra ${formatMinutes(waitMinutes)}`;
   return `tra ${waitMinutes} minuti`;
 }
 
@@ -103,6 +112,7 @@ export function DepotReturnsPanel({ developments = {} }) {
   // preme Trova, non a ogni tasto premuto.
   const [criteria, setCriteria] = useState(form);
   const [geoMessage, setGeoMessage] = useState('');
+  const [searching, setSearching] = useState(false);
 
   const result = useMemo(
     () =>
@@ -128,7 +138,14 @@ export function DepotReturnsPanel({ developments = {} }) {
     const next = { ...form, ...changes };
     setForm(next);
     setCriteria(next);
+    setSearching(true);
   }
+
+  useEffect(() => {
+    if (!searching) return undefined;
+    const timer = setTimeout(() => setSearching(false), SEARCH_FEEDBACK_MS);
+    return () => clearTimeout(timer);
+  }, [criteria, searching]);
 
   function useCurrentPosition() {
     setGeoMessage('');
@@ -186,12 +203,12 @@ export function DepotReturnsPanel({ developments = {} }) {
       );
     }
 
+    // Il dettaglio dei rientri successivi lo elenca la lista qui sotto.
     if (nextUpcoming) {
       return (
         <p className="result-message">
-          Nessun rientro da {placeLabel} nei {formatWindow(criteria.windowMinutes)} dopo le {criteria.time}. Il primo
-          utile e la linea {getLineDisplayName(nextUpcoming.line)} delle {nextUpcoming.departure} (
-          {formatWait(nextUpcoming.waitMinutes)}): allarga la finestra o sposta avanti l&apos;orario di passaggio.
+          Nessun rientro da {placeLabel} nei {formatWindow(criteria.windowMinutes)} dopo le {criteria.time}: i prossimi
+          non passano prima delle {nextUpcoming.departure}.
         </p>
       );
     }
@@ -318,10 +335,23 @@ export function DepotReturnsPanel({ developments = {} }) {
         </div>
       </form>
 
-      {isDirty ? <p className="depot-returns-message">Criteri cambiati: premi Trova rientri per aggiornare.</p> : null}
+      {searching ? (
+        <div className="depot-returns-progress" role="status">
+          <span className="depot-returns-progress__track">
+            <span className="depot-returns-progress__bar" />
+          </span>
+          <span className="depot-returns-progress__label">
+            Cerco le linee che passano da {getChangePointLabel(criteria.place) || 'qui'} e proseguono fino al Gerbido…
+          </span>
+        </div>
+      ) : null}
+
+      {!searching && isDirty ? (
+        <p className="depot-returns-message">Criteri cambiati: premi Trova rientri per aggiornare.</p>
+      ) : null}
       {geoMessage ? <p className="depot-returns-message">{geoMessage}</p> : null}
 
-      {criteria.place && !result.isDepot ? (
+      {!searching && criteria.place && !result.isDepot ? (
         <p className="depot-returns-summary">
           {result.matches.length
             ? `${result.matches.length} ${result.matches.length === 1 ? 'rientro' : 'rientri'} da ${getChangePointLabel(criteria.place)}`
@@ -332,8 +362,8 @@ export function DepotReturnsPanel({ developments = {} }) {
       ) : null}
 
       <div className="depot-returns-results" aria-live="polite">
-        {result.matches.length
-          ? result.matches.map((item) => (
+        {searching ? null : result.matches.length ? (
+          result.matches.map((item) => (
               <article
                 className="depot-return-card"
                 key={`${item.line}-${item.shift}-${item.departure}-${item.vehicleShift}`}
@@ -355,10 +385,38 @@ export function DepotReturnsPanel({ developments = {} }) {
                     {item.vehicleShift ? ` · vettura ${item.vehicleShift}` : ''}
                   </span>
                 </div>
-              </article>
-            ))
-          : renderEmptyState()}
+            </article>
+          ))
+        ) : (
+          renderEmptyState()
+        )}
       </div>
+
+      {!searching && result.upcoming.length ? (
+        <div className="depot-returns-upcoming">
+          <h3>
+            {result.matches.length ? 'Rientri successivi' : 'Prossimi rientri utili'} da{' '}
+            {getChangePointLabel(criteria.place)}
+          </h3>
+          <p>
+            Le prossime linee che passano di qui e rientrano al Gerbido non passano prima delle{' '}
+            {result.upcoming[0].departure}.
+          </p>
+          <ul>
+            {result.upcoming.slice(0, UPCOMING_LIMIT).map((item) => (
+              <li key={`${item.line}-${item.shift}-${item.departure}-${item.vehicleShift}`}>
+                <strong>Linea {getLineDisplayName(item.line)}</strong>
+                <span>
+                  {item.departure} → {item.arrival}
+                </span>
+                <span>
+                  {formatWait(item.waitMinutes)} · {item.direct ? 'diretto in deposito' : `${item.legs.length} tratti`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </section>
   );
 }
