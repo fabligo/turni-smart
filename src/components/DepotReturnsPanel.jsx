@@ -86,12 +86,17 @@ function getChangePointGroups(developments = {}, directory = {}) {
   return { inTimetable: sortByLabel(inTimetable, directory), others: sortByLabel(others, directory) };
 }
 
-function formatWait(waitMinutes) {
-  if (waitMinutes <= 0) return 'in transito ora';
-  if (waitMinutes === 1) return 'tra 1 minuto';
-  // Sui rientri lontani "tra 154 minuti" non dice niente: meglio ore e minuti.
-  if (waitMinutes >= 60) return `tra ${formatMinutes(waitMinutes)}`;
-  return `tra ${waitMinutes} minuti`;
+/**
+ * L'attesa e' sempre contata dall'orario di passaggio cercato, non dall'ora
+ * corrente: "tra 49 minuti" si puo' dire solo se i due coincidono, altrimenti
+ * l'attesa va ancorata all'orario cercato o si legge come un conto alla
+ * rovescia da adesso, che sarebbe falso.
+ */
+function formatWait(waitMinutes, { anchor = '', anchorIsNow = false } = {}) {
+  if (waitMinutes <= 0) return anchorIsNow ? 'in transito ora' : `in transito alle ${anchor}`;
+  // Sui rientri lontani "154 minuti" non dice niente: meglio ore e minuti.
+  const amount = waitMinutes >= 60 ? formatMinutes(waitMinutes) : `${waitMinutes} ${waitMinutes === 1 ? 'minuto' : 'minuti'}`;
+  return anchorIsNow ? `tra ${amount}` : `${amount} dopo le ${anchor}`;
 }
 
 function formatWindow(windowMinutes) {
@@ -209,6 +214,8 @@ export function DepotReturnsPanel({ developments = {} }) {
     setGeoMessage(`Posizione registrata rimossa per ${placeName(form.place)}.`);
   }
 
+  // "Adesso" vale solo se l'orario cercato e' ancora il minuto corrente.
+  const waitAnchor = { anchor: criteria.time, anchorIsNow: criteria.time === clockFromNow(0) };
   const nextUpcoming = result.upcoming[0];
   const otherServices = Object.entries(result.passagesByService).filter(
     ([service, count]) => service !== result.service && count > 0,
@@ -248,7 +255,7 @@ export function DepotReturnsPanel({ developments = {} }) {
     if (nextUpcoming) {
       return (
         <p className="result-message">
-          Nessun rientro da {placeLabel} nei {formatWindow(criteria.windowMinutes)} dopo le {criteria.time}: i prossimi
+          Nessun rientro da {placeLabel} entro {formatWindow(criteria.windowMinutes)} dalle {criteria.time}: i prossimi
           non passano prima delle {nextUpcoming.departure}.
         </p>
       );
@@ -474,7 +481,7 @@ export function DepotReturnsPanel({ developments = {} }) {
                   <span>{item.route}</span>
                 </div>
                 <div>
-                  <strong>{formatWait(item.waitMinutes)}</strong>
+                  <strong>{formatWait(item.waitMinutes, waitAnchor)}</strong>
                   <span>
                     {item.rideMinutes} min di viaggio
                     {item.vehicleShift ? ` · vettura ${item.vehicleShift}` : ''}
@@ -505,7 +512,7 @@ export function DepotReturnsPanel({ developments = {} }) {
                   {item.departure} → {item.arrival}
                 </span>
                 <span>
-                  {formatWait(item.waitMinutes)} · {item.direct ? 'diretto in deposito' : `${item.legs.length} tratti`}
+                  {formatWait(item.waitMinutes, waitAnchor)} · {item.direct ? 'diretto in deposito' : `${item.legs.length} tratti`}
                 </span>
               </li>
             ))}
