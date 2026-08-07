@@ -1365,6 +1365,10 @@ export default function App() {
                   <button onClick={searchWeek} type="button">
                     Settimana
                   </button>
+                  <button className="quick-actions__all" onClick={showPreconoscenzaOverview} type="button">
+                    <Icon name="dockOverview" size={18} />
+                    Tutto il periodo
+                  </button>
                 </div>
               </form>
 
@@ -1480,6 +1484,10 @@ export default function App() {
                   </button>
                   <button onClick={goToWeekSearch} type="button">
                     Settimana
+                  </button>
+                  <button className="quick-actions__all" onClick={showPreconoscenzaOverview} type="button">
+                    <Icon name="dockOverview" size={18} />
+                    Tutto il periodo
                   </button>
                 </div>
               </form>
