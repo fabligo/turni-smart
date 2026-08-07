@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { formatMinutes, minutesBetween } from '../utils/timeUtils.js';
 import { getDevSegments } from '../parserOrari.js';
 import { getLineDisplayName } from '../constants/depotGerbido.js';
@@ -6,6 +6,7 @@ import { BALLOTTAGGI } from '../constants/shiftClassification.js';
 import { buildGttPassagesTarget, getPrimaryGttChangePoint } from '../utils/gttLinks.js';
 import { readNearbyStopsUrl } from '../utils/nearbyStops.js';
 import { describeShiftTiming } from '../utils/shiftTiming.js';
+import { subscribeToClock } from '../utils/clock.js';
 import { AssetIcon, Icon } from './Icon.jsx';
 
 const DIRECTION_LABELS = {
@@ -332,7 +333,6 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
   const categoryTitle = buildCategoryTitle(category);
   const shareText = buildShareText(shift, segments);
   const gttTarget = buildGttPassagesTarget(getPrimaryGttChangePoint({ dayData, segments, shift }));
-  const timing = describeShiftTiming(dayData);
 
   function updateSegmentVehicle(index, segment, values) {
     const normalized = Array.isArray(values) ? serializeVehicleInputs(values) : sanitizeVehicleNumbersInput(values);
@@ -415,7 +415,7 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
                 </div>
               </div>
 
-              <ShiftTiming duration={shift.duration} timing={timing} />
+              <ShiftTiming dayData={dayData} duration={shift.duration} />
             </div>
 
             <div className="shift-calendar-zone">
@@ -473,25 +473,54 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
 /**
  * Le tre cose che l'autista calcola a mente la sera prima: quanto dura,
  * quanto manca, a che ora deve suonare la sveglia.
+ *
+ * Il conto alla rovescia si ricalcola qui dentro e non nella card, cosi'
+ * ogni secondo si ridisegna questa riga e non tutto il turno.
  */
-function ShiftTiming({ duration, timing }) {
-  if (!duration && !timing?.countdown && !timing?.wakeUp) return null;
+function ShiftTiming({ dayData, duration }) {
+  const [now, setNow] = useState(() => Date.now());
+  const timing = describeShiftTiming(dayData, new Date(now));
+
+  useEffect(() => {
+    /* Fuori dall'orizzonte non c'e' niente che scorre: niente timer. */
+    if (!timing.isLive) return undefined;
+    return subscribeToClock(setNow);
+  }, [timing.isLive]);
+
+  if (!duration && !timing.live && !timing.wakeUp) return null;
 
   return (
-    <div className={timing?.isImminent ? 'shift-timing shift-timing--imminent' : 'shift-timing'}>
+    <div className={timing.isImminent ? 'shift-timing shift-timing--imminent' : 'shift-timing'}>
       {duration ? (
         <span className="shift-timing__item">
           <Icon name="clock" size={15} />
           Durata {duration}
         </span>
       ) : null}
-      {timing?.countdown ? (
-        <span className="shift-timing__item shift-timing__item--countdown">
+      {timing.live ? (
+        <span
+          className={
+            timing.live.ticksBySecond
+              ? 'shift-timing__item shift-timing__item--countdown is-ticking'
+              : 'shift-timing__item shift-timing__item--countdown'
+          }
+        >
           <Icon name="clock" size={15} />
-          Attacchi tra {timing.countdown}
+          Attacchi tra{' '}
+          {/* Il valore vivo resta fuori dalle letture assistive: un numero
+              che cambia ogni secondo renderebbe la card illeggibile allo
+              screen reader. La riga accanto dice la stessa cosa, ferma. */}
+          <span aria-hidden="true" className="shift-timing__value">
+            <span>{timing.live.head}</span>
+            {timing.live.separator ? (
+              <span className="shift-timing__separator">{timing.live.separator}</span>
+            ) : null}
+            {timing.live.tail ? <span>{timing.live.tail}</span> : null}
+          </span>
+          <span className="sr-only">{timing.countdown}</span>
         </span>
       ) : null}
-      {timing?.wakeUp ? (
+      {timing.wakeUp ? (
         <span className="shift-timing__item shift-timing__item--wake">
           <AssetIcon name="rest" size={17} />
           Sveglia {timing.wakeUp}
