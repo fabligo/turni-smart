@@ -10,6 +10,7 @@ export function UploadPanel({
   onClearPreconoscenza,
   onPreconoscenzaUpload,
   onSharePreconoscenza,
+  onShowPreconoscenzaOverview,
   orariError,
   orariLoading,
   pdfInfo,
@@ -97,6 +98,10 @@ export function UploadPanel({
         </button>
         {hasPreconoscenza ? (
           <div className="upload-document__extra-actions">
+            <button className="upload-document__overview" onClick={onShowPreconoscenzaOverview} type="button">
+              <Icon name="document" size={17} />
+              Vedi tutta
+            </button>
             <button className="upload-document__share" disabled={!preconoscenzaSummary?.totalShifts} onClick={onSharePreconoscenza} type="button">
               <Icon name="share" size={17} />
               Invia infografica

@@ -1002,6 +1002,7 @@ select:focus-visible {
 
 .upload-document__action,
 .upload-document__clear,
+.upload-document__overview,
 .upload-document__share {
   grid-column: 2;
   min-height: 34px;
@@ -1031,13 +1032,15 @@ select:focus-visible {
 
 .upload-document__extra-actions {
   grid-column: 2;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
+.upload-document__overview,
 .upload-document__share {
   display: inline-flex;
+  flex: 1 1 128px;
   align-items: center;
   justify-content: center;
   gap: 7px;
@@ -1046,7 +1049,13 @@ select:focus-visible {
   color: #ffffff;
 }
 
+.upload-document__overview {
+  border-color: rgba(0, 93, 170, 0.4);
+  background: var(--gtt-blue);
+}
+
 .upload-document__clear {
+  flex: 0 0 auto;
   border: 1px solid rgba(0, 93, 170, 0.35);
   background: #ffffff;
   color: var(--gtt-blue);
@@ -1055,6 +1064,7 @@ select:focus-visible {
 
 .upload-document__action:hover,
 .upload-document__clear:hover,
+.upload-document__overview:hover,
 .upload-document__share:hover {
   background: var(--gtt-blue-light);
   color: #ffffff;
@@ -4160,6 +4170,576 @@ a.inline-action {
 
 .legend-dot--other {
   background: var(--orange);
+}
+
+/* Riepilogo Preconoscenza: tutto il periodo in una schermata sola */
+.preconoscenza-overview {
+  /* Data | cosa fai | orario | barra della giornata: la stessa griglia serve
+     anche al righello delle ore, cosi' le barre restano allineate. */
+  --overview-cols: 62px minmax(0, 1.3fr) 158px minmax(150px, 1.5fr);
+  display: grid;
+  gap: var(--s3);
+  animation: soft-fade 320ms ease both;
+}
+
+.overview-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s3);
+  align-items: start;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.overview-hero__text {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.overview-hero__kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--yellow);
+  font-size: 0.72rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.overview-hero h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: clamp(1.2rem, 2.6vw, 1.7rem);
+  line-height: 1.12;
+}
+
+.overview-hero p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.overview-close {
+  min-height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: var(--button-radius);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 950;
+  padding: 0 14px;
+  cursor: pointer;
+}
+
+.overview-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.overview-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: var(--s2);
+}
+
+.overview-metric {
+  display: grid;
+  gap: 2px;
+  align-content: center;
+  min-height: 62px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  border-left: 4px solid var(--metric-color, var(--accent));
+  background: rgba(4, 17, 29, 0.5);
+  padding: 8px 10px;
+}
+
+.overview-metric strong {
+  color: #ffffff;
+  font-size: 1.4rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.overview-metric span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.overview-metric--wide {
+  grid-column: 1 / -1;
+  border-left-color: var(--yellow);
+}
+
+.overview-toolbar {
+  display: grid;
+  gap: var(--s2);
+}
+
+.overview-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.overview-chip {
+  min-height: 36px;
+  border: 1px solid rgba(47, 134, 207, 0.44);
+  border-radius: 999px;
+  background: rgba(47, 134, 207, 0.14);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 0 14px;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.overview-chip.is-active {
+  border-color: var(--yellow);
+  background: var(--yellow);
+  color: #073865;
+}
+
+.overview-hint {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 780;
+  line-height: 1.3;
+}
+
+.overview-hint svg {
+  flex: 0 0 auto;
+  color: var(--yellow);
+}
+
+.overview-scale {
+  display: grid;
+  grid-template-columns: var(--overview-cols);
+  gap: 10px;
+  padding: 0 12px;
+}
+
+.overview-scale__spacer {
+  grid-column: 1 / 4;
+}
+
+.overview-scale__hours {
+  position: relative;
+  height: 15px;
+}
+
+.overview-scale__hours i {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.64rem;
+  font-style: normal;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.overview-scale__hours i:first-child {
+  transform: none;
+}
+
+.overview-week {
+  display: grid;
+  gap: 7px;
+}
+
+.overview-week__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s2);
+  padding: 0 2px;
+}
+
+.overview-week__head strong {
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 950;
+  text-transform: capitalize;
+}
+
+.overview-week__head span {
+  color: var(--cyan);
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.overview-days {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.overview-day {
+  display: grid;
+  grid-template-columns: var(--overview-cols);
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: var(--radius);
+  border-left: 4px solid var(--day-color, var(--accent));
+  background: rgba(4, 17, 29, 0.55);
+  color: #ffffff;
+  text-align: left;
+  padding: 9px 12px;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    transform 160ms ease,
+    border-color 160ms ease;
+}
+
+.overview-day:hover {
+  background: rgba(11, 43, 68, 0.86);
+  transform: translateX(2px);
+}
+
+.overview-day.is-past {
+  opacity: 0.6;
+}
+
+.overview-day.is-today {
+  border-color: var(--yellow);
+  border-left-color: var(--yellow);
+  background: rgba(16, 62, 96, 0.92);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.26);
+  opacity: 1;
+}
+
+.overview-day__date {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  padding-right: 8px;
+}
+
+.overview-day__date em {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.overview-day.is-weekend .overview-day__date em {
+  color: #ff9aa2;
+}
+
+.overview-day__date strong {
+  color: #ffffff;
+  font-size: 1.32rem;
+  font-weight: 950;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.overview-day__today {
+  border-radius: 999px;
+  background: var(--yellow);
+  color: #073865;
+  font-size: 0.56rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  padding: 1px 6px;
+}
+
+.overview-day__main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.overview-day__main > strong {
+  color: #ffffff;
+  font-size: 0.98rem;
+  font-weight: 950;
+  line-height: 1.15;
+}
+
+.overview-day__main small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 780;
+  line-height: 1.25;
+}
+
+.overview-day__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.overview-tag {
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
+  color: #dbe9f8;
+  font-size: 0.66rem;
+  font-style: normal;
+  font-weight: 900;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.overview-tag--category {
+  border-color: rgba(47, 134, 207, 0.5);
+  background: rgba(47, 134, 207, 0.24);
+  color: #ffffff;
+}
+
+.overview-tag--split {
+  border-color: rgba(230, 81, 0, 0.6);
+  background: rgba(230, 81, 0, 0.28);
+  color: #ffd9c0;
+}
+
+.overview-tag--evening {
+  border-color: rgba(150, 96, 220, 0.6);
+  background: rgba(120, 72, 190, 0.34);
+  color: #e6d8ff;
+}
+
+.overview-tag--warning {
+  border-color: var(--yellow);
+  background: rgba(255, 209, 0, 0.24);
+  color: var(--yellow);
+}
+
+.overview-day__time {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.overview-day__time strong {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+}
+
+.overview-day__time strong i {
+  color: var(--yellow);
+  font-style: normal;
+}
+
+.overview-day__time small {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.overview-day__time small.overview-day__places {
+  color: rgba(255, 255, 255, 0.56);
+  white-space: nowrap;
+}
+
+.overview-day__time--empty {
+  color: rgba(255, 255, 255, 0.32);
+}
+
+.overview-track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 26px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.overview-track__rail {
+  position: absolute;
+  inset: 0;
+}
+
+.overview-track__rail i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.overview-track__block {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: var(--block-left, 0);
+  width: var(--block-width, 4%);
+  border-radius: 5px;
+  background: linear-gradient(180deg, var(--block-color, var(--accent)), rgba(0, 0, 0, 0.24));
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  animation: overview-block-in 340ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+
+.overview-track__idle {
+  width: 100%;
+  color: rgba(255, 255, 255, 0.46);
+  font-size: 0.68rem;
+  font-weight: 850;
+  text-align: center;
+}
+
+.overview-track--riposo {
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(27, 122, 61, 0.28) 0 8px,
+    rgba(27, 122, 61, 0.12) 8px 16px
+  );
+}
+
+.overview-track--ballottaggio {
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(198, 40, 40, 0.3) 0 8px,
+    rgba(198, 40, 40, 0.12) 8px 16px
+  );
+}
+
+.overview-empty {
+  margin: 0;
+  border-radius: var(--radius);
+  background: rgba(4, 17, 29, 0.5);
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 850;
+  text-align: center;
+  padding: 22px 14px;
+}
+
+.overview-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--s2);
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.overview-actions .small-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+@keyframes overview-block-in {
+  from {
+    transform: scaleX(0.2);
+    transform-origin: left center;
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .preconoscenza-overview,
+  .overview-track__block {
+    animation: none;
+  }
+
+  .overview-day:hover {
+    transform: none;
+  }
+}
+
+@media (max-width: 880px) {
+  .preconoscenza-overview {
+    --overview-cols: 52px minmax(0, 1fr);
+  }
+
+  /* Su telefono la testata deve costare poco: il valore dei giorni si legge
+     lo stesso anche con le pastiglie strette. */
+  .overview-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .overview-metric {
+    min-height: 52px;
+    padding: 6px 9px;
+  }
+
+  .overview-metric strong {
+    font-size: 1.16rem;
+  }
+
+  .overview-metric span {
+    font-size: 0.66rem;
+  }
+
+  .overview-day {
+    padding: 8px 10px;
+  }
+
+  .overview-day__main > strong {
+    font-size: 0.92rem;
+  }
+
+  .overview-scale__spacer {
+    display: none;
+  }
+
+  .overview-scale__hours {
+    grid-column: 1 / -1;
+  }
+
+  .overview-day {
+    grid-template-areas:
+      "date main"
+      "time time"
+      "track track";
+    row-gap: 8px;
+  }
+
+  .overview-day__date {
+    grid-area: date;
+  }
+
+  .overview-day__main {
+    grid-area: main;
+  }
+
+  .overview-day__time {
+    grid-area: time;
+  }
+
+  .overview-day__time strong {
+    font-size: 0.9rem;
+  }
+
+  .overview-track {
+    grid-area: track;
+  }
+
+  .overview-day--riposo .overview-day__time,
+  .overview-day--altro .overview-day__time {
+    display: none;
+  }
 }
 
 /* Responsive */

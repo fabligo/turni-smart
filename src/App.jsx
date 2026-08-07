@@ -41,6 +41,7 @@ import { AdvancedTools } from './components/AdvancedTools.jsx';
 import { LineConsultation } from './components/LineConsultation.jsx';
 import { DepotReturnsPanel } from './components/DepotReturnsPanel.jsx';
 import { OnboardingHome, SuspendedShiftEntry } from './components/OnboardingHome.jsx';
+import { PreconoscenzaOverview } from './components/PreconoscenzaOverview.jsx';
 import { Icon } from './components/Icon.jsx';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
@@ -528,6 +529,7 @@ export default function App() {
   const searchPanelRef = useRef(null);
   const linePanelRef = useRef(null);
   const returnsPanelRef = useRef(null);
+  const overviewPanelRef = useRef(null);
   const statsPanelRef = useRef(null);
   const toolsPanelRef = useRef(null);
   const savedPrefs = useMemo(() => loadPreferences(), []);
@@ -583,6 +585,7 @@ export default function App() {
   useEffect(() => {
     const panelRefs = {
       lines: linePanelRef,
+      overview: overviewPanelRef,
       returns: returnsPanelRef,
       stats: statsPanelRef,
       tools: toolsPanelRef,
@@ -1128,6 +1131,23 @@ export default function App() {
     setActiveUtilityPanel('');
   }
 
+  function showPreconoscenzaOverview() {
+    setActiveTab('Giorno');
+    setActiveUtilityPanel('preconoscenza');
+  }
+
+  function openDayFromOverview(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return;
+    const iso = toIsoDate(date);
+    const item = days[iso];
+    setSelectedDate(date);
+    setSearchQuery(iso);
+    setSearchResults(item ? [item] : []);
+    setSearchMessage(item ? '' : 'Nessun turno trovato per questa data.');
+    setActiveUtilityPanel('');
+    setActiveTab('Giorno');
+  }
+
   function loadDemo() {
     const demo = createDemoPreconoscenza();
     applyPreconoscenza(demo);
@@ -1248,6 +1268,14 @@ export default function App() {
       .sort((a, b) => a.date - b.date);
   }, [calendarDays, monthFilters, viewMonth, viewYear]);
   const nextWorkingShift = useMemo(() => (pdfLoaded ? getNextWorkingShift(days, developments, new Date()) : null), [days, developments, pdfLoaded]);
+  const allDayEntries = useMemo(
+    () =>
+      Object.keys(days)
+        .sort()
+        .map((iso) => days[iso])
+        .filter(Boolean),
+    [days],
+  );
 
   return (
     <div className="app-shell">
@@ -1281,6 +1309,7 @@ export default function App() {
             onOrariUpload={handleOrariUpload}
             onPreconoscenzaUpload={handlePreconoscenzaUpload}
             onSharePreconoscenza={shareReadablePreconoscenza}
+            onShowPreconoscenzaOverview={showPreconoscenzaOverview}
           />
         ) : null}
 
@@ -1516,6 +1545,20 @@ export default function App() {
             </section>
           ) : null}
 
+          {pdfLoaded && activeUtilityPanel === 'preconoscenza' ? (
+            <div className="utility-panel-anchor utility-panel-anchor--preconoscenza" ref={overviewPanelRef}>
+              <PreconoscenzaOverview
+                days={days}
+                enrichedDays={enrichedDays}
+                onAddPeriodToCalendar={() => exportEntries('preconoscenza-completa.ics', allDayEntries)}
+                onClose={() => setActiveUtilityPanel('')}
+                onExportCsv={() => exportCsv('preconoscenza-completa.csv', allDayEntries)}
+                onSelectDay={openDayFromOverview}
+                onShareInfographic={shareReadablePreconoscenza}
+                pdfInfo={pdfInfo}
+              />
+            </div>
+          ) : null}
           {pdfLoaded && activeUtilityPanel === 'stats' ? (
             <div className="utility-panel-anchor utility-panel-anchor--stats" ref={statsPanelRef}>
               <StatsPanel stats={stats} title="Statistiche periodo" />
@@ -1603,6 +1646,17 @@ export default function App() {
               >
                 <Icon name="dockRest" size={24} />
                 <span>Riposi</span>
+              </button>
+              <button
+                className={activeUtilityPanel === 'preconoscenza' ? 'utility-dock__button utility-dock__button--overview is-active' : 'utility-dock__button utility-dock__button--overview'}
+                onClick={() => {
+                  setActiveTab('Giorno');
+                  setActiveUtilityPanel((current) => (current === 'preconoscenza' ? '' : 'preconoscenza'));
+                }}
+                type="button"
+              >
+                <Icon name="dockOverview" size={24} />
+                <span>Riepilogo</span>
               </button>
               <button
                 className={activeUtilityPanel === 'lines' ? 'utility-dock__button utility-dock__button--lines is-active' : 'utility-dock__button utility-dock__button--lines'}

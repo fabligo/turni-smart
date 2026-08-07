@@ -5,6 +5,8 @@ Web app per la gestione dei turni GTT, deposito Gerbido.
 ## Funzionalita
 
 - Preconoscenza: carica il PDF mensile e consulta i turni per data
+- Riepilogo: tutto il periodo in una schermata, settimana per settimana, con la
+  barra oraria della giornata
 - Orari Linee: carica il PDF del deposito per lo sviluppo completo dei turni
 - Calendario mensile: vista a griglia con tap per dettaglio
 - Ballottaggio: incolla il turno assegnato direttamente nella card

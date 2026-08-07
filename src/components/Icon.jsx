@@ -170,6 +170,15 @@ const ICONS = {
       />
     </>
   ),
+  // Il riepilogo: la cornice del periodo con le barre dei turni una sotto l'altra.
+  dockOverview: (
+    <>
+      <rect x="3.5" y="6" width="25" height="20" rx="3.5" />
+      <path d="M3.5 11.5h25" />
+      <rect className="icon-accent" x="7" y="14.5" width="11" height="3.2" rx="1.6" fill="currentColor" stroke="none" />
+      <rect x="12" y="20" width="12" height="3.2" rx="1.6" fill="currentColor" stroke="none" />
+    </>
+  ),
   dockLines: (
     <>
       <rect x="6.5" y="5.5" width="19" height="17" rx="4" />
