@@ -5,6 +5,7 @@ import { getLineDisplayName } from '../constants/depotGerbido.js';
 import { BALLOTTAGGI } from '../constants/shiftClassification.js';
 import { buildGttPassagesTarget, getPrimaryGttChangePoint } from '../utils/gttLinks.js';
 import { readNearbyStopsUrl } from '../utils/nearbyStops.js';
+import { describeShiftTiming } from '../utils/shiftTiming.js';
 import { AssetIcon, Icon } from './Icon.jsx';
 
 const DIRECTION_LABELS = {
@@ -331,6 +332,7 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
   const categoryTitle = buildCategoryTitle(category);
   const shareText = buildShareText(shift, segments);
   const gttTarget = buildGttPassagesTarget(getPrimaryGttChangePoint({ dayData, segments, shift }));
+  const timing = describeShiftTiming(dayData);
 
   function updateSegmentVehicle(index, segment, values) {
     const normalized = Array.isArray(values) ? serializeVehicleInputs(values) : sanitizeVehicleNumbersInput(values);
@@ -365,31 +367,34 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
               {dateParts.month ? <small>{dateParts.month}</small> : null}
             </div>
 
-            <div className="shift-card__body">
-              <div className="shift-heading-row">
-                <div className="shift-heading-copy">
-                  <h3>
-                    <span className="line-pill">
-                      <AssetIcon className="line-pill__mark" name="busMark" size={28} />
-                      Linea {getLineDisplayName(dayData?.lineaNorm || shift.line)}
-                    </span>
-                    <span>Turno {shift.number}</span>
-                  </h3>
-                  {canFlipDevelopment ? (
-                    <button className="flip-action flip-action--inline" onClick={() => setIsFlipped(true)} type="button">
-                      Mostra sviluppo turno
-                    </button>
-                  ) : null}
-                </div>
-                <div className="shift-badge-row" aria-label="Classificazione turno">
-                  {dayData?.isGerbidoLine ? <span className="shift-badge shift-badge--line">Gerbido</span> : null}
-                  {dayData && !dayData.isGerbidoLine ? <span className="shift-badge shift-badge--rest">Linea non riconosciuta</span> : null}
-                  {isSplit ? <span className="shift-badge shift-badge--warning">Spezzato</span> : null}
-                  {showEveningBadge ? <span className="shift-badge shift-badge--evening">Serale</span> : null}
-                  {isShortRest ? <span className="shift-badge shift-badge--rest">Riposo breve</span> : null}
-                </div>
+            {/* Data e identita' del turno stanno sulla stessa riga: accanto al
+                tassello c'era mezzo schermo vuoto. */}
+            <div className="shift-heading-row">
+              <div className="shift-heading-copy">
+                <h3>
+                  <span className="line-pill">
+                    <AssetIcon className="line-pill__mark" name="busMark" size={28} />
+                    Linea {getLineDisplayName(dayData?.lineaNorm || shift.line)}
+                  </span>
+                  <span>Turno {shift.number}</span>
+                </h3>
+                {canFlipDevelopment ? (
+                  <button className="flip-action flip-action--inline" onClick={() => setIsFlipped(true)} type="button">
+                    Mostra sviluppo turno
+                  </button>
+                ) : null}
               </div>
+              <div className="shift-badge-row" aria-label="Classificazione turno">
+                {dayData?.isGerbidoLine ? <span className="shift-badge shift-badge--line">Gerbido</span> : null}
+                {dayData && !dayData.isGerbidoLine ? <span className="shift-badge shift-badge--rest">Linea non riconosciuta</span> : null}
+                {isSplit ? <span className="shift-badge shift-badge--warning">Spezzato</span> : null}
+                {showEveningBadge ? <span className="shift-badge shift-badge--evening">Serale</span> : null}
+                {isShortRest ? <span className="shift-badge shift-badge--rest">Riposo breve</span> : null}
+              </div>
+            </div>
 
+            <div className="shift-card__body">
+              {/* Prima la risposta - a che ora attacco e da dove - poi tutto il resto. */}
               <div className="shift-route">
                 <div>
                   <strong>{shift.start}</strong>
@@ -409,6 +414,8 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
                   <small>Termine</small>
                 </div>
               </div>
+
+              <ShiftTiming duration={shift.duration} timing={timing} />
             </div>
 
             <div className="shift-calendar-zone">
@@ -460,6 +467,37 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
         ) : null}
       </div>
     </article>
+  );
+}
+
+/**
+ * Le tre cose che l'autista calcola a mente la sera prima: quanto dura,
+ * quanto manca, a che ora deve suonare la sveglia.
+ */
+function ShiftTiming({ duration, timing }) {
+  if (!duration && !timing?.countdown && !timing?.wakeUp) return null;
+
+  return (
+    <div className={timing?.isImminent ? 'shift-timing shift-timing--imminent' : 'shift-timing'}>
+      {duration ? (
+        <span className="shift-timing__item">
+          <Icon name="clock" size={15} />
+          Durata {duration}
+        </span>
+      ) : null}
+      {timing?.countdown ? (
+        <span className="shift-timing__item shift-timing__item--countdown">
+          <Icon name="clock" size={15} />
+          Attacchi tra {timing.countdown}
+        </span>
+      ) : null}
+      {timing?.wakeUp ? (
+        <span className="shift-timing__item shift-timing__item--wake">
+          <AssetIcon name="rest" size={17} />
+          Sveglia {timing.wakeUp}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
@@ -537,7 +575,9 @@ function DevelopmentPanel({ expanded = false, hasSegments, isSplit, onVehicleNum
           {splitPause !== null ? <p className="split-pause">Pausa tra le riprese: {formatMinutes(splitPause)}</p> : null}
         </>
       ) : (
-        <p className="development-empty">Sviluppo non disponibile</p>
+        <p className="development-empty">
+          Sviluppo non disponibile. Carica il PDF Orari Deposito da <strong>Altro › Documenti</strong> per vedere le riprese di questo turno.
+        </p>
       )}
     </div>
   );
@@ -602,58 +642,62 @@ function CalendarActions({ actions, compact = false, gttTarget = null, shareText
 
   return (
     <div className={compact ? 'calendar-actions calendar-actions--compact calendar-actions--single' : 'calendar-actions calendar-actions--single'}>
-      <button className="inline-action" onClick={actions.add} type="button">
+      {/* Una primaria. Il resto sta dietro un tocco: erano cinque bottoni di
+          pari peso piu' due paragrafi di note. */}
+      <button className="inline-action inline-action--primary" onClick={actions.add} type="button">
         <Icon name="calendar" size={18} />
         {compact ? 'Aggiungi turno' : 'Aggiungi al calendario'}
       </button>
       {!compact ? <p className="action-note action-note--calendar">{getReminderNote(shift)}</p> : null}
-      <div className="share-actions">
-        <button className="inline-action inline-action--whatsapp" onClick={sendWhatsapp} type="button">
-          <Icon name="whatsapp" size={18} />
-          WhatsApp
-        </button>
-        <button className="inline-action inline-action--copy" onClick={copyShift} type="button">
-          <Icon name="copy" size={18} />
-          {copied ? 'Copiato' : 'Copia turno'}
-        </button>
-        {gttTarget?.url ? (
-          <button className="inline-action inline-action--gtt" onClick={openGttPassages} title={gttTarget.title} type="button">
-            <AssetIcon name="gttPassages" size={22} />
-            {gttTarget.palina ? 'Passaggi GTT' : 'Itinerario linea'}
+
+      <details className="secondary-actions">
+        <summary>Altre azioni</summary>
+        <div className="share-actions">
+          <button className="inline-action inline-action--whatsapp" onClick={sendWhatsapp} type="button">
+            <Icon name="whatsapp" size={18} />
+            WhatsApp
           </button>
+          <button className="inline-action inline-action--copy" onClick={copyShift} type="button">
+            <Icon name="copy" size={18} />
+            {copied ? 'Copiato' : 'Copia turno'}
+          </button>
+          {gttTarget?.url ? (
+            <button className="inline-action inline-action--gtt" onClick={openGttPassages} title={gttTarget.title} type="button">
+              <AssetIcon name="gttPassages" size={22} />
+              {gttTarget.palina ? 'Passaggi GTT' : 'Itinerario linea'}
+            </button>
+          ) : null}
+          {nearbyUrl ? (
+            <a
+              className="inline-action inline-action--gtt"
+              href={nearbyUrl}
+              onClick={() => setNearbyUrl('')}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <Icon name="mapPin" size={18} />
+              Apri la mappa
+            </a>
+          ) : (
+            <button
+              className="inline-action inline-action--gtt"
+              disabled={nearbyBusy}
+              onClick={findNearbyStops}
+              title="Trova le fermate intorno a dove sei adesso"
+              type="button"
+            >
+              <Icon name="mapPin" size={18} />
+              {nearbyBusy ? 'Leggo…' : 'Qui vicino'}
+            </button>
+          )}
+        </div>
+        {nearbyError ? <p className="action-note action-note--gtt">{nearbyError}</p> : null}
+        {!nearbyError && gttTarget?.palina ? (
+          <p className="action-note action-note--gtt">
+            Passaggi GTT apre la palina {gttTarget.palina} del posto cambio di inizio turno.
+          </p>
         ) : null}
-        {nearbyUrl ? (
-          <a
-            className="inline-action inline-action--gtt"
-            href={nearbyUrl}
-            onClick={() => setNearbyUrl('')}
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            <Icon name="mapPin" size={18} />
-            Apri la mappa
-          </a>
-        ) : (
-          <button
-            className="inline-action inline-action--gtt"
-            disabled={nearbyBusy}
-            onClick={findNearbyStops}
-            title="Trova le fermate intorno a dove sei adesso"
-            type="button"
-          >
-            <Icon name="mapPin" size={18} />
-            {nearbyBusy ? 'Leggo…' : 'Qui vicino'}
-          </button>
-        )}
-      </div>
-      {nearbyError ? <p className="action-note action-note--gtt">{nearbyError}</p> : null}
-      {!compact && !nearbyError ? (
-        <p className="action-note action-note--gtt">
-          {gttTarget?.palina
-            ? `Passaggi GTT apre la palina ${gttTarget.palina} del posto cambio di inizio turno. Qui vicino trova le fermate intorno a dove sei adesso.`
-            : 'Qui vicino trova le fermate intorno a dove sei adesso.'}
-        </p>
-      ) : null}
+      </details>
     </div>
   );
 }

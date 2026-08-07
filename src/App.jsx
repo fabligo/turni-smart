@@ -766,7 +766,10 @@ export default function App() {
     }
   }
 
+  /* Chiudere il mese caricato con un tocco solo, senza chiedere niente, era
+     troppo facile: la copia resta in memoria ma la schermata si svuota. */
   function clearPreconoscenza() {
+    if (!window.confirm('Vuoi chiudere la Preconoscenza caricata? Resta salvata nello storico.')) return;
     setPdfLoaded(false);
     setPdfInfo(null);
     setDays({});
@@ -776,6 +779,7 @@ export default function App() {
   }
 
   function clearOrari() {
+    if (!window.confirm('Vuoi chiudere gli Orari Linee caricati? Restano salvati nello storico.')) return;
     setDevelopments({});
     setOrariInfo(null);
     setOrariLoaded(false);

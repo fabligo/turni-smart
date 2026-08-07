@@ -1,7 +1,9 @@
 :root {
-  color-scheme: dark;
-  font-family:
-    "Avenir Next", "Arial Rounded MT Bold", "Segoe UI", "SF Pro Display", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  color-scheme: light dark;
+  /* Solo font di sistema: "Avenir Next" e "Arial Rounded MT Bold" non
+     esistono su Android ne' su Windows, e meta' degli utenti vedeva un
+     fallback diverso da quello progettato. */
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -35,8 +37,12 @@
   --on-page-muted: #4a6382;
   --on-page-accent: #005daa;
   --on-page-warn: #8a5a00;
+  --page-bg: #ffffff;
   --page-card: #ffffff;
   --page-card-line: rgba(0, 93, 170, 0.22);
+  --page-card-hover: #f3f8fe;
+  --page-tile: #f1f3f6;
+  --page-tile-text: #272d36;
   --green: #1b7a3d;
   --orange: #e65100;
   --purple: #4a148c;
@@ -68,8 +74,8 @@ body {
   margin: 0;
   min-width: 320px;
   overflow-x: hidden;
-  background: #ffffff;
-  color: #082f54;
+  background: var(--page-bg);
+  color: var(--on-page);
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -101,7 +107,9 @@ button,
 .field-label,
 .section-kicker,
 .app-title h1 {
-  font-family: "Arial Rounded MT Bold", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  /* ui-rounded esiste su Apple, altrove si scende al font di sistema:
+     una scelta prevedibile al posto di un fallback casuale. */
+  font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   letter-spacing: 0;
 }
 
@@ -154,13 +162,14 @@ select:focus-visible {
   padding-bottom: calc(108px + env(safe-area-inset-bottom, 0px));
 }
 
+/* L'angolo a 42px e' una firma: ripetuto su ogni pannello di una colonna
+   diventa rumore. Resta su header e card turno, il resto e' uniforme. */
 .sb,
 .ps,
 .dc,
 .mg {
   border: 1px solid rgba(0, 93, 170, 0.24);
-  border-radius: var(--radius);
-  border-top-right-radius: 42px;
+  border-radius: var(--radius-lg);
   background:
     linear-gradient(180deg, rgba(0, 93, 170, 0.96), rgba(7, 56, 101, 0.98));
   color: var(--text);
@@ -525,8 +534,7 @@ select:focus-visible {
 
 .suspended-shift-disclosure {
   border: 1px solid var(--page-card-line);
-  border-radius: var(--radius);
-  border-top-right-radius: 32px;
+  border-radius: var(--radius-lg);
   background: var(--page-card);
   overflow: hidden;
 }
@@ -581,7 +589,7 @@ select:focus-visible {
 }
 
 .onboarding-demo:hover {
-  background: #f3f8fe;
+  background: var(--page-card-hover);
   border-color: rgba(0, 93, 170, 0.42);
 }
 
@@ -1068,21 +1076,28 @@ select:focus-visible {
   background: var(--gtt-blue);
 }
 
+/* Cancellare non e' un'azione da mettere in evidenza quanto "Sostituisci":
+   resta leggibile, ma smette di gridare. */
 .upload-document__clear {
   flex: 0 0 auto;
-  border: 1px solid rgba(0, 93, 170, 0.35);
-  background: #ffffff;
-  color: var(--gtt-blue);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.82);
+  font-weight: 800;
   box-shadow: none;
 }
 
 .upload-document__action:hover,
-.upload-document__clear:hover,
 .upload-document__overview:hover,
 .upload-document__share:hover {
   background: var(--gtt-blue-light);
   color: #ffffff;
   transform: translateY(-1px);
+}
+
+.upload-document__clear:hover {
+  border-color: rgba(255, 138, 138, 0.7);
+  color: #ff9c9c;
 }
 
 .file-input {
@@ -1093,7 +1108,7 @@ select:focus-visible {
 .small-button,
 .quick-actions button,
 .inline-action {
-  min-height: 40px;
+  min-height: 44px;
   border: 0;
   border-radius: var(--button-radius);
   padding: 0 12px;
@@ -1545,11 +1560,11 @@ select:focus-visible {
 }
 
 .filter-chip {
-  min-height: 40px;
-  border: 1px solid rgba(8, 45, 99, 0.14);
+  min-height: 44px;
+  border: 1px solid var(--page-card-line);
   border-radius: 12px;
-  background: #ffffff;
-  color: #1d2e54;
+  background: var(--page-card);
+  color: var(--on-page);
   font-size: 0.78rem;
   font-weight: 900;
   box-shadow: 0 5px 12px rgba(13, 33, 64, 0.08);
@@ -1557,20 +1572,20 @@ select:focus-visible {
 }
 
 .filter-chip.is-active {
-  border-color: rgba(8, 45, 99, 0.24);
-  background: #ffffff;
-  color: #1d2e54;
+  border-color: var(--page-card-line);
+  background: var(--page-card-hover);
+  color: var(--on-page);
   box-shadow: inset 0 0 0 1px rgba(8, 45, 99, 0.08), 0 5px 12px rgba(13, 33, 64, 0.08);
 }
 
 .filter-chip.is-active::after {
   content: "✓";
   margin-left: 4px;
-  color: #111a4d;
+  color: var(--on-page);
 }
 
 .filter-chip--today {
-  color: #111a4d;
+  color: var(--on-page);
 }
 
 .filter-chip--today::after,
@@ -1603,7 +1618,7 @@ select:focus-visible {
 .month-controls input,
 .month-controls select {
   width: 100%;
-  min-height: 40px;
+  min-height: 44px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 0 10px;
@@ -1683,6 +1698,7 @@ select:focus-visible {
   display: grid;
   gap: 10px;
   border-left: 4px solid var(--accent);
+  border-top-right-radius: 42px;
   overflow: visible;
 }
 
@@ -1767,11 +1783,33 @@ select:focus-visible {
   font-weight: 850;
 }
 
+/* Il tassello data e l'identita' del turno condividono la prima riga; la
+   striscia oraria - la risposta vera - prende tutta la larghezza sotto. */
 .shift-card__main {
   display: grid;
   grid-template-columns: 112px minmax(0, 1fr) 220px;
-  gap: 20px;
+  grid-template-areas:
+    "tile head actions"
+    "body body actions";
+  gap: 14px 20px;
   align-items: start;
+}
+
+.shift-card__main > .shift-date-tile {
+  grid-area: tile;
+}
+
+.shift-card__main > .shift-heading-row {
+  grid-area: head;
+  align-content: start;
+}
+
+.shift-card__main > .shift-card__body {
+  grid-area: body;
+}
+
+.shift-card__main > .shift-calendar-zone {
+  grid-area: actions;
 }
 
 .shift-date-tile {
@@ -2182,7 +2220,7 @@ select:focus-visible {
 }
 
 .inline-action {
-  min-height: 36px;
+  min-height: 44px;
   background: var(--blue);
 }
 
@@ -2336,7 +2374,7 @@ select:focus-visible {
 }
 
 .ballot-insert-button {
-  min-height: 40px;
+  min-height: 44px;
   border: 0;
   border-radius: var(--radius);
   background: var(--blue);
@@ -2606,8 +2644,8 @@ select:focus-visible {
 .segment-vehicle-number__header button,
 .segment-vehicle-row button {
   display: inline-grid;
-  width: 30px;
-  height: 30px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   border: 1px solid rgba(255, 209, 0, 0.42);
   border-radius: 999px;
@@ -2636,7 +2674,7 @@ select:focus-visible {
 
 .segment-vehicle-row input {
   width: 100%;
-  min-height: 32px;
+  min-height: 44px;
   border: 1px solid rgba(255, 209, 0, 0.32);
   border-radius: 9px;
   background: rgba(2, 19, 34, 0.74);
@@ -3985,10 +4023,10 @@ a.inline-action {
 .month-view {
   width: min(430px, 100%);
   justify-self: center;
-  border: 1px solid rgba(0, 93, 170, 0.12);
+  border: 1px solid var(--page-card-line);
   border-radius: 28px;
-  background: #ffffff;
-  color: #0d2140;
+  background: var(--page-card);
+  color: var(--on-page);
   box-shadow: 0 18px 42px rgba(11, 35, 66, 0.16);
 }
 
@@ -4007,8 +4045,8 @@ a.inline-action {
   place-items: center;
   border: 0;
   border-radius: 999px;
-  background: #f3f4f6;
-  color: #0d2140;
+  background: var(--page-tile);
+  color: var(--on-page);
   box-shadow: 0 8px 18px rgba(11, 35, 66, 0.08);
   cursor: pointer;
 }
@@ -4019,7 +4057,7 @@ a.inline-action {
   min-width: 0;
   margin: 0;
   text-align: center;
-  color: #111a4d;
+  color: var(--on-page);
 }
 
 .month-heading h2 span {
@@ -4030,7 +4068,7 @@ a.inline-action {
 }
 
 .month-heading h2 small {
-  color: #343a46;
+  color: var(--on-page-muted);
   font-size: 1rem;
   font-weight: 780;
 }
@@ -4046,7 +4084,7 @@ a.inline-action {
 }
 
 .month-grid--weekdays span {
-  color: #171b24;
+  color: var(--on-page);
   font-size: 0.86rem;
   font-weight: 950;
   text-align: center;
@@ -4060,18 +4098,34 @@ a.inline-action {
 .month-day {
   position: relative;
   display: grid;
-  min-height: 42px;
-  place-items: center;
+  align-content: center;
+  justify-items: center;
+  gap: 1px;
+  /* 48px: ci sta il numero con sotto l'ora di attacco, e resta un bersaglio
+     che si prende al primo tentativo. */
+  min-height: 48px;
   border: 0;
   border-radius: 9px;
-  background: #f1f3f6;
-  color: #272d36;
+  background: var(--page-tile);
+  color: var(--page-tile-text);
   font-size: 1.05rem;
   font-weight: 860;
   box-shadow:
     inset 0 -3px 0 rgba(0, 0, 0, 0.08),
     0 5px 9px rgba(13, 33, 64, 0.08);
   cursor: pointer;
+}
+
+.month-day__number {
+  line-height: 1.05;
+}
+
+.month-day__time {
+  font-size: 0.62rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  opacity: 0.86;
 }
 
 .month-day--outside {
@@ -4803,10 +4857,13 @@ a.inline-action {
 
   .shift-card__main {
     grid-template-columns: 112px minmax(0, 1fr);
+    grid-template-areas:
+      "tile head"
+      "body body"
+      "actions actions";
   }
 
   .shift-calendar-zone {
-    grid-column: 1 / -1;
     min-height: 0;
     padding: 12px 0 0;
     border-top: 1px solid var(--line);
@@ -5007,13 +5064,18 @@ a.inline-action {
     width: calc(100% - 24px);
   }
 
+  /* Anche sul telefono data e identita' restano affiancate: impilarle
+     lasciava mezza riga vuota accanto al tassello. */
   .shift-card__main {
-    grid-template-columns: 1fr;
+    grid-template-columns: 116px minmax(0, 1fr);
+    grid-template-areas:
+      "tile head"
+      "body body"
+      "actions actions";
     gap: 12px;
   }
 
   .shift-calendar-zone {
-    grid-column: auto;
     min-height: 0;
     padding: 12px 0 0;
     border-top: 1px solid var(--line);
@@ -5298,7 +5360,7 @@ a.inline-action {
 }
 
 .month-day-row:hover {
-  background: #f3f8fe;
+  background: var(--page-card-hover);
 }
 
 .month-day-row--riposo {
@@ -5379,5 +5441,139 @@ a.inline-action {
 
   .month-day-row__body small {
     display: none;
+  }
+}
+
+/* Tempistiche del turno (P3)
+   --------------------------------------------------------------- */
+.shift-timing {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.shift-timing__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid rgba(141, 216, 255, 0.22);
+  border-radius: 999px;
+  background: rgba(6, 26, 45, 0.4);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 880;
+  font-variant-numeric: tabular-nums;
+}
+
+.shift-timing__item--countdown {
+  border-color: rgba(255, 209, 0, 0.5);
+  color: var(--yellow);
+}
+
+.shift-timing__item--wake {
+  border-color: rgba(255, 255, 255, 0.34);
+}
+
+/* Meno di tre ore all'attacco: il conto alla rovescia si fa vedere. */
+.shift-timing--imminent .shift-timing__item--countdown {
+  background: var(--yellow);
+  color: #2a2000;
+}
+
+/* Azioni secondarie richiudibili
+   --------------------------------------------------------------- */
+.secondary-actions summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border: 1px solid rgba(141, 216, 255, 0.24);
+  border-radius: var(--button-radius);
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 880;
+  list-style: none;
+}
+
+.secondary-actions summary::-webkit-details-marker {
+  display: none;
+}
+
+.secondary-actions summary::after {
+  content: '\00a0▾';
+}
+
+.secondary-actions[open] summary::after {
+  content: '\00a0▴';
+}
+
+.secondary-actions[open] summary {
+  margin-bottom: 8px;
+}
+
+.inline-action--primary {
+  font-weight: 950;
+}
+
+/* Tema scuro
+   ---------------------------------------------------------------
+   Le card blu funzionano gia' al buio: a cambiare e' la superficie
+   chiara, cioe' i token --page-* e --on-page-*. Un'app che si apre
+   alle quattro del mattino non deve accecare chi la guarda. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --on-page: #e8f1fb;
+    --on-page-muted: #a7c0da;
+    --on-page-accent: #79c0f2;
+    --on-page-warn: #ffc94d;
+    --page-bg: #0b1522;
+    --page-card: #152232;
+    --page-card-line: rgba(133, 183, 232, 0.24);
+    --page-card-hover: #1c2c40;
+    --page-tile: #1d2c3f;
+    --page-tile-text: #dbe8f6;
+  }
+
+  .month-view {
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.44);
+  }
+
+  .month-day--outside {
+    color: var(--on-page-muted);
+  }
+
+  /* I giorni festivi restavano su un rosso pensato per il fondo bianco. */
+  .month-grid--weekdays span:nth-child(6),
+  .month-grid--weekdays span:nth-child(7) {
+    color: #ff8a8a;
+  }
+
+  .utility-dock {
+    border-color: rgba(133, 183, 232, 0.2);
+    background: rgba(21, 34, 50, 0.94);
+  }
+
+  .utility-dock__button,
+  .utility-dock__button.is-active {
+    color: var(--on-page-accent);
+  }
+
+  .utility-dock__button svg {
+    background: linear-gradient(180deg, #22344a 0%, #1a2a3d 100%);
+  }
+
+  .utility-dock__button:not(:disabled):hover svg {
+    background: linear-gradient(180deg, #2a3f59 0%, #21344b 100%);
+  }
+
+  .section-switch__button.is-active {
+    background: var(--gtt-blue-light);
+    color: #08192b;
+  }
+
+  .month-day-row__date {
+    background: rgba(133, 183, 232, 0.14);
   }
 }
