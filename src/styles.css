@@ -296,7 +296,8 @@ select:focus-visible {
   display: grid;
   justify-items: center;
   gap: 18px;
-  min-height: 300px;
+  /* Senza il bus grande l'hero non deve piu' tenere 300px di altezza. */
+  min-height: 0;
   overflow: hidden;
   border-radius: 8px 48px 8px 8px;
   padding: 22px 24px 32px;
@@ -374,24 +375,6 @@ select:focus-visible {
   line-height: 1.15;
 }
 
-.onboarding-hero__mark {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  width: 132px;
-  height: 132px;
-  border-radius: 30px;
-  background: transparent;
-  filter: drop-shadow(0 18px 34px rgba(255, 209, 0, 0.18));
-}
-
-.onboarding-hero__mark img {
-  display: block;
-  width: 132px;
-  height: 132px;
-  object-fit: contain;
-}
 
 .onboarding-hero__copy {
   position: relative;
@@ -4906,7 +4889,7 @@ a.inline-action {
   }
 
   .onboarding-hero {
-    min-height: 286px;
+    min-height: 0;
     border-radius: 22px;
     padding: 18px 16px 24px;
     gap: 16px;
@@ -4934,16 +4917,6 @@ a.inline-action {
     font-size: 0.76rem;
   }
 
-  .onboarding-hero__mark {
-    width: 112px;
-    height: 112px;
-    border-radius: 26px;
-  }
-
-  .onboarding-hero__mark img {
-    width: 112px;
-    height: 112px;
-  }
 
   .onboarding-upload {
     grid-template-columns: 58px minmax(0, 1fr) 22px;

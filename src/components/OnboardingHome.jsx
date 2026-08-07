@@ -22,9 +22,8 @@ export function OnboardingHome({
             <small>Turni GTT · Deposito Gerbido</small>
           </span>
         </div>
-        <div className="onboarding-hero__mark" aria-hidden="true">
-          <AssetIcon name="bus" size={132} />
-        </div>
+        {/* Il bus e' gia' nel marchio qui sopra: ripeterlo grande costava
+            mezzo schermo e non aggiungeva niente. */}
         <div className="onboarding-hero__copy">
           <h2 id="onboarding-title">Benvenuto!</h2>
           <p>Inizia caricando la tua preconoscenza</p>
