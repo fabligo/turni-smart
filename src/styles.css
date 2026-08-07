@@ -1,7 +1,9 @@
 :root {
-  color-scheme: dark;
-  font-family:
-    "Avenir Next", "Arial Rounded MT Bold", "Segoe UI", "SF Pro Display", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  color-scheme: light dark;
+  /* Solo font di sistema: "Avenir Next" e "Arial Rounded MT Bold" non
+     esistono su Android ne' su Windows, e meta' degli utenti vedeva un
+     fallback diverso da quello progettato. */
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -27,6 +29,20 @@
   --gtt-blue-light: #2f86cf;
   --paper: #ffffff;
   --paper-text: #6f7275;
+
+  /* L'app ha due superfici: le card blu (.dc/.sb/.ps/.mg) e la pagina bianca.
+     I token --text/--muted valgono solo sul blu. Tutto quello che appoggia
+     direttamente sulla pagina usa --on-page-*, altrimenti resta invisibile. */
+  --on-page: #082f54;
+  --on-page-muted: #4a6382;
+  --on-page-accent: #005daa;
+  --on-page-warn: #8a5a00;
+  --page-bg: #ffffff;
+  --page-card: #ffffff;
+  --page-card-line: rgba(0, 93, 170, 0.22);
+  --page-card-hover: #f3f8fe;
+  --page-tile: #f1f3f6;
+  --page-tile-text: #272d36;
   --green: #1b7a3d;
   --orange: #e65100;
   --purple: #4a148c;
@@ -58,8 +74,8 @@ body {
   margin: 0;
   min-width: 320px;
   overflow-x: hidden;
-  background: #ffffff;
-  color: #082f54;
+  background: var(--page-bg);
+  color: var(--on-page);
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -91,7 +107,9 @@ button,
 .field-label,
 .section-kicker,
 .app-title h1 {
-  font-family: "Arial Rounded MT Bold", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  /* ui-rounded esiste su Apple, altrove si scende al font di sistema:
+     una scelta prevedibile al posto di un fallback casuale. */
+  font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   letter-spacing: 0;
 }
 
@@ -119,11 +137,13 @@ select:focus-visible {
   padding: 10px 0 28px;
 }
 
+/* Colonna singola centrata: i Documenti non stanno piu' in una barra laterale
+   fissa, quindi non serve la griglia a due colonne. */
 .app-frame {
   display: grid;
-  grid-template-columns: 294px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
-  width: min(1500px, 100%);
+  width: min(940px, calc(100% - 24px));
   margin: 0 auto;
   padding: 0 0 0;
   align-items: start;
@@ -138,16 +158,18 @@ select:focus-visible {
   display: grid;
   gap: var(--s3);
   min-width: 0;
-  padding-bottom: 148px;
+  /* Spazio per il dock fisso, piu' l'home indicator su iPhone. */
+  padding-bottom: calc(108px + env(safe-area-inset-bottom, 0px));
 }
 
+/* L'angolo a 42px e' una firma: ripetuto su ogni pannello di una colonna
+   diventa rumore. Resta su header e card turno, il resto e' uniforme. */
 .sb,
 .ps,
 .dc,
 .mg {
   border: 1px solid rgba(0, 93, 170, 0.24);
-  border-radius: var(--radius);
-  border-top-right-radius: 42px;
+  border-radius: var(--radius-lg);
   background:
     linear-gradient(180deg, rgba(0, 93, 170, 0.96), rgba(7, 56, 101, 0.98));
   color: var(--text);
@@ -167,7 +189,7 @@ select:focus-visible {
   grid-template-areas: "brand driver period";
   gap: var(--s3);
   align-items: center;
-  width: min(1500px, 100%);
+  width: min(940px, calc(100% - 24px));
   min-height: 54px;
   margin: 0 auto 12px;
   padding: 12px 14px;
@@ -274,7 +296,8 @@ select:focus-visible {
   display: grid;
   justify-items: center;
   gap: 18px;
-  min-height: 300px;
+  /* Senza il bus grande l'hero non deve piu' tenere 300px di altezza. */
+  min-height: 0;
   overflow: hidden;
   border-radius: 8px 48px 8px 8px;
   padding: 22px 24px 32px;
@@ -352,24 +375,6 @@ select:focus-visible {
   line-height: 1.15;
 }
 
-.onboarding-hero__mark {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  width: 132px;
-  height: 132px;
-  border-radius: 30px;
-  background: transparent;
-  filter: drop-shadow(0 18px 34px rgba(255, 209, 0, 0.18));
-}
-
-.onboarding-hero__mark img {
-  display: block;
-  width: 132px;
-  height: 132px;
-  object-fit: contain;
-}
 
 .onboarding-hero__copy {
   position: relative;
@@ -511,10 +516,9 @@ select:focus-visible {
 }
 
 .suspended-shift-disclosure {
-  border: 1px solid rgba(255, 209, 0, 0.24);
-  border-radius: var(--radius);
-  border-top-right-radius: 32px;
-  background: rgba(255, 209, 0, 0.06);
+  border: 1px solid var(--page-card-line);
+  border-radius: var(--radius-lg);
+  background: var(--page-card);
   overflow: hidden;
 }
 
@@ -523,9 +527,10 @@ select:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  min-height: 56px;
   padding: 16px 18px;
   cursor: pointer;
-  color: #ffffff;
+  color: var(--on-page);
   font-weight: 930;
   list-style: none;
 }
@@ -535,13 +540,13 @@ select:focus-visible {
 }
 
 .suspended-shift-disclosure summary span {
-  color: var(--gtt-blue-light);
+  color: var(--on-page-muted);
   font-size: 0.95rem;
   font-weight: 950;
 }
 
 .suspended-shift-disclosure summary strong {
-  color: var(--yellow);
+  color: var(--on-page-accent);
   font-size: 0.95rem;
   font-weight: 950;
 }
@@ -557,18 +562,18 @@ select:focus-visible {
   align-items: center;
   gap: 14px;
   width: 100%;
-  border: 1px solid rgba(255, 209, 0, 0.34);
+  border: 1px solid var(--page-card-line);
   border-radius: var(--radius-lg);
   padding: 16px 18px;
-  background: rgba(255, 209, 0, 0.08);
-  color: #ffffff;
+  background: var(--page-card);
+  color: var(--on-page);
   cursor: pointer;
   text-align: left;
 }
 
 .onboarding-demo:hover {
-  background: rgba(255, 209, 0, 0.12);
-  border-color: rgba(255, 209, 0, 0.56);
+  background: var(--page-card-hover);
+  border-color: rgba(0, 93, 170, 0.42);
 }
 
 .onboarding-demo:disabled {
@@ -582,8 +587,8 @@ select:focus-visible {
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: rgba(255, 209, 0, 0.16);
-  color: var(--yellow);
+  background: rgba(0, 93, 170, 0.1);
+  color: var(--on-page-accent);
 }
 
 .onboarding-demo span:last-child {
@@ -592,13 +597,13 @@ select:focus-visible {
 }
 
 .onboarding-demo strong {
-  color: #ffffff;
+  color: var(--on-page);
   font-size: 1rem;
   font-weight: 920;
 }
 
 .onboarding-demo small {
-  color: var(--muted);
+  color: var(--on-page-muted);
   font-size: 0.82rem;
   font-weight: 740;
   line-height: 1.35;
@@ -1005,11 +1010,11 @@ select:focus-visible {
 .upload-document__overview,
 .upload-document__share {
   grid-column: 2;
-  min-height: 34px;
+  min-height: 44px;
   border: 0;
   border-radius: var(--button-radius);
-  padding: 0 10px;
-  font-size: 0.76rem;
+  padding: 0 12px;
+  font-size: 0.82rem;
   font-weight: 950;
   cursor: pointer;
   box-shadow:
@@ -1054,21 +1059,28 @@ select:focus-visible {
   background: var(--gtt-blue);
 }
 
+/* Cancellare non e' un'azione da mettere in evidenza quanto "Sostituisci":
+   resta leggibile, ma smette di gridare. */
 .upload-document__clear {
   flex: 0 0 auto;
-  border: 1px solid rgba(0, 93, 170, 0.35);
-  background: #ffffff;
-  color: var(--gtt-blue);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.82);
+  font-weight: 800;
   box-shadow: none;
 }
 
 .upload-document__action:hover,
-.upload-document__clear:hover,
 .upload-document__overview:hover,
 .upload-document__share:hover {
   background: var(--gtt-blue-light);
   color: #ffffff;
   transform: translateY(-1px);
+}
+
+.upload-document__clear:hover {
+  border-color: rgba(255, 138, 138, 0.7);
+  color: #ff9c9c;
 }
 
 .file-input {
@@ -1079,7 +1091,7 @@ select:focus-visible {
 .small-button,
 .quick-actions button,
 .inline-action {
-  min-height: 40px;
+  min-height: 44px;
   border: 0;
   border-radius: var(--button-radius);
   padding: 0 12px;
@@ -1363,9 +1375,13 @@ select:focus-visible {
 .empty-state p,
 .result-message {
   margin: 0;
-  color: var(--muted);
-  font-size: 0.84rem;
-  font-weight: 720;
+  padding: 14px 16px;
+  border: 1px solid var(--page-card-line);
+  border-radius: var(--radius);
+  background: var(--page-card);
+  color: var(--on-page);
+  font-size: 0.9rem;
+  font-weight: 780;
   line-height: 1.45;
 }
 
@@ -1527,11 +1543,11 @@ select:focus-visible {
 }
 
 .filter-chip {
-  min-height: 40px;
-  border: 1px solid rgba(8, 45, 99, 0.14);
+  min-height: 44px;
+  border: 1px solid var(--page-card-line);
   border-radius: 12px;
-  background: #ffffff;
-  color: #1d2e54;
+  background: var(--page-card);
+  color: var(--on-page);
   font-size: 0.78rem;
   font-weight: 900;
   box-shadow: 0 5px 12px rgba(13, 33, 64, 0.08);
@@ -1539,20 +1555,20 @@ select:focus-visible {
 }
 
 .filter-chip.is-active {
-  border-color: rgba(8, 45, 99, 0.24);
-  background: #ffffff;
-  color: #1d2e54;
+  border-color: var(--page-card-line);
+  background: var(--page-card-hover);
+  color: var(--on-page);
   box-shadow: inset 0 0 0 1px rgba(8, 45, 99, 0.08), 0 5px 12px rgba(13, 33, 64, 0.08);
 }
 
 .filter-chip.is-active::after {
   content: "✓";
   margin-left: 4px;
-  color: #111a4d;
+  color: var(--on-page);
 }
 
 .filter-chip--today {
-  color: #111a4d;
+  color: var(--on-page);
 }
 
 .filter-chip--today::after,
@@ -1585,7 +1601,7 @@ select:focus-visible {
 .month-controls input,
 .month-controls select {
   width: 100%;
-  min-height: 40px;
+  min-height: 44px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 0 10px;
@@ -1655,7 +1671,7 @@ select:focus-visible {
 .result-toolbar {
   display: flex;
   justify-content: flex-end;
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--on-page-muted);
   font-size: 0.78rem;
   font-weight: 850;
 }
@@ -1665,6 +1681,7 @@ select:focus-visible {
   display: grid;
   gap: 10px;
   border-left: 4px solid var(--accent);
+  border-top-right-radius: 42px;
   overflow: visible;
 }
 
@@ -1749,11 +1766,33 @@ select:focus-visible {
   font-weight: 850;
 }
 
+/* Il tassello data e l'identita' del turno condividono la prima riga; la
+   striscia oraria - la risposta vera - prende tutta la larghezza sotto. */
 .shift-card__main {
   display: grid;
   grid-template-columns: 112px minmax(0, 1fr) 220px;
-  gap: 20px;
+  grid-template-areas:
+    "tile head actions"
+    "body body actions";
+  gap: 14px 20px;
   align-items: start;
+}
+
+.shift-card__main > .shift-date-tile {
+  grid-area: tile;
+}
+
+.shift-card__main > .shift-heading-row {
+  grid-area: head;
+  align-content: start;
+}
+
+.shift-card__main > .shift-card__body {
+  grid-area: body;
+}
+
+.shift-card__main > .shift-calendar-zone {
+  grid-area: actions;
 }
 
 .shift-date-tile {
@@ -2164,7 +2203,7 @@ select:focus-visible {
 }
 
 .inline-action {
-  min-height: 36px;
+  min-height: 44px;
   background: var(--blue);
 }
 
@@ -2318,7 +2357,7 @@ select:focus-visible {
 }
 
 .ballot-insert-button {
-  min-height: 40px;
+  min-height: 44px;
   border: 0;
   border-radius: var(--radius);
   background: var(--blue);
@@ -2588,8 +2627,8 @@ select:focus-visible {
 .segment-vehicle-number__header button,
 .segment-vehicle-row button {
   display: inline-grid;
-  width: 30px;
-  height: 30px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   border: 1px solid rgba(255, 209, 0, 0.42);
   border-radius: 999px;
@@ -2618,7 +2657,7 @@ select:focus-visible {
 
 .segment-vehicle-row input {
   width: 100%;
-  min-height: 32px;
+  min-height: 44px;
   border: 1px solid rgba(255, 209, 0, 0.32);
   border-radius: 9px;
   background: rgba(2, 19, 34, 0.74);
@@ -3535,40 +3574,33 @@ a.inline-action {
 /* Utility dock */
 /* Dock a riga singola: scorre in orizzontale come una tab bar iOS, senza
    barra di scorrimento visibile e con i bordi sfumati a suggerire il resto. */
+/* Cinque destinazioni fisse, ancorate al viewport: niente scorrimento
+   orizzontale che nasconde meta' delle voci, niente dock che galleggia in
+   mezzo al contenuto quando la pagina e' corta. */
 .utility-dock {
-  position: sticky;
+  position: fixed;
   z-index: 20;
-  bottom: 10px;
-  display: flex;
-  /* "safe" evita che il centraggio renda irraggiungibile il primo elemento
-     quando la riga e' piu' larga del dock. */
-  justify-content: safe center;
+  right: 0;
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  left: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 2px;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scroll-snap-type: x proximity;
-  scroll-padding: 0 10px;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  width: min(620px, calc(100% - 16px));
+  margin: 0 auto;
   border: 1px solid rgba(0, 93, 170, 0.16);
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 16px 38px rgba(3, 34, 61, 0.24);
   padding: 8px 10px;
   backdrop-filter: blur(18px) saturate(1.4);
-  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
-  mask-image: linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
-}
-
-.utility-dock::-webkit-scrollbar {
-  display: none;
 }
 
 .utility-dock__button {
   display: grid;
-  flex: 0 0 auto;
-  width: 66px;
-  scroll-snap-align: center;
+  min-width: 0;
+  /* Sotto i 44px il bersaglio non si prende con i guanti, in movimento. */
+  min-height: 60px;
   place-items: center;
   gap: 5px;
   border: 0;
@@ -3576,7 +3608,7 @@ a.inline-action {
   background: transparent;
   color: var(--gtt-blue);
   cursor: pointer;
-  font-size: 0.6rem;
+  font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.01em;
   padding: 4px 2px 5px;
@@ -3974,10 +4006,10 @@ a.inline-action {
 .month-view {
   width: min(430px, 100%);
   justify-self: center;
-  border: 1px solid rgba(0, 93, 170, 0.12);
+  border: 1px solid var(--page-card-line);
   border-radius: 28px;
-  background: #ffffff;
-  color: #0d2140;
+  background: var(--page-card);
+  color: var(--on-page);
   box-shadow: 0 18px 42px rgba(11, 35, 66, 0.16);
 }
 
@@ -3996,8 +4028,8 @@ a.inline-action {
   place-items: center;
   border: 0;
   border-radius: 999px;
-  background: #f3f4f6;
-  color: #0d2140;
+  background: var(--page-tile);
+  color: var(--on-page);
   box-shadow: 0 8px 18px rgba(11, 35, 66, 0.08);
   cursor: pointer;
 }
@@ -4008,7 +4040,7 @@ a.inline-action {
   min-width: 0;
   margin: 0;
   text-align: center;
-  color: #111a4d;
+  color: var(--on-page);
 }
 
 .month-heading h2 span {
@@ -4019,7 +4051,7 @@ a.inline-action {
 }
 
 .month-heading h2 small {
-  color: #343a46;
+  color: var(--on-page-muted);
   font-size: 1rem;
   font-weight: 780;
 }
@@ -4035,7 +4067,7 @@ a.inline-action {
 }
 
 .month-grid--weekdays span {
-  color: #171b24;
+  color: var(--on-page);
   font-size: 0.86rem;
   font-weight: 950;
   text-align: center;
@@ -4049,18 +4081,34 @@ a.inline-action {
 .month-day {
   position: relative;
   display: grid;
-  min-height: 42px;
-  place-items: center;
+  align-content: center;
+  justify-items: center;
+  gap: 1px;
+  /* 48px: ci sta il numero con sotto l'ora di attacco, e resta un bersaglio
+     che si prende al primo tentativo. */
+  min-height: 48px;
   border: 0;
   border-radius: 9px;
-  background: #f1f3f6;
-  color: #272d36;
+  background: var(--page-tile);
+  color: var(--page-tile-text);
   font-size: 1.05rem;
   font-weight: 860;
   box-shadow:
     inset 0 -3px 0 rgba(0, 0, 0, 0.08),
     0 5px 9px rgba(13, 33, 64, 0.08);
   cursor: pointer;
+}
+
+.month-day__number {
+  line-height: 1.05;
+}
+
+.month-day__time {
+  font-size: 0.62rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  opacity: 0.86;
 }
 
 .month-day--outside {
@@ -4787,16 +4835,18 @@ a.inline-action {
   }
 
   .app-frame {
-    grid-template-columns: minmax(0, 1fr);
     width: min(660px, calc(100% - 20px));
   }
 
   .shift-card__main {
     grid-template-columns: 112px minmax(0, 1fr);
+    grid-template-areas:
+      "tile head"
+      "body body"
+      "actions actions";
   }
 
   .shift-calendar-zone {
-    grid-column: 1 / -1;
     min-height: 0;
     padding: 12px 0 0;
     border-top: 1px solid var(--line);
@@ -4839,7 +4889,7 @@ a.inline-action {
   }
 
   .onboarding-hero {
-    min-height: 286px;
+    min-height: 0;
     border-radius: 22px;
     padding: 18px 16px 24px;
     gap: 16px;
@@ -4867,16 +4917,6 @@ a.inline-action {
     font-size: 0.76rem;
   }
 
-  .onboarding-hero__mark {
-    width: 112px;
-    height: 112px;
-    border-radius: 26px;
-  }
-
-  .onboarding-hero__mark img {
-    width: 112px;
-    height: 112px;
-  }
 
   .onboarding-upload {
     grid-template-columns: 58px minmax(0, 1fr) 22px;
@@ -4997,13 +5037,18 @@ a.inline-action {
     width: calc(100% - 24px);
   }
 
+  /* Anche sul telefono data e identita' restano affiancate: impilarle
+     lasciava mezza riga vuota accanto al tassello. */
   .shift-card__main {
-    grid-template-columns: 1fr;
+    grid-template-columns: 116px minmax(0, 1fr);
+    grid-template-areas:
+      "tile head"
+      "body body"
+      "actions actions";
     gap: 12px;
   }
 
   .shift-calendar-zone {
-    grid-column: auto;
     min-height: 0;
     padding: 12px 0 0;
     border-top: 1px solid var(--line);
@@ -5197,5 +5242,311 @@ a.inline-action {
 
   .stat-row i {
     grid-column: 2 / -1;
+  }
+}
+
+/* Navigazione a sezioni
+   --------------------------------------------------------------- */
+.section-top-anchor {
+  display: block;
+  height: 0;
+  /* L'header non deve coprire il titolo della sezione appena aperta. */
+  scroll-margin-top: 12px;
+}
+
+.section-switch {
+  display: grid;
+  grid-auto-flow: column;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--page-card-line);
+  border-radius: 14px;
+  background: var(--page-card);
+}
+
+.section-switch__button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--on-page-accent);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.section-switch__button.is-active {
+  background: var(--gtt-blue);
+  color: #ffffff;
+}
+
+.empty-section {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  padding: 20px 18px;
+  border: 1px solid var(--page-card-line);
+  border-radius: var(--radius-lg);
+  background: var(--page-card);
+  color: var(--on-page);
+}
+
+.empty-section strong {
+  font-size: 1.02rem;
+  font-weight: 930;
+}
+
+.empty-section p {
+  margin: 0;
+  color: var(--on-page-muted);
+  font-size: 0.88rem;
+  font-weight: 720;
+  line-height: 1.45;
+}
+
+/* Lista compatta del mese
+   --------------------------------------------------------------- */
+.month-day-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.month-day-row {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  /* 56px: la riga si prende al primo tentativo anche in movimento. */
+  min-height: 56px;
+  padding: 8px 12px;
+  border: 1px solid var(--page-card-line);
+  border-left: 4px solid var(--gtt-blue-light);
+  border-radius: var(--radius);
+  background: var(--page-card);
+  color: var(--on-page);
+  cursor: pointer;
+  text-align: left;
+}
+
+.month-day-row:hover {
+  background: var(--page-card-hover);
+}
+
+.month-day-row--riposo {
+  border-left-color: var(--green);
+}
+
+.month-day-row--ballottaggio {
+  border-left-color: var(--orange);
+}
+
+.month-day-row--altro {
+  border-left-color: var(--on-page-muted);
+}
+
+.month-day-row__date {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  padding: 4px 0;
+  border-radius: 8px;
+  background: rgba(0, 93, 170, 0.08);
+}
+
+.month-day-row__date small {
+  color: var(--on-page-muted);
+  font-size: 0.6rem;
+  font-weight: 900;
+}
+
+.month-day-row__date strong {
+  color: var(--on-page);
+  font-size: 1.05rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.month-day-row__body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.month-day-row__body strong {
+  overflow: hidden;
+  color: var(--on-page);
+  font-size: 0.9rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.month-day-row__body small {
+  overflow: hidden;
+  color: var(--on-page-muted);
+  font-size: 0.76rem;
+  font-weight: 740;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* L'ora di attacco e' la risposta che si cerca: resta leggibile e allineata. */
+.month-day-row__time {
+  color: var(--on-page-accent);
+  font-size: 1.02rem;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+}
+
+.month-day-row__chevron {
+  color: var(--on-page-muted);
+}
+
+@media (max-width: 380px) {
+  .month-day-row {
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .month-day-row__body small {
+    display: none;
+  }
+}
+
+/* Tempistiche del turno (P3)
+   --------------------------------------------------------------- */
+.shift-timing {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.shift-timing__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid rgba(141, 216, 255, 0.22);
+  border-radius: 999px;
+  background: rgba(6, 26, 45, 0.4);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 880;
+  font-variant-numeric: tabular-nums;
+}
+
+.shift-timing__item--countdown {
+  border-color: rgba(255, 209, 0, 0.5);
+  color: var(--yellow);
+}
+
+.shift-timing__item--wake {
+  border-color: rgba(255, 255, 255, 0.34);
+}
+
+/* Meno di tre ore all'attacco: il conto alla rovescia si fa vedere. */
+.shift-timing--imminent .shift-timing__item--countdown {
+  background: var(--yellow);
+  color: #2a2000;
+}
+
+/* Azioni secondarie richiudibili
+   --------------------------------------------------------------- */
+.secondary-actions summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border: 1px solid rgba(141, 216, 255, 0.24);
+  border-radius: var(--button-radius);
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 880;
+  list-style: none;
+}
+
+.secondary-actions summary::-webkit-details-marker {
+  display: none;
+}
+
+.secondary-actions summary::after {
+  content: '\00a0▾';
+}
+
+.secondary-actions[open] summary::after {
+  content: '\00a0▴';
+}
+
+.secondary-actions[open] summary {
+  margin-bottom: 8px;
+}
+
+.inline-action--primary {
+  font-weight: 950;
+}
+
+/* Tema scuro
+   ---------------------------------------------------------------
+   Le card blu funzionano gia' al buio: a cambiare e' la superficie
+   chiara, cioe' i token --page-* e --on-page-*. Un'app che si apre
+   alle quattro del mattino non deve accecare chi la guarda. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --on-page: #e8f1fb;
+    --on-page-muted: #a7c0da;
+    --on-page-accent: #79c0f2;
+    --on-page-warn: #ffc94d;
+    --page-bg: #0b1522;
+    --page-card: #152232;
+    --page-card-line: rgba(133, 183, 232, 0.24);
+    --page-card-hover: #1c2c40;
+    --page-tile: #1d2c3f;
+    --page-tile-text: #dbe8f6;
+  }
+
+  .month-view {
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.44);
+  }
+
+  .month-day--outside {
+    color: var(--on-page-muted);
+  }
+
+  /* I giorni festivi restavano su un rosso pensato per il fondo bianco. */
+  .month-grid--weekdays span:nth-child(6),
+  .month-grid--weekdays span:nth-child(7) {
+    color: #ff8a8a;
+  }
+
+  .utility-dock {
+    border-color: rgba(133, 183, 232, 0.2);
+    background: rgba(21, 34, 50, 0.94);
+  }
+
+  .utility-dock__button,
+  .utility-dock__button.is-active {
+    color: var(--on-page-accent);
+  }
+
+  .utility-dock__button svg {
+    background: linear-gradient(180deg, #22344a 0%, #1a2a3d 100%);
+  }
+
+  .utility-dock__button:not(:disabled):hover svg {
+    background: linear-gradient(180deg, #2a3f59 0%, #21344b 100%);
+  }
+
+  .section-switch__button.is-active {
+    background: var(--gtt-blue-light);
+    color: #08192b;
+  }
+
+  .month-day-row__date {
+    background: rgba(133, 183, 232, 0.14);
   }
 }

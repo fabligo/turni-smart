@@ -1,4 +1,4 @@
-import { REST_CODES } from '../parserPreconoscenza.js';
+import { REST_CODES, formatCompactTime } from '../parserPreconoscenza.js';
 import { Icon } from './Icon.jsx';
 
 const monthFormatter = new Intl.DateTimeFormat('it-IT', {
@@ -53,6 +53,8 @@ export function MonthView({
 
     return {
       kind,
+      /* La cella deve rispondere alla domanda vera: a che ora attacco. */
+      startTime: item?.t === 'turno' ? formatCompactTime(item.i) : '',
       hasShift: item?.t === 'turno',
       hasRest: Boolean(item && REST_CODES[item.t]),
       hasBallot: item?.t === 'RIS',
@@ -103,8 +105,9 @@ export function MonthView({
         ))}
       </div>
       <div className="month-grid month-grid--weekdays" aria-hidden="true">
-        {weekdays.map((day) => (
-          <span key={day}>{day}</span>
+        {/* Lunedi' e martedi' condividono la lettera: la chiave e' la posizione. */}
+        {weekdays.map((day, index) => (
+          <span key={index}>{day}</span>
         ))}
       </div>
       <div className="month-grid" aria-label="Vista mese preconoscenza">
@@ -133,7 +136,8 @@ export function MonthView({
               onClick={() => onSelectDay?.(new Date(monthDate.getFullYear(), monthDate.getMonth(), day))}
               type="button"
             >
-              {day}
+              <span className="month-day__number">{day}</span>
+              {state.startTime ? <span className="month-day__time">{state.startTime}</span> : null}
             </button>
           );
         })}

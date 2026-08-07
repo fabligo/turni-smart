@@ -36,6 +36,7 @@ import { Header } from './components/Header.jsx';
 import { UploadPanel } from './components/UploadPanel.jsx';
 import { ShiftCard } from './components/ShiftCard.jsx';
 import { MonthView } from './components/MonthView.jsx';
+import { MonthDayList } from './components/MonthDayList.jsx';
 import { StatsPanel } from './components/StatsPanel.jsx';
 import { AdvancedTools } from './components/AdvancedTools.jsx';
 import { LineConsultation } from './components/LineConsultation.jsx';
@@ -46,7 +47,21 @@ import { Icon } from './components/Icon.jsx';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
-const TABS = ['Giorno', 'Calendario'];
+/* Cinque destinazioni, una sola visibile per volta. Ogni sezione sostituisce
+   la precedente: il dock e' navigazione, non un salto di scroll. */
+const SECTIONS = ['oggi', 'calendario', 'periodo', 'linee', 'altro'];
+const SECTION_ALIASES = {
+  Home: 'oggi',
+  Turno: 'oggi',
+  Giorno: 'oggi',
+  Mese: 'calendario',
+  Calendario: 'calendario',
+  preconoscenza: 'periodo',
+  stats: 'altro',
+  tools: 'altro',
+  returns: 'linee',
+  lines: 'linee',
+};
 const DEFAULT_MONTH_FILTERS = {
   turni: false,
   riposi: false,
@@ -525,13 +540,7 @@ export default function App() {
   const onboardingInputRef = useRef(null);
   const monthPreconoscenzaInputRef = useRef(null);
   const monthOrariInputRef = useRef(null);
-  const calendarPanelRef = useRef(null);
-  const searchPanelRef = useRef(null);
-  const linePanelRef = useRef(null);
-  const returnsPanelRef = useRef(null);
-  const overviewPanelRef = useRef(null);
-  const statsPanelRef = useRef(null);
-  const toolsPanelRef = useRef(null);
+  const sectionTopRef = useRef(null);
   const savedPrefs = useMemo(() => loadPreferences(), []);
   const [pdfLoaded, setPdfLoaded] = useState(false);
   const [pdfInfo, setPdfInfo] = useState(null);
@@ -539,9 +548,9 @@ export default function App() {
   const [developments, setDevelopments] = useState({});
   const [orariInfo, setOrariInfo] = useState(null);
   const [orariLoaded, setOrariLoaded] = useState(false);
-  const tabAliases = { Home: 'Giorno', Turno: 'Giorno', Mese: 'Calendario' };
-  const initialTab = tabAliases[savedPrefs.activeTab] || savedPrefs.activeTab;
-  const [activeTab, setActiveTab] = useState(initialTab && TABS.includes(initialTab) ? initialTab : 'Giorno');
+  const savedSection = savedPrefs.activeSection || SECTION_ALIASES[savedPrefs.activeTab] || '';
+  const [activeSection, setActiveSection] = useState(SECTIONS.includes(savedSection) ? savedSection : 'oggi');
+  const [linesTab, setLinesTab] = useState('lines');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -563,7 +572,6 @@ export default function App() {
   const [backupMessage, setBackupMessage] = useState('');
   const [storageMessage, setStorageMessage] = useState('');
   const [storageReport, setStorageReport] = useState(() => getStorageReport());
-  const [activeUtilityPanel, setActiveUtilityPanel] = useState('');
   const [calendarPulse, setCalendarPulse] = useState(0);
   const [suspendedShiftText, setSuspendedShiftText] = useState('');
   const [suspendedShiftError, setSuspendedShiftError] = useState('');
@@ -572,37 +580,17 @@ export default function App() {
     selectedDate instanceof Date && !Number.isNaN(selectedDate.getTime()) ? selectedDate : new Date();
 
   useEffect(() => {
-    savePreferences({ ...preferences, activeTab });
-  }, [activeTab, preferences]);
+    savePreferences({ ...preferences, activeSection });
+  }, [activeSection, preferences]);
 
+  /* Cambiando sezione il contenuto e' gia' in cima: basta riportarci la
+     finestra, senza inseguire il pannello a meta' pagina. */
   useEffect(() => {
-    if (activeTab !== 'Calendario') return;
+    if (!pdfLoaded) return;
     window.requestAnimationFrame(() => {
-      calendarPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      sectionTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
-  }, [activeTab, calendarPulse]);
-
-  useEffect(() => {
-    const panelRefs = {
-      lines: linePanelRef,
-      overview: overviewPanelRef,
-      returns: returnsPanelRef,
-      stats: statsPanelRef,
-      tools: toolsPanelRef,
-    };
-    const targetRef = panelRefs[activeUtilityPanel];
-    if (!targetRef) return;
-    window.requestAnimationFrame(() => {
-      targetRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  }, [activeUtilityPanel]);
-
-  useEffect(() => {
-    if (activeTab !== 'Giorno' || activeUtilityPanel) return;
-    window.requestAnimationFrame(() => {
-      searchPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  }, [activeTab, activeUtilityPanel, searchResults]);
+  }, [activeSection, calendarPulse, pdfLoaded]);
 
   useEffect(() => {
     if (!preferences.autoRestore || pdfLoaded) return;
@@ -620,7 +608,7 @@ export default function App() {
   function markStorageFailure(context) {
     setStorageMessage(`${context}: memoria locale piena o non disponibile. Esporta un backup e libera spazio dai dati salvati.`);
     setBackupMessage('Salvataggio non riuscito: memoria locale piena o non disponibile.');
-    setActiveUtilityPanel('tools');
+    setActiveSection('altro');
   }
 
   function applyPreconoscenza(result, options = {}) {
@@ -778,7 +766,10 @@ export default function App() {
     }
   }
 
+  /* Chiudere il mese caricato con un tocco solo, senza chiedere niente, era
+     troppo facile: la copia resta in memoria ma la schermata si svuota. */
   function clearPreconoscenza() {
+    if (!window.confirm('Vuoi chiudere la Preconoscenza caricata? Resta salvata nello storico.')) return;
     setPdfLoaded(false);
     setPdfInfo(null);
     setDays({});
@@ -788,6 +779,7 @@ export default function App() {
   }
 
   function clearOrari() {
+    if (!window.confirm('Vuoi chiudere gli Orari Linee caricati? Restano salvati nello storico.')) return;
     setDevelopments({});
     setOrariInfo(null);
     setOrariLoaded(false);
@@ -816,7 +808,7 @@ export default function App() {
       refreshHistory();
     }
     setSelectedDate(nextDay.date);
-    setActiveTab('Giorno');
+    setActiveSection('oggi');
     return nextDay;
   }
 
@@ -862,7 +854,7 @@ export default function App() {
     setSearchQuery(toIsoDate(targetDate));
     setViewMonth(targetDate.getMonth());
     setViewYear(targetDate.getFullYear());
-    setActiveTab('Giorno');
+    setActiveSection('oggi');
     setSuspendedShiftText('');
     setManualEntryOpen(false);
     if (!savePreconoscenza(sourceInfo)) markStorageFailure('Preconoscenza sospesa');
@@ -1121,31 +1113,37 @@ export default function App() {
 
   function showCalendar(nextFilters = null) {
     if (nextFilters) setMonthFilters(nextFilters);
-    setActiveTab('Calendario');
-    setActiveUtilityPanel('');
+    setActiveSection('calendario');
     setCalendarPulse((current) => current + 1);
   }
 
   function showDaySearch() {
-    setActiveTab('Giorno');
-    setActiveUtilityPanel('');
+    setActiveSection('oggi');
   }
 
   function showPreconoscenzaOverview() {
-    setActiveTab('Giorno');
-    setActiveUtilityPanel('preconoscenza');
+    setActiveSection('periodo');
+  }
+
+  /* Il calendario mostra anche i riposi proiettati: aprendo un giorno deve
+     pescare dalla stessa mappa che ha disegnato la griglia. */
+  function openCalendarDay(date) {
+    openDayFrom(date, calendarDays);
   }
 
   function openDayFromOverview(date) {
+    openDayFrom(date, days);
+  }
+
+  function openDayFrom(date, source) {
     if (!(date instanceof Date) || Number.isNaN(date.getTime())) return;
     const iso = toIsoDate(date);
-    const item = days[iso];
+    const item = source[iso];
     setSelectedDate(date);
     setSearchQuery(iso);
     setSearchResults(item ? [item] : []);
     setSearchMessage(item ? '' : 'Nessun turno trovato per questa data.');
-    setActiveUtilityPanel('');
-    setActiveTab('Giorno');
+    setActiveSection('oggi');
   }
 
   function loadDemo() {
@@ -1295,25 +1293,8 @@ export default function App() {
           type="file"
         />
 
-        {pdfLoaded ? (
-          <UploadPanel
-            debugInfo={debugInfo}
-            error={error}
-            onClearOrari={clearOrari}
-            onClearPreconoscenza={clearPreconoscenza}
-            orariError={orariError}
-            orariLoading={orariLoading}
-            pdfInfo={pdfInfo}
-            preconoscenzaSummary={preconoscenzaSummary}
-            loading={loading}
-            onOrariUpload={handleOrariUpload}
-            onPreconoscenzaUpload={handlePreconoscenzaUpload}
-            onSharePreconoscenza={shareReadablePreconoscenza}
-            onShowPreconoscenzaOverview={showPreconoscenzaOverview}
-          />
-        ) : null}
-
         <section className="content-panel">
+          <span className="section-top-anchor" ref={sectionTopRef} aria-hidden="true" />
           {!pdfLoaded ? (
             <OnboardingHome
               error={error}
@@ -1327,7 +1308,7 @@ export default function App() {
             />
           ) : null}
 
-          {pdfLoaded && activeTab === 'Giorno' ? (
+          {pdfLoaded && activeSection === 'oggi' ? (
             <section className="view-panel">
               <form
                 className="search-panel dc"
@@ -1335,7 +1316,6 @@ export default function App() {
                   event.preventDefault();
                   runSearch();
                 }}
-                ref={searchPanelRef}
               >
                 <div className="panel-title-row">
                   <label className="field-label" htmlFor="turn-search">
@@ -1397,6 +1377,14 @@ export default function App() {
               <div className="result-list">
                 {searchResults.map((day) => cardForDay(day))}
                 {searchMessage ? <p className="result-message">{searchMessage}</p> : null}
+                {!searchResults.length && !searchMessage ? (
+                  <EmptySection
+                    action={pdfInfo?.dIn ? 'Vai al periodo caricato' : ''}
+                    onAction={() => openDayFromOverview(pdfInfo?.dIn)}
+                    text={`Cerca una data o usa i tasti rapidi. Il periodo caricato e' ${periodLabel}.`}
+                    title="Nessun giorno selezionato"
+                  />
+                ) : null}
               </div>
 
               {nextWorkingShift ? (
@@ -1411,23 +1399,13 @@ export default function App() {
             </section>
           ) : null}
 
-          {pdfLoaded && activeTab === 'Calendario' ? (
-            <section className="view-panel view-panel--calendar" key={calendarPulse} ref={calendarPanelRef}>
+          {pdfLoaded && activeSection === 'calendario' ? (
+            <section className="view-panel view-panel--calendar" key={calendarPulse}>
               <div className="calendar-focus-header">
                 <div>
                   <span>Vista calendario</span>
                   <strong>{MONTH_NAMES[viewMonth]} {viewYear}</strong>
                 </div>
-                <button
-                  className="small-button small-button--ghost"
-                  onClick={() => {
-                    setActiveTab('Giorno');
-                    setActiveUtilityPanel('');
-                  }}
-                  type="button"
-                >
-                  Nascondi calendario
-                </button>
               </div>
               <input
                 accept="application/pdf"
@@ -1456,7 +1434,7 @@ export default function App() {
                 onSubmit={(event) => {
                   event.preventDefault();
                   runSearch();
-                  setActiveTab('Giorno');
+                  setActiveSection('oggi');
                 }}
               >
                 <label className="field-label" htmlFor="calendar-turn-search">
@@ -1498,12 +1476,7 @@ export default function App() {
                 monthDate={monthDate}
                 onNextMonth={() => changeMonth(1)}
                 onPrevMonth={() => changeMonth(-1)}
-                onSelectDay={(date) => {
-                  setSelectedDate(date);
-                  const item = calendarDays[toIsoDate(date)];
-                  setSearchResults(item ? [item] : []);
-                  setActiveTab('Giorno');
-                }}
+                onSelectDay={openCalendarDay}
                 onToggleFilter={toggleMonthFilter}
               />
               <section className="calendar-actions-panel dc" aria-label="Azioni calendario">
@@ -1545,21 +1518,19 @@ export default function App() {
                 </div>
               </div>
               <div className="result-toolbar">
-                <span>{monthItems.length} giorni nel dettaglio mese</span>
+                <span>{monthItems.length} giorni nel mese</span>
               </div>
-              <div className="result-list">
-                {monthItems.length ? monthItems.map((day) => cardForDay(day)) : <p className="result-message">Nessun giorno caricato per questo mese.</p>}
-              </div>
+              <MonthDayList days={monthItems} onSelectDay={openCalendarDay} />
             </section>
           ) : null}
 
-          {pdfLoaded && activeUtilityPanel === 'preconoscenza' ? (
-            <div className="utility-panel-anchor utility-panel-anchor--preconoscenza" ref={overviewPanelRef}>
+          {pdfLoaded && activeSection === 'periodo' ? (
+            <div className="utility-panel-anchor utility-panel-anchor--preconoscenza">
               <PreconoscenzaOverview
                 days={days}
                 enrichedDays={enrichedDays}
                 onAddPeriodToCalendar={() => exportEntries('preconoscenza-completa.ics', allDayEntries)}
-                onClose={() => setActiveUtilityPanel('')}
+                onClose={showDaySearch}
                 onExportCsv={() => exportCsv('preconoscenza-completa.csv', allDayEntries)}
                 onSelectDay={openDayFromOverview}
                 onShareInfographic={shareReadablePreconoscenza}
@@ -1567,23 +1538,62 @@ export default function App() {
               />
             </div>
           ) : null}
-          {pdfLoaded && activeUtilityPanel === 'stats' ? (
-            <div className="utility-panel-anchor utility-panel-anchor--stats" ref={statsPanelRef}>
+
+          {pdfLoaded && activeSection === 'linee' ? (
+            <div className="utility-panel-anchor utility-panel-anchor--lines">
+              {orariLoaded ? (
+                <>
+                  <div className="section-switch" role="tablist" aria-label="Consultazione linee">
+                    <button
+                      aria-selected={linesTab === 'lines'}
+                      className={linesTab === 'lines' ? 'section-switch__button is-active' : 'section-switch__button'}
+                      onClick={() => setLinesTab('lines')}
+                      role="tab"
+                      type="button"
+                    >
+                      Linee
+                    </button>
+                    <button
+                      aria-selected={linesTab === 'returns'}
+                      className={linesTab === 'returns' ? 'section-switch__button is-active' : 'section-switch__button'}
+                      onClick={() => setLinesTab('returns')}
+                      role="tab"
+                      type="button"
+                    >
+                      Rientri
+                    </button>
+                  </div>
+                  {linesTab === 'lines' ? <LineConsultation developments={developments} /> : <DepotReturnsPanel developments={developments} />}
+                </>
+              ) : (
+                <EmptySection
+                  action="Vai ai documenti"
+                  onAction={() => setActiveSection('altro')}
+                  text="Carica il PDF Orari Deposito per consultare linee e rientri."
+                  title="Orari Linee non caricati"
+                />
+              )}
+            </div>
+          ) : null}
+
+          {pdfLoaded && activeSection === 'altro' ? (
+            <div className="utility-panel-anchor utility-panel-anchor--tools">
+              <UploadPanel
+                debugInfo={debugInfo}
+                error={error}
+                onClearOrari={clearOrari}
+                onClearPreconoscenza={clearPreconoscenza}
+                orariError={orariError}
+                orariLoading={orariLoading}
+                pdfInfo={pdfInfo}
+                preconoscenzaSummary={preconoscenzaSummary}
+                loading={loading}
+                onOrariUpload={handleOrariUpload}
+                onPreconoscenzaUpload={handlePreconoscenzaUpload}
+                onSharePreconoscenza={shareReadablePreconoscenza}
+                onShowPreconoscenzaOverview={showPreconoscenzaOverview}
+              />
               <StatsPanel stats={stats} title="Statistiche periodo" />
-            </div>
-          ) : null}
-          {pdfLoaded && orariLoaded && activeUtilityPanel === 'lines' ? (
-            <div className="utility-panel-anchor utility-panel-anchor--lines" ref={linePanelRef}>
-              <LineConsultation developments={developments} />
-            </div>
-          ) : null}
-          {pdfLoaded && orariLoaded && activeUtilityPanel === 'returns' ? (
-            <div className="utility-panel-anchor utility-panel-anchor--returns" ref={returnsPanelRef}>
-              <DepotReturnsPanel developments={developments} />
-            </div>
-          ) : null}
-          {pdfLoaded && activeUtilityPanel === 'tools' ? (
-            <div className="utility-panel-anchor utility-panel-anchor--tools" ref={toolsPanelRef}>
               <AdvancedTools
                 backupMessage={backupMessage}
                 onClearStorage={clearLocalMemory}
@@ -1596,126 +1606,45 @@ export default function App() {
               {storageMessage ? <p className="storage-alert">{storageMessage}</p> : null}
             </div>
           ) : null}
+
           {pdfLoaded ? (
-            <nav className="utility-dock" aria-label="Sezioni rapide">
-              <button
-                className={activeTab === 'Giorno' && !activeUtilityPanel ? 'utility-dock__button utility-dock__button--search is-active' : 'utility-dock__button utility-dock__button--search'}
-                onClick={showDaySearch}
-                type="button"
-              >
-                <Icon name="dockSearch" size={24} />
-                <span>Cerca</span>
-              </button>
-              <button
-                className="utility-dock__button utility-dock__button--today"
-                onClick={() => {
-                  quickSearch('oggi', 0);
-                  showDaySearch();
-                }}
-                type="button"
-              >
-                <Icon name="dockToday" size={24} />
-                <span>Oggi</span>
-              </button>
-              <button
-                className="utility-dock__button utility-dock__button--tomorrow"
-                onClick={() => {
-                  quickSearch('domani', 1);
-                  showDaySearch();
-                }}
-                type="button"
-              >
-                <Icon name="dockTomorrow" size={24} />
-                <span>Domani</span>
-              </button>
-              <button
-                className="utility-dock__button utility-dock__button--week"
-                onClick={() => {
-                  searchWeek();
-                  showDaySearch();
-                }}
-                type="button"
-              >
-                <Icon name="dockWeek" size={24} />
-                <span>Settimana</span>
-              </button>
-              <button
-                className={activeTab === 'Calendario' && !Object.values(monthFilters).some(Boolean) && !activeUtilityPanel ? 'utility-dock__button utility-dock__button--calendar is-active' : 'utility-dock__button utility-dock__button--calendar'}
-                onClick={() => showCalendar(DEFAULT_MONTH_FILTERS)}
-                type="button"
-              >
-                <Icon name="dockCalendar" size={24} />
-                <span>Calendario</span>
-              </button>
-              <button
-                className={activeTab === 'Calendario' && monthFilters.riposi && !activeUtilityPanel ? 'utility-dock__button utility-dock__button--rests is-active' : 'utility-dock__button utility-dock__button--rests'}
-                onClick={() => showCalendar({ turni: false, riposi: true, ballottaggi: false })}
-                type="button"
-              >
-                <Icon name="dockRest" size={24} />
-                <span>Riposi</span>
-              </button>
-              <button
-                className={activeUtilityPanel === 'preconoscenza' ? 'utility-dock__button utility-dock__button--overview is-active' : 'utility-dock__button utility-dock__button--overview'}
-                onClick={() => {
-                  setActiveTab('Giorno');
-                  setActiveUtilityPanel((current) => (current === 'preconoscenza' ? '' : 'preconoscenza'));
-                }}
-                type="button"
-              >
-                <Icon name="dockOverview" size={24} />
-                <span>Riepilogo</span>
-              </button>
-              <button
-                className={activeUtilityPanel === 'lines' ? 'utility-dock__button utility-dock__button--lines is-active' : 'utility-dock__button utility-dock__button--lines'}
-                disabled={!orariLoaded}
-                onClick={() => {
-                  setActiveTab('Giorno');
-                  setActiveUtilityPanel((current) => (current === 'lines' ? '' : 'lines'));
-                }}
-                type="button"
-              >
-                <Icon name="dockLines" size={24} />
-                <span>Linee</span>
-              </button>
-              <button
-                className={activeUtilityPanel === 'returns' ? 'utility-dock__button utility-dock__button--returns is-active' : 'utility-dock__button utility-dock__button--returns'}
-                disabled={!orariLoaded}
-                onClick={() => {
-                  setActiveTab('Giorno');
-                  setActiveUtilityPanel((current) => (current === 'returns' ? '' : 'returns'));
-                }}
-                type="button"
-              >
-                <Icon name="dockReturns" size={24} />
-                <span>Rientri</span>
-              </button>
-              <button
-                className={activeUtilityPanel === 'stats' ? 'utility-dock__button utility-dock__button--stats is-active' : 'utility-dock__button utility-dock__button--stats'}
-                onClick={() => {
-                  setActiveTab('Giorno');
-                  setActiveUtilityPanel((current) => (current === 'stats' ? '' : 'stats'));
-                }}
-                type="button"
-              >
-                <Icon name="dockStats" size={24} />
-                <span>Statistiche</span>
-              </button>
-              <button
-                className={activeUtilityPanel === 'tools' ? 'utility-dock__button utility-dock__button--tools is-active' : 'utility-dock__button utility-dock__button--tools'}
-                onClick={() => {
-                  setActiveTab('Giorno');
-                  setActiveUtilityPanel((current) => (current === 'tools' ? '' : 'tools'));
-                }}
-                type="button"
-              >
-                <Icon name="dockTools" size={24} />
-                <span>Strumenti</span>
-              </button>
+            <nav className="utility-dock" aria-label="Sezioni">
+              {[
+                { icon: 'dockToday', key: 'oggi', label: 'Oggi' },
+                { icon: 'dockCalendar', key: 'calendario', label: 'Mese' },
+                { icon: 'dockOverview', key: 'periodo', label: 'Periodo' },
+                { icon: 'dockLines', key: 'linee', label: 'Linee' },
+                { icon: 'dockTools', key: 'altro', label: 'Altro' },
+              ].map((item) => (
+                <button
+                  aria-current={activeSection === item.key ? 'page' : undefined}
+                  className={activeSection === item.key ? 'utility-dock__button is-active' : 'utility-dock__button'}
+                  key={item.key}
+                  onClick={() => (item.key === 'calendario' ? showCalendar() : setActiveSection(item.key))}
+                  type="button"
+                >
+                  <Icon name={item.icon} size={24} />
+                  <span>{item.label}</span>
+                </button>
+              ))}
             </nav>
           ) : null}
         </section>
       </main>
+    </div>
+  );
+}
+
+function EmptySection({ action, onAction, text, title }) {
+  return (
+    <div className="empty-section">
+      <strong>{title}</strong>
+      <p>{text}</p>
+      {action ? (
+        <button className="small-button" onClick={onAction} type="button">
+          {action}
+        </button>
+      ) : null}
     </div>
   );
 }

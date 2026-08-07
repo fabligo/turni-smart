@@ -22,29 +22,22 @@ export function OnboardingHome({
             <small>Turni GTT · Deposito Gerbido</small>
           </span>
         </div>
-        <div className="onboarding-hero__mark" aria-hidden="true">
-          <AssetIcon name="bus" size={132} />
-        </div>
+        {/* Il bus e' gia' nel marchio qui sopra: ripeterlo grande costava
+            mezzo schermo e non aggiungeva niente. */}
         <div className="onboarding-hero__copy">
           <h2 id="onboarding-title">Benvenuto!</h2>
           <p>Inizia caricando la tua preconoscenza</p>
         </div>
       </div>
 
-      <SuspendedShiftEntry
-        error={suspendedShiftError}
-        loading={loading}
-        onSubmit={onSuspendedShiftSubmit}
-        onTextChange={onSuspendedShiftTextChange}
-        text={suspendedShiftText}
-      />
-
+      {/* Il caso normale per primo. L'inserimento manuale serve a pochi e sta
+          sotto, richiuso: prima occupava il posto migliore dello schermo. */}
       <button className="onboarding-upload" disabled={loading} onClick={onPrimaryUpload} type="button">
         <span className="onboarding-upload__icon">
           <AssetIcon name="upload" size={72} />
         </span>
         <span className="onboarding-upload__text">
-          <strong>1. Carica preconoscenza</strong>
+          <strong>Carica la preconoscenza</strong>
           <small>PDF mensile con i tuoi turni</small>
         </span>
         <Icon className="onboarding-upload__chevron" name="chevronRight" size={26} />
@@ -59,6 +52,21 @@ export function OnboardingHome({
           <small>Carica un mese di esempio per vedere turni, calendario e statistiche. Per usarla davvero, carica la tua Preconoscenza.</small>
         </span>
       </button>
+
+      <details className="suspended-shift-disclosure">
+        <summary>
+          <span>Preconoscenza sospesa</span>
+          <strong>Inserisci turno comunicato</strong>
+        </summary>
+        <SuspendedShiftEntry
+          className="suspended-shift-card--embedded"
+          error={suspendedShiftError}
+          loading={loading}
+          onSubmit={onSuspendedShiftSubmit}
+          onTextChange={onSuspendedShiftTextChange}
+          text={suspendedShiftText}
+        />
+      </details>
       {error ? <p className="onboarding-error">{error}</p> : null}
     </section>
   );
