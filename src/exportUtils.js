@@ -184,7 +184,7 @@ export async function buildPreconoscenzaInfographicBlob(entries = [], info = {})
   ctx.fill();
 
   try {
-    const busIcon = await loadImage(`${import.meta.env.BASE_URL}assets-webp/bus-front-icon.webp`);
+    const busIcon = await loadImage(`${import.meta.env.BASE_URL}assets-webp/bus-front-icon.webp?v=2`);
     ctx.drawImage(busIcon, 48, 46, 112, 112);
   } catch {
     drawBusMark(ctx, 48, 46, 112);

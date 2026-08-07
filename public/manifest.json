@@ -9,13 +9,13 @@
   "theme_color": "#005daa",
   "icons": [
     {
-      "src": "assets-webp/bus-front-icon.webp",
+      "src": "assets-webp/bus-front-icon.webp?v=2",
       "sizes": "512x512",
       "type": "image/webp",
       "purpose": "any"
     },
     {
-      "src": "assets-webp/bus-icon-maskable.png",
+      "src": "assets-webp/bus-icon-maskable.png?v=2",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
