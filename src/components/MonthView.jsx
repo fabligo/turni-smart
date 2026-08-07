@@ -103,8 +103,9 @@ export function MonthView({
         ))}
       </div>
       <div className="month-grid month-grid--weekdays" aria-hidden="true">
-        {weekdays.map((day) => (
-          <span key={day}>{day}</span>
+        {/* Lunedi' e martedi' condividono la lettera: la chiave e' la posizione. */}
+        {weekdays.map((day, index) => (
+          <span key={index}>{day}</span>
         ))}
       </div>
       <div className="month-grid" aria-label="Vista mese preconoscenza">

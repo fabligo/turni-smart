@@ -5,8 +5,8 @@
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
-  "background_color": "#061422",
-  "theme_color": "#003366",
+  "background_color": "#ffffff",
+  "theme_color": "#005daa",
   "icons": [
     {
       "src": "assets-webp/bus-front-icon.webp",

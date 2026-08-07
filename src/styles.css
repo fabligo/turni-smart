@@ -27,6 +27,16 @@
   --gtt-blue-light: #2f86cf;
   --paper: #ffffff;
   --paper-text: #6f7275;
+
+  /* L'app ha due superfici: le card blu (.dc/.sb/.ps/.mg) e la pagina bianca.
+     I token --text/--muted valgono solo sul blu. Tutto quello che appoggia
+     direttamente sulla pagina usa --on-page-*, altrimenti resta invisibile. */
+  --on-page: #082f54;
+  --on-page-muted: #4a6382;
+  --on-page-accent: #005daa;
+  --on-page-warn: #8a5a00;
+  --page-card: #ffffff;
+  --page-card-line: rgba(0, 93, 170, 0.22);
   --green: #1b7a3d;
   --orange: #e65100;
   --purple: #4a148c;
@@ -119,11 +129,13 @@ select:focus-visible {
   padding: 10px 0 28px;
 }
 
+/* Colonna singola centrata: i Documenti non stanno piu' in una barra laterale
+   fissa, quindi non serve la griglia a due colonne. */
 .app-frame {
   display: grid;
-  grid-template-columns: 294px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
-  width: min(1500px, 100%);
+  width: min(940px, calc(100% - 24px));
   margin: 0 auto;
   padding: 0 0 0;
   align-items: start;
@@ -138,7 +150,8 @@ select:focus-visible {
   display: grid;
   gap: var(--s3);
   min-width: 0;
-  padding-bottom: 148px;
+  /* Spazio per il dock fisso, piu' l'home indicator su iPhone. */
+  padding-bottom: calc(108px + env(safe-area-inset-bottom, 0px));
 }
 
 .sb,
@@ -167,7 +180,7 @@ select:focus-visible {
   grid-template-areas: "brand driver period";
   gap: var(--s3);
   align-items: center;
-  width: min(1500px, 100%);
+  width: min(940px, calc(100% - 24px));
   min-height: 54px;
   margin: 0 auto 12px;
   padding: 12px 14px;
@@ -511,10 +524,10 @@ select:focus-visible {
 }
 
 .suspended-shift-disclosure {
-  border: 1px solid rgba(255, 209, 0, 0.24);
+  border: 1px solid var(--page-card-line);
   border-radius: var(--radius);
   border-top-right-radius: 32px;
-  background: rgba(255, 209, 0, 0.06);
+  background: var(--page-card);
   overflow: hidden;
 }
 
@@ -523,9 +536,10 @@ select:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  min-height: 56px;
   padding: 16px 18px;
   cursor: pointer;
-  color: #ffffff;
+  color: var(--on-page);
   font-weight: 930;
   list-style: none;
 }
@@ -535,13 +549,13 @@ select:focus-visible {
 }
 
 .suspended-shift-disclosure summary span {
-  color: var(--gtt-blue-light);
+  color: var(--on-page-muted);
   font-size: 0.95rem;
   font-weight: 950;
 }
 
 .suspended-shift-disclosure summary strong {
-  color: var(--yellow);
+  color: var(--on-page-accent);
   font-size: 0.95rem;
   font-weight: 950;
 }
@@ -557,18 +571,18 @@ select:focus-visible {
   align-items: center;
   gap: 14px;
   width: 100%;
-  border: 1px solid rgba(255, 209, 0, 0.34);
+  border: 1px solid var(--page-card-line);
   border-radius: var(--radius-lg);
   padding: 16px 18px;
-  background: rgba(255, 209, 0, 0.08);
-  color: #ffffff;
+  background: var(--page-card);
+  color: var(--on-page);
   cursor: pointer;
   text-align: left;
 }
 
 .onboarding-demo:hover {
-  background: rgba(255, 209, 0, 0.12);
-  border-color: rgba(255, 209, 0, 0.56);
+  background: #f3f8fe;
+  border-color: rgba(0, 93, 170, 0.42);
 }
 
 .onboarding-demo:disabled {
@@ -582,8 +596,8 @@ select:focus-visible {
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: rgba(255, 209, 0, 0.16);
-  color: var(--yellow);
+  background: rgba(0, 93, 170, 0.1);
+  color: var(--on-page-accent);
 }
 
 .onboarding-demo span:last-child {
@@ -592,13 +606,13 @@ select:focus-visible {
 }
 
 .onboarding-demo strong {
-  color: #ffffff;
+  color: var(--on-page);
   font-size: 1rem;
   font-weight: 920;
 }
 
 .onboarding-demo small {
-  color: var(--muted);
+  color: var(--on-page-muted);
   font-size: 0.82rem;
   font-weight: 740;
   line-height: 1.35;
@@ -1005,11 +1019,11 @@ select:focus-visible {
 .upload-document__overview,
 .upload-document__share {
   grid-column: 2;
-  min-height: 34px;
+  min-height: 44px;
   border: 0;
   border-radius: var(--button-radius);
-  padding: 0 10px;
-  font-size: 0.76rem;
+  padding: 0 12px;
+  font-size: 0.82rem;
   font-weight: 950;
   cursor: pointer;
   box-shadow:
@@ -1363,9 +1377,13 @@ select:focus-visible {
 .empty-state p,
 .result-message {
   margin: 0;
-  color: var(--muted);
-  font-size: 0.84rem;
-  font-weight: 720;
+  padding: 14px 16px;
+  border: 1px solid var(--page-card-line);
+  border-radius: var(--radius);
+  background: var(--page-card);
+  color: var(--on-page);
+  font-size: 0.9rem;
+  font-weight: 780;
   line-height: 1.45;
 }
 
@@ -1655,7 +1673,7 @@ select:focus-visible {
 .result-toolbar {
   display: flex;
   justify-content: flex-end;
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--on-page-muted);
   font-size: 0.78rem;
   font-weight: 850;
 }
@@ -3535,40 +3553,33 @@ a.inline-action {
 /* Utility dock */
 /* Dock a riga singola: scorre in orizzontale come una tab bar iOS, senza
    barra di scorrimento visibile e con i bordi sfumati a suggerire il resto. */
+/* Cinque destinazioni fisse, ancorate al viewport: niente scorrimento
+   orizzontale che nasconde meta' delle voci, niente dock che galleggia in
+   mezzo al contenuto quando la pagina e' corta. */
 .utility-dock {
-  position: sticky;
+  position: fixed;
   z-index: 20;
-  bottom: 10px;
-  display: flex;
-  /* "safe" evita che il centraggio renda irraggiungibile il primo elemento
-     quando la riga e' piu' larga del dock. */
-  justify-content: safe center;
+  right: 0;
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  left: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 2px;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scroll-snap-type: x proximity;
-  scroll-padding: 0 10px;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  width: min(620px, calc(100% - 16px));
+  margin: 0 auto;
   border: 1px solid rgba(0, 93, 170, 0.16);
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 16px 38px rgba(3, 34, 61, 0.24);
   padding: 8px 10px;
   backdrop-filter: blur(18px) saturate(1.4);
-  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
-  mask-image: linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
-}
-
-.utility-dock::-webkit-scrollbar {
-  display: none;
 }
 
 .utility-dock__button {
   display: grid;
-  flex: 0 0 auto;
-  width: 66px;
-  scroll-snap-align: center;
+  min-width: 0;
+  /* Sotto i 44px il bersaglio non si prende con i guanti, in movimento. */
+  min-height: 60px;
   place-items: center;
   gap: 5px;
   border: 0;
@@ -3576,7 +3587,7 @@ a.inline-action {
   background: transparent;
   color: var(--gtt-blue);
   cursor: pointer;
-  font-size: 0.6rem;
+  font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.01em;
   padding: 4px 2px 5px;
@@ -4787,7 +4798,6 @@ a.inline-action {
   }
 
   .app-frame {
-    grid-template-columns: minmax(0, 1fr);
     width: min(660px, calc(100% - 20px));
   }
 
@@ -5197,5 +5207,177 @@ a.inline-action {
 
   .stat-row i {
     grid-column: 2 / -1;
+  }
+}
+
+/* Navigazione a sezioni
+   --------------------------------------------------------------- */
+.section-top-anchor {
+  display: block;
+  height: 0;
+  /* L'header non deve coprire il titolo della sezione appena aperta. */
+  scroll-margin-top: 12px;
+}
+
+.section-switch {
+  display: grid;
+  grid-auto-flow: column;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--page-card-line);
+  border-radius: 14px;
+  background: var(--page-card);
+}
+
+.section-switch__button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--on-page-accent);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.section-switch__button.is-active {
+  background: var(--gtt-blue);
+  color: #ffffff;
+}
+
+.empty-section {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  padding: 20px 18px;
+  border: 1px solid var(--page-card-line);
+  border-radius: var(--radius-lg);
+  background: var(--page-card);
+  color: var(--on-page);
+}
+
+.empty-section strong {
+  font-size: 1.02rem;
+  font-weight: 930;
+}
+
+.empty-section p {
+  margin: 0;
+  color: var(--on-page-muted);
+  font-size: 0.88rem;
+  font-weight: 720;
+  line-height: 1.45;
+}
+
+/* Lista compatta del mese
+   --------------------------------------------------------------- */
+.month-day-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.month-day-row {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  /* 56px: la riga si prende al primo tentativo anche in movimento. */
+  min-height: 56px;
+  padding: 8px 12px;
+  border: 1px solid var(--page-card-line);
+  border-left: 4px solid var(--gtt-blue-light);
+  border-radius: var(--radius);
+  background: var(--page-card);
+  color: var(--on-page);
+  cursor: pointer;
+  text-align: left;
+}
+
+.month-day-row:hover {
+  background: #f3f8fe;
+}
+
+.month-day-row--riposo {
+  border-left-color: var(--green);
+}
+
+.month-day-row--ballottaggio {
+  border-left-color: var(--orange);
+}
+
+.month-day-row--altro {
+  border-left-color: var(--on-page-muted);
+}
+
+.month-day-row__date {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  padding: 4px 0;
+  border-radius: 8px;
+  background: rgba(0, 93, 170, 0.08);
+}
+
+.month-day-row__date small {
+  color: var(--on-page-muted);
+  font-size: 0.6rem;
+  font-weight: 900;
+}
+
+.month-day-row__date strong {
+  color: var(--on-page);
+  font-size: 1.05rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.month-day-row__body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.month-day-row__body strong {
+  overflow: hidden;
+  color: var(--on-page);
+  font-size: 0.9rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.month-day-row__body small {
+  overflow: hidden;
+  color: var(--on-page-muted);
+  font-size: 0.76rem;
+  font-weight: 740;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* L'ora di attacco e' la risposta che si cerca: resta leggibile e allineata. */
+.month-day-row__time {
+  color: var(--on-page-accent);
+  font-size: 1.02rem;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+}
+
+.month-day-row__chevron {
+  color: var(--on-page-muted);
+}
+
+@media (max-width: 380px) {
+  .month-day-row {
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .month-day-row__body small {
+    display: none;
   }
 }
