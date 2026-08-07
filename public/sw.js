@@ -1,4 +1,4 @@
-const CACHE_NAME = 'turni-smart-vite-v5';
+const CACHE_NAME = 'turni-smart-vite-v6';
 const APP_SHELL = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (event) => {

@@ -10,9 +10,15 @@
   "icons": [
     {
       "src": "assets-webp/bus-front-icon.webp",
-      "sizes": "256x256",
+      "sizes": "512x512",
       "type": "image/webp",
       "purpose": "any"
+    },
+    {
+      "src": "assets-webp/bus-icon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
