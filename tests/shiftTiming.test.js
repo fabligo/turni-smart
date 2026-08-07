@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { describeShiftTiming, formatCountdown, shiftStartDate } from '../src/utils/shiftTiming.js';
+import { describeShiftTiming, formatCountdown, formatLiveCountdown, shiftStartDate } from '../src/utils/shiftTiming.js';
 
 function turno(iso, compactStart) {
   return { t: 'turno', iso, date: new Date(`${iso}T00:00:00`), i: compactStart };
@@ -55,4 +55,42 @@ test('segnala i turni imminenti entro tre ore', () => {
   const day = turno('2026-04-02', '0407');
   assert.equal(describeShiftTiming(day, new Date('2026-04-02T02:30:00')).isImminent, true);
   assert.equal(describeShiftTiming(day, new Date('2026-04-01T18:00:00')).isImminent, false);
+});
+
+test('nell ultima ora il conto scende al secondo in mm:ss', () => {
+  const live = formatLiveCountdown(754);
+  assert.equal(live.head, '12');
+  assert.equal(live.separator, ':');
+  assert.equal(live.tail, '34');
+  assert.equal(live.ticksBySecond, true);
+});
+
+test('sopra l ora restano ore e minuti, senza secondi', () => {
+  const live = formatLiveCountdown(9 * 3600 + 20 * 60 + 45);
+  assert.equal(live.head, '9h 20m');
+  assert.equal(live.separator, '');
+  assert.equal(live.ticksBySecond, false);
+});
+
+test('i secondi si azzerano con lo zero davanti', () => {
+  assert.equal(formatLiveCountdown(65).tail, '05');
+  assert.equal(formatLiveCountdown(65).head, '01');
+});
+
+test('a conto esaurito non resta niente da mostrare', () => {
+  assert.equal(formatLiveCountdown(0), null);
+  assert.equal(formatLiveCountdown(-30), null);
+});
+
+test('il timer si accende solo dentro l orizzonte e prima dell attacco', () => {
+  const day = turno('2026-04-02', '0407');
+  assert.equal(describeShiftTiming(day, new Date('2026-04-01T18:47:00')).isLive, true);
+  assert.equal(describeShiftTiming(day, new Date('2026-04-02T09:00:00')).isLive, false);
+  assert.equal(describeShiftTiming(turno('2026-04-30', '0407'), new Date('2026-04-01T18:47:00')).isLive, false);
+});
+
+test('il conto vivo e quello statico raccontano lo stesso minuto', () => {
+  const t = describeShiftTiming(turno('2026-04-02', '0407'), new Date('2026-04-01T18:47:00'));
+  assert.equal(t.countdown, '9h 20m');
+  assert.equal(t.live.head, '9h 20m');
 });

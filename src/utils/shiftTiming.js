@@ -32,14 +32,38 @@ export function formatCountdown(minutes) {
 }
 
 /**
+ * Conteggio vivo. Nell'ultima ora scende al secondo in mm:ss, che e' la
+ * forma che si legge a colpo d'occhio quando manca poco; piu' in la' resta
+ * a ore e minuti, perche' i secondi a nove ore di distanza sono rumore.
+ * Le parti tornano separate cosi' la vista puo' far lampeggiare i due punti
+ * senza rimontare le cifre.
+ */
+export function formatLiveCountdown(seconds) {
+  if (!Number.isFinite(seconds) || seconds <= 0) return null;
+
+  if (seconds < 3600) {
+    const minutes = Math.floor(seconds / 60);
+    return {
+      head: String(minutes).padStart(2, '0'),
+      separator: ':',
+      tail: String(Math.floor(seconds % 60)).padStart(2, '0'),
+      ticksBySecond: true,
+    };
+  }
+
+  return { head: formatCountdown(Math.floor(seconds / 60)), separator: '', tail: '', ticksBySecond: false };
+}
+
+/**
  * Le due informazioni che l'autista calcola a mente ogni sera: quanto manca
  * all'attacco e a che ora deve suonare la sveglia.
  */
 export function describeShiftTiming(day, now = new Date(), leadMinutes = DEFAULT_WAKE_LEAD_MINUTES) {
   const start = shiftStartDate(day);
-  if (!start) return { countdown: '', isImminent: false, wakeUp: '' };
+  if (!start) return { countdown: '', isImminent: false, isLive: false, live: null, secondsAway: null, wakeUp: '' };
 
-  const minutesAway = Math.round((start - now) / 60000);
+  const secondsAway = (start - now) / 1000;
+  const minutesAway = Math.round(secondsAway / 60);
   const withinHorizon = minutesAway >= 0 && minutesAway <= COUNTDOWN_HORIZON_MINUTES;
   const startMinutes = compactTimeToMinutes(day.i);
 
@@ -48,6 +72,10 @@ export function describeShiftTiming(day, now = new Date(), leadMinutes = DEFAULT
 
   return {
     countdown: withinHorizon ? formatCountdown(minutesAway) : '',
+    live: withinHorizon ? formatLiveCountdown(secondsAway) : null,
+    /* Solo dentro l'orizzonte vale la pena tenere acceso un timer. */
+    isLive: withinHorizon && secondsAway > 0,
+    secondsAway,
     isImminent: minutesAway >= 0 && minutesAway <= 180,
     /* La sveglia si suggerisce solo quando serve davvero, e solo se il turno
        non e' gia' passato. */

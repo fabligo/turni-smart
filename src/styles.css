@@ -5550,3 +5550,59 @@ a.inline-action {
     background: rgba(133, 183, 232, 0.14);
   }
 }
+
+/* Conto alla rovescia vivo
+   ---------------------------------------------------------------
+   Nell'ultima ora il valore scende al secondo. A dare il senso del
+   tempo che scorre e' il lampeggio dei due punti, non il rimontaggio
+   delle cifre: cosi' i numeri restano fermi e leggibili. */
+.shift-timing__value {
+  display: inline-flex;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+  /* Le cifre non devono ballare mentre cambiano. */
+  font-feature-settings: 'tnum' 1;
+}
+
+.shift-timing__separator {
+  padding: 0 1px;
+}
+
+.is-ticking .shift-timing__separator {
+  animation: countdown-blink 1s step-end infinite;
+}
+
+@keyframes countdown-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* Sotto le tre ore la pastiglia respira piano: si fa notare senza
+   diventare un lampeggiante. */
+.shift-timing--imminent .shift-timing__item--countdown {
+  animation: countdown-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes countdown-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 209, 0, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(255, 209, 0, 0.22);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Il numero continua a scorrere: e' informazione, non decorazione.
+     Si fermano solo lampeggio e pulsazione. */
+  .is-ticking .shift-timing__separator,
+  .shift-timing--imminent .shift-timing__item--countdown {
+    animation: none;
+  }
+}
