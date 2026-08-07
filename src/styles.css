@@ -1599,6 +1599,25 @@ select:focus-visible {
   gap: var(--s2);
 }
 
+/* Il dock non ci sta tutto su un telefono e il Riepilogo finisce fuori
+   schermo: qui invece e' sotto la barra di ricerca, dove si guarda. */
+.quick-actions button.quick-actions__all {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--yellow);
+  color: #073865;
+}
+
+.quick-actions button.quick-actions__all svg {
+  color: #073865;
+}
+
+.quick-actions button.quick-actions__all:hover {
+  background: #ffdc42;
+  color: #073865;
+}
+
 .advanced-search summary {
   color: #ffffff;
   cursor: pointer;
