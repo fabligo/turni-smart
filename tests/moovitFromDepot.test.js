@@ -99,11 +99,13 @@ test('a Omero l andata e il lato verso il centro', () => {
   assert.equal(getChangePointStop('OMRO', { direction: 'R' }), '310');
 });
 
-/* Su corso Siracusa il GTFS conosce una sola fermata della 56: finche' la
-   seconda non arriva dal campo, meglio nessuna palina che quella di fronte. */
-test('Siracusa resta senza paline finche non sono confermate', () => {
-  assert.equal(getChangePointStop('SIRA', { direction: 'A' }), '');
-  assert.equal(getChangePointStop('SIRA', { direction: 'R' }), '');
+/* Le paline di Siracusa sono arrivate dal campo: 711 andata, 128 ritorno.
+   Il GTFS conferma il verso da solo - la 711 sta sulle corse dirette a
+   Tabacchi, cioe' verso il centro - e questo test tiene ferma l'assegnazione,
+   perche' scambiarle manderebbe un autista dalla parte opposta. */
+test('a Siracusa l andata e il lato verso il centro', () => {
+  assert.equal(getChangePointStop('SIRA', { direction: 'A' }), '711');
+  assert.equal(getChangePointStop('SIRA', { direction: 'R' }), '128');
 });
 
 test('i codici dei festivi hanno il nome che compare in preconoscenza', () => {
