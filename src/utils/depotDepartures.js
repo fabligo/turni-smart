@@ -104,8 +104,10 @@ export function searchDepartures(developments = {}, options = {}) {
     /* Uscite dentro la finestra ma dirette altrove: e' la ragione piu'
        frequente di un elenco corto quando si sceglie un posto cambio. */
     otherPlace: 0,
-    /* Uscite dentro la finestra ma di un altro tipo di servizio. */
+    /* Uscite dentro la finestra, e verso il posto scelto, ma di un altro
+       tipo di servizio: quelle che si vedrebbero cambiando Servizio. */
     otherServiceCount: 0,
+    otherServiceByType: {},
     outsideWindow: 0,
     place: wantedPlace,
     /* Dove si va a finire uscendo dal Gerbido, in tutta la giornata: e'
@@ -139,12 +141,6 @@ export function searchDepartures(developments = {}, options = {}) {
         const offsetMinutes = minutesFromNow(segment.start, targetMinutes);
 
         const segmentService = getServiceType(segment.gt);
-        result.countByService[segmentService] = (result.countByService[segmentService] || 0) + 1;
-        if (segmentService !== service) {
-          result.otherServiceCount += 1;
-          return;
-        }
-
         const line = segment.lineaNorm || segment.ln || keyLine;
         /* Solo il numero letto da LINEA/VETTURA. Quando manca, il parser ci
            mette la chiave dello sviluppo come ripiego, che vettura non e'. */
@@ -155,8 +151,12 @@ export function searchDepartures(developments = {}, options = {}) {
            sviluppo finisce sotto piu' chiavi (il turno e la vettura) e il PDF
            lo ripete in ogni versione dell'orario: tenendo la chiave, o la
            vettura che in qualche copia si perde, la stessa uscita si contava
-           una volta per copia. Un mezzo dal deposito esce una volta sola. */
-        const identity = [line, segment.start, segment.end, toPlace].join('|');
+           una volta per copia. Un mezzo dal deposito esce una volta sola.
+
+           Il tipo di servizio fa parte dell'identita': la stessa corsa di
+           feriale e di sabato sono due uscite diverse, che capitano in due
+           giorni diversi. */
+        const identity = [segmentService, line, segment.start, segment.end, toPlace].join('|');
         const existing = byIdentity.get(identity);
         if (existing) {
           /* Fra due copie vince quella che porta l'informazione: se una ha il
@@ -186,7 +186,7 @@ export function searchDepartures(developments = {}, options = {}) {
           legMinutes: durationMinutes(segment.start, segment.end),
           line,
           offsetMinutes,
-          service,
+          service: segmentService,
           /* La chiave da cui il tratto e' stato letto: a volte e' il turno,
              a volte la vettura, e non c'e' modo di distinguerli. Resta qui
              perche' aiuta a rileggere il dato, ma non si mostra come turno. */
@@ -203,11 +203,29 @@ export function searchDepartures(developments = {}, options = {}) {
   const candidates = [];
 
   exits.forEach((item) => {
+    const inWindow = Math.abs(item.offsetMinutes) <= windowMinutes;
+
+    /* Su tutta la giornata: serve a dire quali servizi il PDF caricato
+       contiene, non a spiegare una fascia oraria. */
+    result.countByService[item.service] = (result.countByService[item.service] || 0) + 1;
+
+    if (item.service !== service) {
+      /* Le uscite dell'altro servizio si contano solo se sono davvero
+         un'alternativa a quello che si sta cercando: stessa fascia, e stessa
+         destinazione quando una e' stata scelta. Contarle tutte, su tutta la
+         giornata, faceva dire al pannello numeri che non esistono. */
+      if (!inWindow) return;
+      if (wantedPlace && item.toPlace !== wantedPlace) return;
+      result.otherServiceCount += 1;
+      result.otherServiceByType[item.service] = (result.otherServiceByType[item.service] || 0) + 1;
+      return;
+    }
+
     /* Contate su tutta la giornata, prima della finestra: il selettore non
        deve svuotarsi mentre si sposta l'orario. */
     perDayPlace.set(item.toPlace, (perDayPlace.get(item.toPlace) || 0) + 1);
-    if (Math.abs(item.offsetMinutes) > windowMinutes) result.outsideWindow += 1;
-    else candidates.push(item);
+    if (inWindow) candidates.push(item);
+    else result.outsideWindow += 1;
   });
 
   const found = wantedPlace ? candidates.filter((item) => item.toPlace === wantedPlace) : candidates;

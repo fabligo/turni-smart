@@ -126,7 +126,39 @@ test('un altro tipo di servizio resta fuori, ma viene contato', () => {
   const r = searchDepartures(SVILUPPI, { now: LUNEDI, time: '05:08', windowMinutes: 2 });
   assert.ok(r.matches.every((m) => m.line !== '34'), 'la corsa del sabato non esce di feriale');
   assert.equal(r.otherServiceCount, 1);
+  assert.deepEqual(r.otherServiceByType, { sabato: 1 });
   assert.equal(r.countByService.sabato, 1);
+});
+
+/* Il messaggio dice "in questa fascia": se il contatore guarda tutta la
+   giornata annuncia uscite che a quell'ora non esistono. */
+test('le uscite di un altro servizio si contano solo dentro la fascia', () => {
+  const r = searchDepartures(SVILUPPI, { now: LUNEDI, time: '20:00', windowMinutes: 15 });
+  assert.equal(r.otherServiceCount, 0, 'la corsa del sabato e alle 05:08, non alle 20:00');
+  assert.equal(r.countByService.sabato, 1, 'ma negli orari caricati c e, e il conto della giornata lo dice');
+});
+
+test('con un posto scelto si contano solo le alternative che ci vanno', () => {
+  const altrove = searchDepartures(SVILUPPI, { now: LUNEDI, time: '05:08', windowMinutes: 2, place: 'CATT' });
+  assert.equal(altrove.otherServiceCount, 0, 'la corsa del sabato va a BABE, non a Cattaneo');
+
+  const stessoPosto = searchDepartures(SVILUPPI, { now: LUNEDI, time: '05:08', windowMinutes: 2, place: 'BABE' });
+  assert.equal(stessoPosto.otherServiceCount, 1, 'li invece cambiare servizio serve davvero');
+});
+
+/* La stessa corsa scritta nel feriale e nel sabato sono due uscite: capitano
+   in due giorni diversi e non vanno fuse come fossero copie. */
+test('la stessa corsa in due servizi resta due uscite', () => {
+  const dueServizi = {
+    '05 101': [
+      { start: '05:10', loc_s: 'GERB', dir: 'A', end: '05:32', loc_e: 'CATT', ln: '05', vett: '1', gt: 'LUN - VEN' },
+      { start: '05:10', loc_s: 'GERB', dir: 'A', end: '05:32', loc_e: 'CATT', ln: '05', vett: '1', gt: 'SAB' },
+    ],
+  };
+  const r = searchDepartures(dueServizi, { now: LUNEDI, time: '05:10', windowMinutes: 5 });
+  assert.equal(r.total, 1, 'di feriale se ne vede una');
+  assert.equal(r.otherServiceCount, 1, 'e l altra e quella del sabato');
+  assert.deepEqual(r.countByService, { feriali: 1, sabato: 1 });
 });
 
 test('chiedendo il sabato la corsa del sabato compare', () => {
