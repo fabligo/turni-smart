@@ -89,6 +89,26 @@ export const CHANGE_POINTS = {
     position: { lat: 45.07285, lng: 7.57994 },
     stops: { A: '969', R: '968' },
   },
+  // Nei festivi la 58 non gira e il suo percorso lo copre la 12 modificata:
+  // e' li' che compaiono i due posti cambio di piazza Omero. Le due paline
+  // sono la 309 e la 310, a 28 metri l'una dall'altra sui due lati del corso;
+  // quale delle due sia l'andata e quale il ritorno non e' ancora confermato,
+  // percio' qui c'e' solo il punto - che per un percorso a piedi basta - e
+  // non la coppia A/R, che manderebbe i passaggi GTT sulla palina sbagliata.
+  OMRO: {
+    label: 'Omero',
+    address: 'Corso Orbassano, Piazza Omero, Torino',
+    // Palina 309, dal GTFS statico GTT: il lato verso il centro.
+    position: { lat: 45.03821, lng: 7.63044 },
+  },
+  // Sulla 56, in corso Siracusa. Il GTFS conosce una sola fermata della 56 su
+  // quel corso, la palina 711: il punto e' quello, la coppia A/R no.
+  SIRA: {
+    label: 'Siracusa',
+    address: 'Corso Siracusa, Torino',
+    // Palina 711, dal GTFS statico GTT.
+    position: { lat: 45.05287, lng: 7.63380 },
+  },
   CLMA: {
     label: 'Macedonia',
     address: 'Corso Francia 5, Collegno',
