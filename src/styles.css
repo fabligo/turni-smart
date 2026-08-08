@@ -5623,3 +5623,9 @@ a.inline-action--gtt {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+/* "Vai al cambio" sta accanto all'azione principale, non dentro il cassetto:
+   e' una delle due cose che servono prima di attaccare. */
+.inline-action--route {
+  width: 100%;
+}

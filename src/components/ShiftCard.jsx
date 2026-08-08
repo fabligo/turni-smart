@@ -661,10 +661,26 @@ function CalendarActions({ actions, compact = false, gttTarget = null, moovitTar
     <div className={compact ? 'calendar-actions calendar-actions--compact calendar-actions--single' : 'calendar-actions calendar-actions--single'}>
       {/* Una primaria. Il resto sta dietro un tocco: erano cinque bottoni di
           pari peso piu' due paragrafi di note. */}
+      {/* Le due cose che servono prima di un turno: mettertelo in agenda e
+          sapere come ci arrivi. Stavano una in chiaro e una dentro il
+          cassetto richiuso, dove nessuno andava a cercarla. */}
       <button className="inline-action inline-action--primary" onClick={actions.add} type="button">
         <Icon name="calendar" size={18} />
         {compact ? 'Aggiungi turno' : 'Aggiungi al calendario'}
       </button>
+      {moovitTarget ? (
+        <a
+          className="inline-action inline-action--gtt inline-action--route"
+          href={moovitTarget.url}
+          rel="noopener noreferrer"
+          title={`Percorso Moovit dal Deposito Gerbido a ${moovitTarget.label}${
+            moovitTarget.hasPosition ? '' : ', cercato per nome: di questo posto cambio non abbiamo la palina'
+          }`}
+        >
+          <Icon name="mapPin" size={18} />
+          Vai al cambio · {moovitTarget.label}
+        </a>
+      ) : null}
       {!compact ? <p className="action-note action-note--calendar">{getReminderNote(shift)}</p> : null}
 
       <details className="secondary-actions">
@@ -684,24 +700,10 @@ function CalendarActions({ actions, compact = false, gttTarget = null, moovitTar
               {gttTarget.palina ? 'Passaggi GTT' : 'Itinerario linea'}
             </button>
           ) : null}
-          {moovitTarget ? (
-            <a
-              className="inline-action inline-action--gtt"
-              href={moovitTarget.url}
-              rel="noopener noreferrer"
-              title={`Percorso Moovit dal Deposito Gerbido a ${moovitTarget.label}${
-                moovitTarget.hasPosition ? '' : ', cercato per nome: di questo posto cambio non abbiamo la palina'
-              }`}
-            >
-              <Icon name="mapPin" size={18} />
-              Vai al cambio
-            </a>
-          ) : null}
         </div>
-        {gttTarget?.palina || moovitTarget ? (
+        {gttTarget?.palina ? (
           <p className="action-note action-note--gtt">
-            {gttTarget?.palina ? `Passaggi GTT apre la palina ${gttTarget.palina} del posto cambio di inizio turno. ` : ''}
-            {moovitTarget ? `Vai al cambio apre Moovit con il percorso dal deposito fino a ${moovitTarget.label}.` : ''}
+            Passaggi GTT apre la palina {gttTarget.palina} del posto cambio di inizio turno.
           </p>
         ) : null}
       </details>
