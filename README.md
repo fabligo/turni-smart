@@ -40,6 +40,10 @@ Il deploy non richiede il Mac acceso, chiavi SSH locali o comandi manuali.
 Per il flusso remoto e l'uso da iPhone consulta
 [`docs/cloud-workflow.md`](docs/cloud-workflow.md).
 
+La storia del progetto, con l'origine dei dati dei posti cambio, i difetti
+trovati e cosa resta aperto, sta in
+[`docs/registro-progetto.md`](docs/registro-progetto.md).
+
 Per una verifica locale della versione di produzione:
 
 ```bash

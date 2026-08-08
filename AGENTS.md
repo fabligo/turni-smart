@@ -1,5 +1,13 @@
 # Turni Smart - istruzioni operative
 
+## Prima di cominciare
+
+Leggi `docs/registro-progetto.md`. Ripercorre tutta la storia del progetto,
+dal primo commit del 26 maggio 2026 in poi, e contiene il contesto che questi
+vincoli non dicono: da dove vengono i dati dei posti cambio e quali sono
+verificati sul campo, quali difetti sono gia' stati trovati e come, cosa e'
+rimasto in sospeso, e quali dati non vanno dedotti per nessun motivo.
+
 ## Progetto
 
 - React 18 con Vite 6, applicazione statica e mobile-first.
