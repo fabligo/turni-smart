@@ -214,23 +214,17 @@ export function DepotDeparturesPanel({ developments = {} }) {
           distinguere un dato che manca da una funzione rotta. */}
       {!result.total && result.otherServiceCount ? (
         <p className="depot-returns-message">
-          Ci sono {result.otherServiceCount} uscite a quest&apos;ora, ma di un altro servizio
-          {Object.keys(result.countByService).length
-            ? ` (${Object.entries(result.countByService)
-                .map(([key, count]) => `${SERVICE_LABELS[key] || key}: ${count}`)
-                .join(', ')})`
-            : ''}
-          . Cambia Servizio per vederle.
+          In questa fascia {result.otherServiceCount === 1 ? "c'è 1 uscita" : `ci sono ${result.otherServiceCount} uscite`}
+          {placeLabel ? ` verso ${placeLabel}` : ''}, ma di un altro servizio
+          {` (${Object.entries(result.otherServiceByType)
+            .map(([key, count]) => `${SERVICE_LABELS[key] || key}: ${count}`)
+            .join(', ')})`}
+          . Cambia <em>Servizio</em> per vederle.
         </p>
       ) : null}
-      {!result.total && result.otherPlace ? (
-        <p className="depot-returns-message">
-          {result.otherPlace === 1
-            ? "Un'altra uscita in questa fascia va verso un altro posto cambio."
-            : `Altre ${result.otherPlace} uscite in questa fascia vanno verso altri posti cambio.`}{' '}
-          Scegli <em>Tutti i posti cambio</em> per vederle.
-        </p>
-      ) : null}
+      {/* Che le altre uscite vadano altrove non e' una notizia per chi ha
+          appena scelto dove andare: le due righe che restano dicono le sole
+          cose che si possono fare, cambiare servizio o allargare la fascia. */}
       {!result.total && placeLabel && placeDayCount ? (
         <p className="depot-returns-message">
           Verso {placeLabel} nella giornata {placeDayCount === 1 ? "c'è 1 uscita" : `ci sono ${placeDayCount} uscite`},
