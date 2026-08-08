@@ -15,12 +15,6 @@ const WINDOW_OPTIONS = [5, 10, DEPARTURE_WINDOW_MINUTES, 30, 60, 120];
    finestra copre tutto e l'elenco si legge per fasce orarie. */
 const ALL_DAY_MINUTES = 720;
 
-const DIRECTION_OPTIONS = [
-  { value: '', label: 'Tutte le direzioni' },
-  { value: 'A', label: 'Solo andata' },
-  { value: 'R', label: 'Solo ritorno' },
-];
-
 const SERVICE_OPTIONS = [
   { value: '', label: 'Servizio di oggi' },
   { value: 'feriali', label: 'Feriale (lun-ven)' },
@@ -36,6 +30,16 @@ function formatOffset(minutes, anchor) {
   if (minutes === 0) return `esattamente alle ${anchor}`;
   const amount = Math.abs(minutes) >= 60 ? formatMinutes(Math.abs(minutes)) : `${Math.abs(minutes)} min`;
   return minutes < 0 ? `${amount} prima delle ${anchor}` : `${amount} dopo le ${anchor}`;
+}
+
+/* Dove va a finire il tratto che esce: e' la riga che risponde alla domanda
+   vera, "questo mezzo mi porta dove devo andare?". */
+function formatDestination(item) {
+  /* Certi tratti partono e finiscono al deposito: dire "verso Deposito
+     Gerbido" sarebbe solo confuso. */
+  if (item.toPlace === DEPOT_CODE) return 'rientra al Gerbido';
+  const place = getChangePointLabel(item.toPlace);
+  return item.directionLabel ? `${item.directionLabel} verso ${place}` : `verso ${place}`;
 }
 
 /* Le uscite lette per fascia oraria: con la giornata intera un elenco piatto
@@ -55,12 +59,14 @@ function groupByHour(matches = []) {
 /**
  * Lo specchio dei rientri: cosa parte dal Gerbido.
  *
- * La domanda a cui risponde non e' "come torno" ma "cosa esce da qui adesso":
- * quante uscite ci sono da un certo orario, e di quali linee.
+ * La domanda a cui risponde non e' "come torno" ma "cosa esce da qui per
+ * arrivare dove devo andare": si sceglie il posto cambio e restano solo le
+ * uscite che ci vanno. Senza sceglierlo si vedono tutte, che e' il modo giusto
+ * di guardare la giornata quando si sta ancora decidendo.
  */
 export function DepotDeparturesPanel({ developments = {} }) {
   const [form, setForm] = useState(() => ({
-    direction: '',
+    place: '',
     service: '',
     time: formatClock(new Date()),
     windowMinutes: DEPARTURE_WINDOW_MINUTES,
@@ -69,16 +75,37 @@ export function DepotDeparturesPanel({ developments = {} }) {
   const result = useMemo(
     () =>
       searchDepartures(developments, {
-        direction: form.direction,
+        place: form.place,
         service: form.service,
         time: form.time,
         windowMinutes: form.windowMinutes,
       }),
-    [developments, form.direction, form.service, form.time, form.windowMinutes],
+    [developments, form.place, form.service, form.time, form.windowMinutes],
   );
 
   const anchor = form.time || formatClock(new Date());
   const serviceLabel = SERVICE_LABELS[result.service] || result.service;
+  const placeLabel = form.place ? getChangePointLabel(form.place) : '';
+
+  /* Il selettore offre solo posti che negli orari caricati hanno davvero
+     un'uscita dal Gerbido, in ordine alfabetico perche' si cerca per nome. Se
+     il posto scelto sparisce cambiando servizio resta comunque nell'elenco,
+     altrimenti la select si mostrerebbe vuota senza spiegare perche'. */
+  const placeOptions = useMemo(() => {
+    const options = result.places.map((item) => ({
+      count: item.count,
+      label: item.place === DEPOT_CODE ? 'Rientro al Gerbido' : getChangePointLabel(item.place),
+      value: item.place,
+    }));
+    if (form.place && !options.some((option) => option.value === form.place)) {
+      options.push({ count: 0, label: getChangePointLabel(form.place), value: form.place });
+    }
+    return options.sort((a, b) => a.label.localeCompare(b.label, 'it'));
+  }, [form.place, result.places]);
+
+  /* Quante uscite verso il posto scelto ci sono in tutta la giornata: serve a
+     dire "non in questa finestra, ma piu' tardi si'" invece di un secco no. */
+  const placeDayCount = form.place ? result.places.find((item) => item.place === form.place)?.count || 0 : 0;
 
   function updateForm(patch) {
     setForm((current) => ({ ...current, ...patch }));
@@ -93,8 +120,9 @@ export function DepotDeparturesPanel({ developments = {} }) {
         </span>
         <h2 id="depot-departures-title">Cosa esce dal Gerbido</h2>
         <p>
-          Le corse di servizio che partono dal Gerbido intorno all&apos;orario scelto, con la linea e la direzione che
-          prende: serve a scegliere quale mezzo prendere per raggiungere il posto cambio.
+          I mezzi che partono dal Gerbido intorno all&apos;orario scelto, con la linea, la direzione e il posto cambio
+          dove arrivano. Se devi raggiungere un posto cambio preciso scegli <strong>Vado a</strong>: restano solo le
+          uscite che ci vanno.
         </p>
       </div>
 
@@ -104,17 +132,18 @@ export function DepotDeparturesPanel({ developments = {} }) {
       <form className="depot-returns-form" onSubmit={(event) => event.preventDefault()}>
         <div className="depot-returns-controls">
           <label>
-            <span>Alle</span>
+            <span>Sono in deposito alle</span>
             <input
-              aria-label="Orario intorno al quale cercare le uscite"
+              aria-label="Orario intorno al quale cercare le uscite dal deposito"
               onChange={(event) => updateForm({ time: event.target.value })}
               type="time"
               value={form.time}
             />
           </label>
           <label>
-            <span>Intorno a</span>
+            <span>Cerca entro</span>
             <select
+              aria-label="Quanti minuti prima e dopo l'orario scelto"
               onChange={(event) => updateForm({ windowMinutes: Number(event.target.value) })}
               value={form.windowMinutes}
             >
@@ -127,10 +156,15 @@ export function DepotDeparturesPanel({ developments = {} }) {
             </select>
           </label>
           <label>
-            <span>Direzione</span>
-            <select onChange={(event) => updateForm({ direction: event.target.value })} value={form.direction}>
-              {DIRECTION_OPTIONS.map((option) => (
-                <option key={option.value || 'all'} value={option.value}>
+            <span>Vado a</span>
+            <select
+              aria-label="Posto cambio da raggiungere"
+              onChange={(event) => updateForm({ place: event.target.value })}
+              value={form.place}
+            >
+              <option value="">Tutti i posti cambio</option>
+              {placeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
               ))}
@@ -154,15 +188,17 @@ export function DepotDeparturesPanel({ developments = {} }) {
           <>
             <strong>
               {result.total} {result.total === 1 ? 'uscita' : 'uscite'}
-            </strong>{' '}
-{form.windowMinutes >= ALL_DAY_MINUTES
+            </strong>
+            {placeLabel ? ` verso ${placeLabel}` : ''}
+            {form.windowMinutes >= ALL_DAY_MINUTES
               ? ` nella giornata, servizio ${serviceLabel}`
               : ` intorno alle ${anchor} (± ${form.windowMinutes} min), servizio ${serviceLabel}`}
           </>
         ) : (
           <>
-            Nessuna uscita{form.windowMinutes >= ALL_DAY_MINUTES ? ' nella giornata' : ` intorno alle ${anchor}`} con il
-            servizio {serviceLabel}.
+            Nessuna uscita{placeLabel ? ` verso ${placeLabel}` : ''}
+            {form.windowMinutes >= ALL_DAY_MINUTES ? ' nella giornata' : ` intorno alle ${anchor}`} con il servizio{' '}
+            {serviceLabel}.
           </>
         )}
       </p>
@@ -191,17 +227,24 @@ export function DepotDeparturesPanel({ developments = {} }) {
           . Cambia Servizio per vederle.
         </p>
       ) : null}
-      {result.otherDirection ? (
+      {!result.total && result.otherPlace ? (
         <p className="depot-returns-message">
-          {result.otherDirection === 1
-            ? "Un'altra uscita a quest'ora va nella direzione opposta."
-            : `Altre ${result.otherDirection} uscite a quest'ora vanno nella direzione opposta.`}
+          {result.otherPlace === 1
+            ? "Un'altra uscita in questa fascia va verso un altro posto cambio."
+            : `Altre ${result.otherPlace} uscite in questa fascia vanno verso altri posti cambio.`}{' '}
+          Scegli <em>Tutti i posti cambio</em> per vederle.
         </p>
       ) : null}
-      {!result.total && !result.otherServiceCount && result.outsideWindow ? (
+      {!result.total && placeLabel && placeDayCount ? (
         <p className="depot-returns-message">
-          Niente in questa finestra, ma {result.outsideWindow}{' '}
-          {result.outsideWindow === 1 ? 'uscita' : 'uscite'} altrove nella giornata: allarga Intorno a.
+          Verso {placeLabel} nella giornata {placeDayCount === 1 ? "c'è 1 uscita" : `ci sono ${placeDayCount} uscite`},
+          ma fuori da questa fascia: allarga <em>Cerca entro</em>.
+        </p>
+      ) : null}
+      {!result.total && !placeLabel && !result.otherServiceCount && result.outsideWindow ? (
+        <p className="depot-returns-message">
+          Niente in questa fascia, ma {result.outsideWindow}{' '}
+          {result.outsideWindow === 1 ? 'uscita' : 'uscite'} altrove nella giornata: allarga <em>Cerca entro</em>.
         </p>
       ) : null}
 
@@ -215,12 +258,12 @@ export function DepotDeparturesPanel({ developments = {} }) {
               </em>
             </h3>
             {group.items.map((item) => {
-              const palina = getChangePointStop(item.toPlace, { line: item.line });
+              const palina = getChangePointStop(item.toPlace, { direction: item.direction, line: item.line });
               return (
                 <article
-                      className="depot-return-card"
-                      key={`${item.line}-${item.shift}-${item.departure}-${item.toPlace}-${item.vehicleShift}`}
-                    >
+                  className="depot-return-card"
+                  key={`${item.line}-${item.shift}-${item.departure}-${item.toPlace}-${item.vehicleShift}`}
+                >
                   <div>
                     <strong>Linea {getLineDisplayName(item.line)}</strong>
                     <span>
@@ -229,26 +272,20 @@ export function DepotDeparturesPanel({ developments = {} }) {
                     </span>
                   </div>
                   <div>
-                    <strong>
-                      {item.departure}
-                      {item.directionLabel ? ` · ${item.directionLabel}` : ''}
-                    </strong>
-                    <span>
-                      {/* Certi tratti partono e finiscono al deposito: dire
-                          "verso Deposito Gerbido" sarebbe solo confuso. */}
-                      {item.toPlace === DEPOT_CODE
-                        ? 'torna al Gerbido'
-                        : `verso ${getChangePointLabel(item.toPlace)}${palina ? ` · palina ${palina}` : ''}`}
-                      {/* Se la direzione arriva da un tratto successivo della corsa
-                          lo diciamo: e' la direzione del mezzo, non del
-                          trasferimento con cui esce. */}
-                      {item.directionFromRun ? ' · direzione della corsa' : ''}
-                    </span>
+                    <strong>esce alle {item.departure}</strong>
+                    <span>{formatOffset(item.offsetMinutes, anchor)}</span>
                   </div>
                   <div>
-                    <strong>{formatOffset(item.offsetMinutes, anchor)}</strong>
-                    <span>arriva alle {item.arrival}</span>
-                      </div>
+                    <strong>{formatDestination(item)}</strong>
+                    <span>
+                      arriva alle {item.arrival}
+                      {item.toPlace !== DEPOT_CODE && palina ? ` · palina ${palina}` : ''}
+                    </span>
+                    {/* Se la direzione arriva da un tratto successivo della corsa
+                        lo diciamo: e' la direzione del mezzo una volta in linea,
+                        non del trasferimento con cui esce dal deposito. */}
+                    {item.directionFromRun ? <span>direzione letta dal tratto in linea</span> : null}
+                  </div>
                 </article>
               );
             })}
