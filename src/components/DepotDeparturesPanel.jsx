@@ -1,16 +1,19 @@
 import { useMemo, useState } from 'react';
 import { getLineDisplayName } from '../constants/depotGerbido.js';
 import { getChangePointLabel, getChangePointStop } from '../constants/changePoints.js';
-import { DEPARTURE_HORIZON_MINUTES, searchDepartures } from '../utils/depotDepartures.js';
+import { DEPARTURE_WINDOW_MINUTES, searchDepartures } from '../utils/depotDepartures.js';
 import { formatClock } from '../utils/depotReturns.js';
 import { formatMinutes } from '../utils/timeUtils.js';
 import { Icon } from './Icon.jsx';
 
-const HORIZON_OPTIONS = [
-  { minutes: 60, label: 'entro 1 ora' },
-  { minutes: 120, label: 'entro 2 ore' },
-  { minutes: 240, label: 'entro 4 ore' },
-  { minutes: DEPARTURE_HORIZON_MINUTES, label: 'tutta la giornata' },
+/* La finestra guarda da entrambe le parti: un mezzo partito pochi minuti prima
+   si prende ancora, quindi tenerlo fuori sarebbe un artificio del filtro. */
+const WINDOW_OPTIONS = [5, 10, DEPARTURE_WINDOW_MINUTES, 30, 60];
+
+const DIRECTION_OPTIONS = [
+  { value: '', label: 'Tutte le direzioni' },
+  { value: 'A', label: 'Solo andata' },
+  { value: 'R', label: 'Solo ritorno' },
 ];
 
 const SERVICE_OPTIONS = [
@@ -22,10 +25,12 @@ const SERVICE_OPTIONS = [
 
 const SERVICE_LABELS = { feriali: 'feriale', sabato: 'sabato', festivi: 'festivo' };
 
-function formatWait(minutes, anchor) {
-  if (minutes <= 0) return `in uscita alle ${anchor}`;
-  const amount = minutes >= 60 ? formatMinutes(minutes) : `${minutes} ${minutes === 1 ? 'minuto' : 'minuti'}`;
-  return `${amount} dopo le ${anchor}`;
+/* Lo scarto e' firmato: negativo vuol dire che il mezzo parte prima
+   dell'orario scelto, e va detto, non nascosto in un valore assoluto. */
+function formatOffset(minutes, anchor) {
+  if (minutes === 0) return `esattamente alle ${anchor}`;
+  const amount = Math.abs(minutes) >= 60 ? formatMinutes(Math.abs(minutes)) : `${Math.abs(minutes)} min`;
+  return minutes < 0 ? `${amount} prima delle ${anchor}` : `${amount} dopo le ${anchor}`;
 }
 
 /**
@@ -36,19 +41,21 @@ function formatWait(minutes, anchor) {
  */
 export function DepotDeparturesPanel({ developments = {} }) {
   const [form, setForm] = useState(() => ({
-    horizonMinutes: 120,
+    direction: '',
     service: '',
     time: formatClock(new Date()),
+    windowMinutes: DEPARTURE_WINDOW_MINUTES,
   }));
 
   const result = useMemo(
     () =>
       searchDepartures(developments, {
-        horizonMinutes: form.horizonMinutes,
+        direction: form.direction,
         service: form.service,
         time: form.time,
+        windowMinutes: form.windowMinutes,
       }),
-    [developments, form.horizonMinutes, form.service, form.time],
+    [developments, form.direction, form.service, form.time, form.windowMinutes],
   );
 
   const anchor = form.time || formatClock(new Date());
@@ -67,8 +74,8 @@ export function DepotDeparturesPanel({ developments = {} }) {
         </span>
         <h2 id="depot-departures-title">Cosa esce dal Gerbido</h2>
         <p>
-          Tutte le corse di servizio che partono dal Gerbido dall&apos;orario indicato in avanti, con la linea, il turno
-          e dove arriva il primo tratto.
+          Le corse di servizio che partono dal Gerbido intorno all&apos;orario scelto, con la linea e la direzione che
+          prende: serve a scegliere quale mezzo prendere per raggiungere il posto cambio.
         </p>
       </div>
 
@@ -78,22 +85,32 @@ export function DepotDeparturesPanel({ developments = {} }) {
       <form className="depot-returns-form" onSubmit={(event) => event.preventDefault()}>
         <div className="depot-returns-controls">
           <label>
-            <span>Dalle</span>
+            <span>Alle</span>
             <input
-              aria-label="Orario da cui elencare le uscite"
+              aria-label="Orario intorno al quale cercare le uscite"
               onChange={(event) => updateForm({ time: event.target.value })}
               type="time"
               value={form.time}
             />
           </label>
           <label>
-            <span>Fino a</span>
+            <span>Intorno a</span>
             <select
-              onChange={(event) => updateForm({ horizonMinutes: Number(event.target.value) })}
-              value={form.horizonMinutes}
+              onChange={(event) => updateForm({ windowMinutes: Number(event.target.value) })}
+              value={form.windowMinutes}
             >
-              {HORIZON_OPTIONS.map((option) => (
-                <option key={option.minutes} value={option.minutes}>
+              {WINDOW_OPTIONS.map((minutes) => (
+                <option key={minutes} value={minutes}>
+                  &plusmn; {minutes} min
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Direzione</span>
+            <select onChange={(event) => updateForm({ direction: event.target.value })} value={form.direction}>
+              {DIRECTION_OPTIONS.map((option) => (
+                <option key={option.value || 'all'} value={option.value}>
                   {option.label}
                 </option>
               ))}
@@ -118,10 +135,10 @@ export function DepotDeparturesPanel({ developments = {} }) {
             <strong>
               {result.total} {result.total === 1 ? 'uscita' : 'uscite'}
             </strong>{' '}
-            dalle {anchor}, servizio {serviceLabel}
+intorno alle {anchor} (&plusmn; {form.windowMinutes} min), servizio {serviceLabel}
           </>
         ) : (
-          <>Nessuna uscita dalle {anchor} con il servizio {serviceLabel}.</>
+          <>Nessuna uscita intorno alle {anchor} con il servizio {serviceLabel}.</>
         )}
       </p>
 
@@ -149,13 +166,18 @@ export function DepotDeparturesPanel({ developments = {} }) {
           . Cambia Servizio per vederle.
         </p>
       ) : null}
-      {!result.total && !result.otherServiceCount && result.outsideHorizon ? (
+      {result.otherDirection ? (
         <p className="depot-returns-message">
-          Nessuna uscita in questa finestra, ma {result.outsideHorizon} piu&apos; avanti nella giornata: allarga Fino a.
+          {result.otherDirection === 1
+            ? "Un'altra uscita a quest'ora va nella direzione opposta."
+            : `Altre ${result.otherDirection} uscite a quest'ora vanno nella direzione opposta.`}
         </p>
       ) : null}
-      {result.total && result.outsideHorizon ? (
-        <p className="depot-returns-message">Altre {result.outsideHorizon} uscite oltre la finestra scelta.</p>
+      {!result.total && !result.otherServiceCount && result.outsideWindow ? (
+        <p className="depot-returns-message">
+          Niente in questa finestra, ma {result.outsideWindow}{' '}
+          {result.outsideWindow === 1 ? 'uscita' : 'uscite'} altrove nella giornata: allarga Intorno a.
+        </p>
       ) : null}
 
       <div className="depot-returns-results" aria-live="polite">
@@ -175,16 +197,21 @@ export function DepotDeparturesPanel({ developments = {} }) {
               </div>
               <div>
                 <strong>
-                  {item.departure} → {item.arrival}
+                  {item.departure}
+                  {item.directionLabel ? ` · ${item.directionLabel}` : ''}
                 </strong>
                 <span>
                   verso {getChangePointLabel(item.toPlace)}
                   {palina ? ` · palina ${palina}` : ''}
+                  {/* Se la direzione arriva da un tratto successivo della corsa
+                      lo diciamo: e' la direzione del mezzo, non del
+                      trasferimento con cui esce. */}
+                  {item.directionFromRun ? ' · direzione della corsa' : ''}
                 </span>
               </div>
               <div>
-                <strong>Esce {formatWait(item.waitMinutes, anchor)}</strong>
-                <span>primo tratto {formatMinutes(item.legMinutes)}</span>
+                <strong>{formatOffset(item.offsetMinutes, anchor)}</strong>
+                <span>arriva alle {item.arrival}</span>
               </div>
             </article>
           );
