@@ -73,11 +73,32 @@ test('la pagina Moovit di riserva esiste anche quando si apre l app', () => {
 });
 
 test('ogni posto cambio con palina ha un punto dentro Torino e dintorni', () => {
-  const codes = ['CATT', 'ORSN', 'ORSA', 'FILA', 'LING', 'BENS', 'OSET', 'CAIO', 'BARB', 'CLGR', 'CLMA'];
+  const codes = ['CATT', 'ORSN', 'ORSA', 'FILA', 'OMRO', 'SIRA', 'LING', 'BENS', 'OSET', 'CAIO', 'BARB', 'CLGR', 'CLMA'];
   codes.forEach((code) => {
     const position = getChangePointPosition(code);
     assert.ok(position, `${code} deve avere il punto`);
     assert.ok(position.lat > 44.9 && position.lat < 45.2, `${code} fuori latitudine`);
     assert.ok(position.lng > 7.4 && position.lng < 7.8, `${code} fuori longitudine`);
   });
+});
+
+/* I posti cambio dei festivi: la 58 non gira e il suo percorso lo copre la 12
+   modificata, che porta i due punti di piazza Omero. Delle paline non sappiamo
+   ancora quale sia andata e quale ritorno, quindi hanno il punto ma non la
+   coppia: i passaggi GTT restano sull'itinerario di linea invece di puntare
+   una fermata che potrebbe essere quella sbagliata. */
+test('Omero e Siracusa portano al percorso ma non a una palina', () => {
+  ['OMRO', 'SIRA'].forEach((code) => {
+    const target = buildMoovitFromDepotUrl(code);
+    assert.ok(target, `${code} deve avere un percorso`);
+    assert.equal(target.hasPosition, true, `${code} deve avere il punto`);
+    assert.ok(target.url.startsWith('moovit://directions?'));
+    assert.equal(getChangePointStop(code, { direction: 'A' }), '', `${code} non deve indovinare la palina`);
+    assert.equal(getChangePointStop(code, { direction: 'R' }), '');
+  });
+});
+
+test('i codici dei festivi hanno il nome che compare in preconoscenza', () => {
+  assert.equal(buildMoovitFromDepotUrl('OMRO').label, 'Omero');
+  assert.equal(buildMoovitFromDepotUrl('SIRA').label, 'Siracusa');
 });
