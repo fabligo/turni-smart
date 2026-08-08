@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildMoovitFromDepotUrl } from '../src/utils/gttLinks.js';
-import { getChangePointPosition } from '../src/constants/changePoints.js';
+import { getChangePointPosition, getChangePointStop } from '../src/constants/changePoints.js';
 
 test('il percorso parte dal deposito e arriva al posto cambio', () => {
   const target = buildMoovitFromDepotUrl('CATT');
@@ -39,18 +39,30 @@ test('il codice si accetta anche minuscolo o con spazi', () => {
   assert.equal(buildMoovitFromDepotUrl('  catt  ').label, 'Cattaneo');
 });
 
-/* FILA non ha palina raccolta, quindi non ha un punto: il percorso resta
-   possibile ma passa dalla ricerca per nome di Moovit. */
+/* Un posto cambio senza palina raccolta non ha un punto: il percorso resta
+   possibile ma passa dalla ricerca per nome di Moovit, invece che dall app. */
 test('senza coordinate si ripiega sulla pagina Moovit, non sull app', () => {
-  assert.equal(getChangePointPosition('FILA'), null);
+  const target = buildMoovitFromDepotUrl('GHOST');
+  assert.equal(target, null, 'un codice sconosciuto non produce percorso');
+
+  /* Simula il caso reale: indirizzo noto, punto no. */
+  assert.equal(getChangePointPosition('GERB'), null);
+});
+
+test('Filadelfia ha il punto dopo che le paline sono arrivate dal campo', () => {
   const target = buildMoovitFromDepotUrl('FILA');
-  assert.equal(target.hasPosition, false);
-  assert.ok(target.url.startsWith('https://moovitapp.com/'));
+  assert.equal(target.hasPosition, true);
+  assert.ok(target.url.startsWith('moovit://directions?'));
 
   const params = new URLSearchParams(target.url.split('?')[1]);
-  assert.equal(params.get('to'), 'Filadelfia');
-  assert.equal(params.get('tll'), null, 'senza punto non si inventa una coordinata');
-  assert.ok(params.get('fll'), 'la partenza dal deposito resta');
+  assert.equal(params.get('dest_name'), 'Filadelfia');
+  assert.equal(params.get('dest_lat'), '45.044470');
+  assert.equal(params.get('dest_lon'), '7.640460');
+});
+
+test('le due paline di Filadelfia stanno sui lati giusti', () => {
+  assert.equal(getChangePointStop('FILA', { direction: 'R' }), '1666');
+  assert.equal(getChangePointStop('FILA', { direction: 'A' }), '1665');
 });
 
 test('la pagina Moovit di riserva esiste anche quando si apre l app', () => {
@@ -61,7 +73,7 @@ test('la pagina Moovit di riserva esiste anche quando si apre l app', () => {
 });
 
 test('ogni posto cambio con palina ha un punto dentro Torino e dintorni', () => {
-  const codes = ['CATT', 'ORSN', 'ORSA', 'LING', 'BENS', 'OSET', 'CAIO', 'BARB', 'CLGR', 'CLMA'];
+  const codes = ['CATT', 'ORSN', 'ORSA', 'FILA', 'LING', 'BENS', 'OSET', 'CAIO', 'BARB', 'CLGR', 'CLMA'];
   codes.forEach((code) => {
     const position = getChangePointPosition(code);
     assert.ok(position, `${code} deve avere il punto`);

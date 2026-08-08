@@ -38,7 +38,7 @@ test('senza direzione usa l andata, e Cairoli ha la stessa palina nei due sensi'
 });
 
 test('un posto cambio senza paline non ne inventa una', () => {
-  assert.equal(getChangePointStop('FILA', { direction: 'A' }), '');
+  // Il deposito non e' una fermata di linea: e' l'unico rimasto senza palina.
   assert.equal(getChangePointStop('GERB', { direction: 'A' }), '');
   assert.equal(getChangePointStop('ZZZZ', { direction: 'A' }), '');
 });
@@ -49,7 +49,7 @@ test('il link punta alla palina quando c e, altrimenti alla linea', () => {
   assert.match(withStop.url, /palina=308/);
   assert.equal(withStop.palina, '308');
 
-  const withoutStop = buildGttPassagesTarget({ line: '71', place: 'FILA', direction: 'R' });
+  const withoutStop = buildGttPassagesTarget({ line: '71', place: 'GERB', direction: 'R' });
   assert.match(withoutStop.url, /view=percorsi/);
   assert.equal(withoutStop.palina, '');
 });

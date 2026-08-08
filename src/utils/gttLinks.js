@@ -23,9 +23,10 @@ const DEPOT_DESTINATION = 'Via Gorini, Torino';
 //
 // Questo punto e' la palina 693 "GORINI CAP" del GTFS statico GTT: il
 // capolinea della 74, la linea che GTT stessa segna come "Gerbido / Via
-// Gorini". Prima qui c'era 45.0419, 7.5886, un valore che il progetto si
-// portava dietro senza che nessuno l'avesse verificato e che cade circa 370
-// metri piu' a nord. Da confermare con chi entra dal cancello tutti i giorni.
+// Gorini". Confermato da chi entra dal cancello tutti i giorni: il deposito
+// e' a pochi metri da quella palina. Prima qui c'era 45.0419, 7.5886, un
+// valore che il progetto si portava dietro senza che nessuno l'avesse
+// verificato e che cade circa 370 metri piu' a nord.
 const DEPOT_POSITION = { lat: 45.03941, lng: 7.59166 };
 
 function sanitizeToken(value = '') {
