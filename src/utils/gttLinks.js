@@ -1,4 +1,10 @@
-import { getChangePointAddress, getChangePointStop, normalizeChangePoint } from '../constants/changePoints.js';
+import {
+  getChangePointAddress,
+  getChangePointLabel,
+  getChangePointPosition,
+  getChangePointStop,
+  normalizeChangePoint,
+} from '../constants/changePoints.js';
 import { getLineDisplayName, normalizeLineCode } from '../constants/depotGerbido.js';
 
 const GTT_ARRIVALS_BASE_URL = 'https://www.gtt.to.it/cms/percorari/arrivi';
@@ -13,11 +19,14 @@ const MOOVIT_APP_URL = 'moovit://directions';
 // Il deposito e' in via Gorini: lo dice GTT stessa, che sulla 74 scrive come
 // destinazione "Gerbido / Via Gorini".
 const DEPOT_DESTINATION = 'Via Gorini, Torino';
-// Moovit vuole la destinazione come coordinate, un nome non gli basta. Questa
-// posizione del deposito e' quella con cui il progetto e' nato e nessuno l'ha
-// verificata: si vede subito sulla mappa dove cade il segnaposto, ed e' il solo
-// punto in cui viene usata.
-const DEPOT_POSITION = { lat: 45.0419, lng: 7.5886 };
+// Moovit vuole la destinazione come coordinate, un nome non gli basta.
+//
+// Questo punto e' la palina 693 "GORINI CAP" del GTFS statico GTT: il
+// capolinea della 74, la linea che GTT stessa segna come "Gerbido / Via
+// Gorini". Prima qui c'era 45.0419, 7.5886, un valore che il progetto si
+// portava dietro senza che nessuno l'avesse verificato e che cade circa 370
+// metri piu' a nord. Da confermare con chi entra dal cancello tutti i giorni.
+const DEPOT_POSITION = { lat: 45.03941, lng: 7.59166 };
 
 function sanitizeToken(value = '') {
   return String(value ?? '').trim();
@@ -112,6 +121,54 @@ export function buildChangePointDirectionsUrl({ lat, lng } = {}, code = '') {
     travelmode: 'transit',
   });
   return `${MAPS_DIRECTIONS_URL}?${params.toString()}`;
+}
+
+
+/**
+ * Il percorso dal deposito al posto cambio dove comincia il turno: e' la
+ * domanda di chi prende servizio al Gerbido e deve arrivare in tempo dove lo
+ * aspetta la vettura. Nessun GPS di mezzo, quindi nessun permesso da chiedere
+ * e nessuna attesa: partenza e arrivo si sanno gia' entrambi.
+ *
+ * Dal deposito al deposito non c'e' niente da calcolare, e senza posto cambio
+ * nemmeno: in quei casi il bottone non ha ragione di esistere e non compare.
+ */
+export function buildMoovitFromDepotUrl(code) {
+  const place = normalizeChangePoint(code);
+  if (!place || place === 'GERB') return null;
+
+  const label = getChangePointLabel(place);
+  const address = getChangePointAddress(place);
+  if (!address) return null;
+
+  const position = getChangePointPosition(place);
+  const web = `${MOOVIT_WEB_URL}?${new URLSearchParams({
+    from: DEPOT_DESTINATION,
+    fll: `${DEPOT_POSITION.lat.toFixed(6)}_${DEPOT_POSITION.lng.toFixed(6)}`,
+    to: label || address,
+    ...(position ? { tll: `${position.lat.toFixed(6)}_${position.lng.toFixed(6)}` } : {}),
+    lang: 'it',
+  }).toString()}`;
+
+  /* Senza coordinate del posto cambio l'app non ha un punto a cui puntare:
+     resta la pagina Moovit, che almeno cerca l'indirizzo per nome. */
+  if (!position) {
+    return { hasPosition: false, label, url: web, web };
+  }
+
+  const app = `${MOOVIT_APP_URL}?${[
+    ['orig_lat', DEPOT_POSITION.lat.toFixed(6)],
+    ['orig_lon', DEPOT_POSITION.lng.toFixed(6)],
+    ['orig_name', DEPOT_DESTINATION],
+    ['dest_lat', position.lat.toFixed(6)],
+    ['dest_lon', position.lng.toFixed(6)],
+    ['dest_name', label || address],
+    ['auto_run', 'true'],
+  ]
+    .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+    .join('&')}`;
+
+  return { hasPosition: true, label, url: app, web };
 }
 
 export function getPrimaryGttChangePoint({ shift, dayData, segments = [] }) {
