@@ -49,21 +49,10 @@ import { Icon } from './components/Icon.jsx';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
-/* Cinque destinazioni, una sola visibile per volta. Ogni sezione sostituisce
-   la precedente: il dock e' navigazione, non un salto di scroll. */
-const SECTIONS = ['oggi', 'calendario', 'periodo', 'linee', 'altro'];
-const SECTION_ALIASES = {
-  Home: 'oggi',
-  Turno: 'oggi',
-  Giorno: 'oggi',
-  Mese: 'calendario',
-  Calendario: 'calendario',
-  preconoscenza: 'periodo',
-  stats: 'altro',
-  tools: 'altro',
-  returns: 'linee',
-  lines: 'linee',
-};
+/* Cinque destinazioni - oggi, calendario, periodo, linee, altro - una sola
+   visibile per volta. Ogni sezione sostituisce la precedente: il dock e'
+   navigazione, non un salto di scroll. La app si apre sempre su "oggi", quindi
+   non c'e' piu' una sezione salvata da validare ne' vecchi nomi da tradurre. */
 const DEFAULT_MONTH_FILTERS = {
   turni: false,
   riposi: false,
@@ -566,8 +555,12 @@ export default function App() {
   /* Il referto per pagina esiste solo se il PDF viene riletto con la botola
      aperta: le pagine non si salvano, negli sviluppi restano solo i segmenti. */
   const [orariPageDiagnostics, setOrariPageDiagnostics] = useState(null);
-  const savedSection = savedPrefs.activeSection || SECTION_ALIASES[savedPrefs.activeTab] || '';
-  const [activeSection, setActiveSection] = useState(SECTIONS.includes(savedSection) ? savedSection : 'oggi');
+  /* Aprendo la app si torna sempre su Oggi, qualunque sezione fosse aperta
+     l'ultima volta. La domanda con cui si apre questa app e' sempre la stessa
+     - che turno faccio - e riaprirla su Linee o su Altro vuol dire un tocco in
+     piu' per arrivarci. La sezione si continua a salvare, che serve a chi
+     legge le preferenze, ma non decide piu' da dove si parte. */
+  const [activeSection, setActiveSection] = useState('oggi');
   const [linesTab, setLinesTab] = useState('lines');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState('');
@@ -883,12 +876,10 @@ export default function App() {
 
   const enrichedDays = useMemo(() => (pdfLoaded ? enrichShiftDays(days, developments) : {}), [days, developments, pdfLoaded]);
 
+  /* Il giorno con cui la app si apre: oggi se c'e' in preconoscenza, altrimenti
+     domani, altrimenti il primo della settimana. La card la costruisce
+     cardForDay, che fa gia' tutto il resto. */
   const homeSelection = useMemo(() => (pdfLoaded ? pickHomeDay(days) : { day: null, prefix: '' }), [days, pdfLoaded]);
-
-  const homeShift = useMemo(() => {
-    if (!pdfLoaded) return null;
-    return buildShiftCard(homeSelection.day, homeSelection.prefix, enrichedDays[homeSelection.day?.iso]);
-  }, [enrichedDays, homeSelection, pdfLoaded]);
 
   const stats = useMemo(() => (pdfLoaded ? buildStats(days, developments) : []), [days, developments, pdfLoaded]);
   const preconoscenzaSummary = useMemo(() => computeStats(days, developments), [days, developments]);
@@ -1285,7 +1276,15 @@ export default function App() {
       .filter(shouldShowMonthDay)
       .sort((a, b) => a.date - b.date);
   }, [calendarDays, monthFilters, viewMonth, viewYear]);
-  const nextWorkingShift = useMemo(() => (pdfLoaded ? getNextWorkingShift(days, developments, new Date()) : null), [days, developments, pdfLoaded]);
+  /* Il turno gia' in cima non e' il prossimo: escluderlo e' l'unico modo
+     perche' "Prossimo turno" dica davvero quello dopo. */
+  const nextWorkingShift = useMemo(
+    () =>
+      pdfLoaded
+        ? getNextWorkingShift(days, developments, new Date(), { excludeIso: homeSelection.day?.iso })
+        : null,
+    [days, developments, homeSelection.day?.iso, pdfLoaded],
+  );
   const allDayEntries = useMemo(
     () =>
       Object.keys(days)
@@ -1330,6 +1329,32 @@ export default function App() {
 
           {pdfLoaded && activeSection === 'oggi' ? (
             <section className="view-panel">
+              {/* La risposta prima degli attrezzi. Aprendo la app la domanda e'
+                  "che turno faccio oggi", e la card che risponde deve stare
+                  sopra la piega: prima c'erano il pannello di ricerca e
+                  l'inserimento manuale, e il turno cominciava a meta' schermo.
+                  Cercare una data e' l'eccezione, e sta appena sotto. */}
+              <div className="result-list">
+                {searchResults.map((day) => cardForDay(day))}
+                {searchMessage ? <p className="result-message">{searchMessage}</p> : null}
+                {/* Senza una ricerca in corso si mostra il turno del giorno:
+                    aprire su "nessun giorno selezionato" costava un tocco per
+                    sapere una cosa che l'app sapeva gia'. Se oggi non c'e' in
+                    preconoscenza si scala a domani e poi alla settimana, e la
+                    card lo dice nel titolo. */}
+                {!searchResults.length && !searchMessage && homeSelection.day
+                  ? cardForDay(homeSelection.day, homeSelection.prefix)
+                  : null}
+                {!searchResults.length && !searchMessage && !homeSelection.day ? (
+                  <EmptySection
+                    action={pdfInfo?.dIn ? 'Vai al periodo caricato' : ''}
+                    onAction={() => openDayFromOverview(pdfInfo?.dIn)}
+                    text={`Cerca una data o usa i tasti rapidi. Il periodo caricato e' ${periodLabel}.`}
+                    title="Nessun giorno selezionato"
+                  />
+                ) : null}
+              </div>
+
               <form
                 className="search-panel dc"
                 onSubmit={(event) => {
@@ -1393,19 +1418,6 @@ export default function App() {
                   title={isSuspendedPreconoscenza ? 'Preconoscenza sospesa' : 'Inserimento manuale'}
                 />
               </details>
-
-              <div className="result-list">
-                {searchResults.map((day) => cardForDay(day))}
-                {searchMessage ? <p className="result-message">{searchMessage}</p> : null}
-                {!searchResults.length && !searchMessage ? (
-                  <EmptySection
-                    action={pdfInfo?.dIn ? 'Vai al periodo caricato' : ''}
-                    onAction={() => openDayFromOverview(pdfInfo?.dIn)}
-                    text={`Cerca una data o usa i tasti rapidi. Il periodo caricato e' ${periodLabel}.`}
-                    title="Nessun giorno selezionato"
-                  />
-                ) : null}
-              </div>
 
               {nextWorkingShift ? (
                 <details className="next-shift-panel dc">
