@@ -14,7 +14,8 @@ const MAPS_DIRECTIONS_URL = 'https://www.google.com/maps/dir/';
 const MOOVIT_WEB_URL = 'https://moovitapp.com/';
 // Lo schema dell'app: un indirizzo https resta una pagina web e il telefono la
 // apre come tale, con dentro il tasto "apri l'app". Con moovit:// il sistema
-// consegna direttamente all'app installata.
+// consegna direttamente all'app installata. Verificato sul telefono di chi usa
+// l'app: il bottone "Vai al cambio" apre davvero Moovit, non la pagina web.
 const MOOVIT_APP_URL = 'moovit://directions';
 // Il deposito e' in via Gorini: lo dice GTT stessa, che sulla 74 scrive come
 // destinazione "Gerbido / Via Gorini".

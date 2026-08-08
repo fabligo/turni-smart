@@ -78,9 +78,12 @@ export const CHANGE_POINTS = {
   // BABE e BARB sono lo stesso posto, in via Gaspero Barbera: stesse due
   // paline, 1169 andata e 1170 ritorno. Gli orari GTT usano due codici per
   // quel punto - BABE sulla 34 - e la preconoscenza riporta quello che trova,
-  // quindi la tabella deve conoscerli entrambi. Il civico che l'ha portato
-  // qui e' il 34; BARB era arrivato col 18. Da chiarire quale sia quello
-  // stampato sulla palina, ma il punto e le paline non cambiano.
+  // quindi la tabella deve conoscerli entrambi.
+  //
+  // I due civici non coincidono - 34 di qui, 18 su BARB - ma chi guida la
+  // linea ha confermato che a valere sono le paline, non il numero civico.
+  // Restano com'erano: sono etichette, mentre a portare qualcuno nel posto
+  // giusto sono le coordinate e i numeri delle paline.
   BABE: {
     label: 'Barbera',
     address: 'Via Gaspero Barbera 34, Torino',
