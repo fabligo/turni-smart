@@ -2,11 +2,11 @@
 
 ## Prima di cominciare
 
-Leggi `docs/registro-interventi-2026-08.md`. E' il registro dei lavori di
-agosto 2026 (PR #19-#39) e contiene il contesto che questi vincoli non dicono:
-da dove vengono i dati dei posti cambio e quali sono verificati sul campo,
-quali difetti sono gia' stati trovati e come, cosa e' rimasto in sospeso, e
-quali dati non vanno dedotti per nessun motivo.
+Leggi `docs/registro-progetto.md`. Ripercorre tutta la storia del progetto,
+dal primo commit del 26 maggio 2026 in poi, e contiene il contesto che questi
+vincoli non dicono: da dove vengono i dati dei posti cambio e quali sono
+verificati sul campo, quali difetti sono gia' stati trovati e come, cosa e'
+rimasto in sospeso, e quali dati non vanno dedotti per nessun motivo.
 
 ## Progetto
 
