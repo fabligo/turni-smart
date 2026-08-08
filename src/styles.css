@@ -5612,3 +5612,14 @@ a.inline-action--gtt {
     animation: none;
   }
 }
+
+/* Marca di versione: serve a capire se il browser sta ancora servendo una
+   copia vecchia della pagina, quindi deve essere leggibile ma discreta. */
+.build-stamp {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

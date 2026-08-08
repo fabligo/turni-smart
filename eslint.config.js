@@ -16,6 +16,7 @@ export default [
         ecmaFeatures: { jsx: true },
       },
       globals: {
+        __BUILD_STAMP__: 'readonly',
         ...globals.browser,
         ...globals.node,
         ...globals.serviceworker,
