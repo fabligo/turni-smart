@@ -104,6 +104,10 @@ export function AdvancedTools({
           </div>
         </div>
       ) : null}
+
+      {/* Dice quale versione si sta guardando: index.html resta nella cache del
+          browser, e senza questa riga non c'e' modo di accorgersene. */}
+      <p className="build-stamp">Versione {__BUILD_STAMP__}</p>
     </section>
   );
 }
