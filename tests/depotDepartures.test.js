@@ -146,19 +146,50 @@ test('con un posto scelto si contano solo le alternative che ci vanno', () => {
   assert.equal(stessoPosto.otherServiceCount, 1, 'li invece cambiare servizio serve davvero');
 });
 
-/* La stessa corsa scritta nel feriale e nel sabato sono due uscite: capitano
-   in due giorni diversi e non vanno fuse come fossero copie. */
-test('la stessa corsa in due servizi resta due uscite', () => {
+/* La stessa corsa scritta nel feriale e nel sabato non e' un doppione da
+   scartare ne' due uscite: e' una sola uscita che gira in entrambi i giorni,
+   e in ciascuna vista se ne vede una. */
+test('la stessa corsa in due servizi e una sola uscita che gira in entrambi', () => {
   const dueServizi = {
     '05 101': [
       { start: '05:10', loc_s: 'GERB', dir: 'A', end: '05:32', loc_e: 'CATT', ln: '05', vett: '1', gt: 'LUN - VEN' },
       { start: '05:10', loc_s: 'GERB', dir: 'A', end: '05:32', loc_e: 'CATT', ln: '05', vett: '1', gt: 'SAB' },
     ],
   };
-  const r = searchDepartures(dueServizi, { now: LUNEDI, time: '05:10', windowMinutes: 5 });
-  assert.equal(r.total, 1, 'di feriale se ne vede una');
-  assert.equal(r.otherServiceCount, 1, 'e l altra e quella del sabato');
-  assert.deepEqual(r.countByService, { feriali: 1, sabato: 1 });
+  const feriale = searchDepartures(dueServizi, { now: LUNEDI, time: '05:10', windowMinutes: 5 });
+  assert.equal(feriale.total, 1);
+  assert.equal(feriale.otherServiceCount, 0, 'non e un altro servizio: e anche questo');
+  assert.deepEqual(feriale.countByService, { feriali: 1, sabato: 1 });
+
+  const sabato = searchDepartures(dueServizi, { now: LUNEDI, service: 'sabato', time: '05:10', windowMinutes: 5 });
+  assert.equal(sabato.total, 1, 'e di sabato si vede la stessa');
+});
+
+/* Negli Orari del Gerbido c'e' "LUN - SAB": dal lunedi' al sabato. Con un
+   tipo solo finiva tutto nel sabato e di mercoledi' spariva, pur girando. */
+test('LUN - SAB esce sia in settimana sia di sabato', () => {
+  const lunSab = {
+    '05 101': [{ start: '05:10', loc_s: 'GERB', dir: 'A', end: '05:32', loc_e: 'CATT', ln: '05', vett: '1', gt: 'LUN - SAB' }],
+  };
+  assert.equal(searchDepartures(lunSab, { now: LUNEDI, time: '05:10', windowMinutes: 5 }).total, 1, 'di lunedi');
+  assert.equal(
+    searchDepartures(lunSab, { now: LUNEDI, service: 'sabato', time: '05:10', windowMinutes: 5 }).total,
+    1,
+    'e di sabato',
+  );
+  assert.equal(
+    searchDepartures(lunSab, { now: LUNEDI, service: 'festivi', time: '05:10', windowMinutes: 5 }).total,
+    0,
+    'ma non di domenica',
+  );
+});
+
+test('un orario del solo sabato non esce in settimana', () => {
+  const soloSabato = {
+    '05 101': [{ start: '05:10', loc_s: 'GERB', dir: 'A', end: '05:32', loc_e: 'CATT', ln: '05', vett: '1', gt: 'SABATO' }],
+  };
+  assert.equal(searchDepartures(soloSabato, { now: LUNEDI, time: '05:10', windowMinutes: 5 }).total, 0);
+  assert.equal(searchDepartures(soloSabato, { now: LUNEDI, service: 'sabato', time: '05:10', windowMinutes: 5 }).total, 1);
 });
 
 test('chiedendo il sabato la corsa del sabato compare', () => {

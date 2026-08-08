@@ -2,7 +2,7 @@ import { timeToMinutes } from './timeUtils.js';
 import {
   DEPOT_CODE,
   SERVICE_TYPES,
-  getServiceType,
+  getServiceTypes,
   getShiftParts,
   getTodayServiceType,
   minutesFromNow,
@@ -140,7 +140,7 @@ export function searchDepartures(developments = {}, options = {}) {
         /* Negativo = parte prima dell'orario scelto. */
         const offsetMinutes = minutesFromNow(segment.start, targetMinutes);
 
-        const segmentService = getServiceType(segment.gt);
+        const segmentServices = getServiceTypes(segment.gt);
         const line = segment.lineaNorm || segment.ln || keyLine;
         /* Solo il numero letto da LINEA/VETTURA. Quando manca, il parser ci
            mette la chiave dello sviluppo come ripiego, che vettura non e'. */
@@ -153,12 +153,13 @@ export function searchDepartures(developments = {}, options = {}) {
            vettura che in qualche copia si perde, la stessa uscita si contava
            una volta per copia. Un mezzo dal deposito esce una volta sola.
 
-           Il tipo di servizio fa parte dell'identita': la stessa corsa di
-           feriale e di sabato sono due uscite diverse, che capitano in due
-           giorni diversi. */
-        const identity = [segmentService, line, segment.start, segment.end, toPlace].join('|');
+           I giorni in cui gira non fanno identita' ma si sommano: la stessa
+           uscita scritta una volta come feriale e una come "LUN - SAB" resta
+           un'uscita sola, che pero' capita in entrambi i giorni. */
+        const identity = [line, segment.start, segment.end, toPlace].join('|');
         const existing = byIdentity.get(identity);
         if (existing) {
+          segmentServices.forEach((type) => existing.services.add(type));
           /* Fra due copie vince quella che porta l'informazione: se una ha il
              numero di vettura e l'altra no, si tiene il numero. */
           if (!existing.vehicleShift && vehicleShift) existing.vehicleShift = vehicleShift;
@@ -176,6 +177,7 @@ export function searchDepartures(developments = {}, options = {}) {
         const direction = findRunDirection(run, index);
 
         byIdentity.set(identity, {
+          services: new Set(segmentServices),
           arrival: segment.end,
           departure: segment.start,
           direction,
@@ -186,7 +188,7 @@ export function searchDepartures(developments = {}, options = {}) {
           legMinutes: durationMinutes(segment.start, segment.end),
           line,
           offsetMinutes,
-          service: segmentService,
+          service,
           /* La chiave da cui il tratto e' stato letto: a volte e' il turno,
              a volte la vettura, e non c'e' modo di distinguerli. Resta qui
              perche' aiuta a rileggere il dato, ma non si mostra come turno. */
@@ -205,11 +207,14 @@ export function searchDepartures(developments = {}, options = {}) {
   exits.forEach((item) => {
     const inWindow = Math.abs(item.offsetMinutes) <= windowMinutes;
 
-    /* Su tutta la giornata: serve a dire quali servizi il PDF caricato
-       contiene, non a spiegare una fascia oraria. */
-    result.countByService[item.service] = (result.countByService[item.service] || 0) + 1;
+    /* Su tutta la giornata, e una volta per ogni giorno in cui l'uscita
+       gira: serve a dire cosa contiene il PDF caricato, non a spiegare una
+       fascia oraria. */
+    item.services.forEach((type) => {
+      result.countByService[type] = (result.countByService[type] || 0) + 1;
+    });
 
-    if (item.service !== service) {
+    if (!item.services.has(service)) {
       /* Le uscite dell'altro servizio si contano solo se sono davvero
          un'alternativa a quello che si sta cercando: stessa fascia, e stessa
          destinazione quando una e' stata scelta. Contarle tutte, su tutta la
@@ -217,7 +222,9 @@ export function searchDepartures(developments = {}, options = {}) {
       if (!inWindow) return;
       if (wantedPlace && item.toPlace !== wantedPlace) return;
       result.otherServiceCount += 1;
-      result.otherServiceByType[item.service] = (result.otherServiceByType[item.service] || 0) + 1;
+      item.services.forEach((type) => {
+        result.otherServiceByType[type] = (result.otherServiceByType[type] || 0) + 1;
+      });
       return;
     }
 

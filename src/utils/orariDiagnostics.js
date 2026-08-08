@@ -1,4 +1,4 @@
-import { DEPOT_CODE, getServiceType, normalizePlace } from './depotReturns.js';
+import { DEPOT_CODE, getServiceTypes, normalizePlace } from './depotReturns.js';
 
 /**
  * Un referto su cosa il parser ha capito degli Orari caricati.
@@ -28,7 +28,7 @@ export function countExits(segments = []) {
     if (!to || to === DEPOT_CODE) return;
     rows += 1;
     const line = segment.lineaNorm || segment.ln || '';
-    seen.add([getServiceType(segment.gt), line, segment.start, segment.end, to].join('|'));
+    seen.add([line, segment.start, segment.end, to].join('|'));
   });
 
   return { rows, unique: seen.size };
@@ -42,7 +42,7 @@ export function summarizeByGt(developments = {}) {
     if (!Array.isArray(segments)) return;
     segments.forEach((segment) => {
       const gt = String(segment?.gt ?? '');
-      if (!byGt.has(gt)) byGt.set(gt, { gt, segments: [], service: getServiceType(gt) });
+      if (!byGt.has(gt)) byGt.set(gt, { gt, segments: [], service: getServiceTypes(gt).join('+') });
       byGt.get(gt).segments.push(segment);
     });
   });
@@ -79,7 +79,7 @@ export function summarizePages(diagnostics = []) {
         gt: page.gt,
         pages: 1,
         recognized: page.own ? 1 : 0,
-        service: getServiceType(page.gt),
+        service: getServiceTypes(page.gt).join('+'),
         to: page.page,
       });
     }

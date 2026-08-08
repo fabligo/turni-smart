@@ -47,6 +47,28 @@ export function getServiceType(value = '') {
   return 'feriali';
 }
 
+/**
+ * I giorni in cui un orario gira davvero, che possono essere piu' di uno.
+ *
+ * Negli Orari del Gerbido non c'e' solo "LUN - VEN": c'e' anche "LUN - SAB",
+ * che vuol dire dal lunedi' al sabato. Con un tipo solo quelle corse
+ * finivano tutte nel sabato e di mercoledi' sparivano, pur girando.
+ *
+ * E' la stessa lettura che fa gia' matchesServiceDay nel parser, che di
+ * sabato guarda SAB e in settimana guarda i giorni infrasettimanali: qui i
+ * due classificatori tornano a dire la stessa cosa.
+ */
+export function getServiceTypes(value = '') {
+  const service = String(value || '').toUpperCase();
+  const types = [];
+  if (/LUN|MAR|MER|GIO|VEN|FERIAL/.test(service)) types.push('feriali');
+  if (service.includes('SAB')) types.push('sabato');
+  if (service.includes('FEST') || service.includes('DOM')) types.push('festivi');
+  /* Un orario che non dice niente vale come feriale: e' il caso di 'TUTTI',
+     che il parser usa quando di una pagina non sa niente. */
+  return types.length ? types : ['feriali'];
+}
+
 export function getTodayServiceType(date = new Date()) {
   const day = date.getDay();
   if (day === 0) return 'festivi';
@@ -196,9 +218,13 @@ export function searchReturns(developments = {}, selectedPlace, options = {}) {
         const waitMinutes = minutesFromNow(segment.start, targetMinutes);
         if (waitMinutes < 0 || waitMinutes > horizon) return;
 
-        const segmentService = getServiceType(segment.gt);
-        result.passagesByService[segmentService] = (result.passagesByService[segmentService] || 0) + 1;
-        if (segmentService !== service) return;
+        /* Stessa lettura delle uscite: "LUN - SAB" vale sia in settimana sia
+           di sabato, e con un tipo solo il rientro spariva in uno dei due. */
+        const segmentServices = getServiceTypes(segment.gt);
+        segmentServices.forEach((type) => {
+          result.passagesByService[type] = (result.passagesByService[type] || 0) + 1;
+        });
+        if (!segmentServices.includes(service)) return;
         result.passages += 1;
 
         const chain = buildChain(run, index);
