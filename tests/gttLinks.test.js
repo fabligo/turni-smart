@@ -88,7 +88,8 @@ test('il percorso Moovit usa lo schema dell app, non un indirizzo web', () => {
   const url = buildMoovitDirectionsUrl({ lat: 45.0668, lng: 7.6513 });
   assert.match(url, /^moovit:\/\/directions\?/);
   assert.match(url, /orig_lat=45\.066800&orig_lon=7\.651300/);
-  assert.match(url, /dest_lat=45\.041900&dest_lon=7\.588600/);
+  // Palina 693 "GORINI CAP", capolinea della 74: il punto del deposito.
+  assert.match(url, /dest_lat=45\.039410&dest_lon=7\.591660/);
   assert.match(url, /dest_name=Via%20Gorini/);
   assert.match(url, /auto_run=true/);
   // Gli spazi restano spazi codificati: un piu' non verrebbe riletto come tale.
@@ -103,7 +104,7 @@ test('resta l indirizzo web di Moovit per chi non ha l app', () => {
   const url = buildMoovitWebUrl({ lat: 45.0668, lng: 7.6513 });
   assert.match(url, /^https:\/\/moovitapp\.com\/\?/);
   assert.match(url, /fll=45\.066800_7\.651300/);
-  assert.match(url, /tll=45\.041900_7\.588600/);
+  assert.match(url, /tll=45\.039410_7\.591660/);
   assert.equal(buildMoovitWebUrl(), '');
 });
 

@@ -3,8 +3,7 @@ import { formatMinutes, minutesBetween } from '../utils/timeUtils.js';
 import { getDevSegments } from '../parserOrari.js';
 import { getLineDisplayName } from '../constants/depotGerbido.js';
 import { BALLOTTAGGI } from '../constants/shiftClassification.js';
-import { buildGttPassagesTarget, getPrimaryGttChangePoint } from '../utils/gttLinks.js';
-import { readNearbyStopsUrl } from '../utils/nearbyStops.js';
+import { buildGttPassagesTarget, buildMoovitFromDepotUrl, getPrimaryGttChangePoint } from '../utils/gttLinks.js';
 import { describeShiftTiming } from '../utils/shiftTiming.js';
 import { subscribeToClock } from '../utils/clock.js';
 import { AssetIcon, Icon } from './Icon.jsx';
@@ -332,7 +331,9 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
   const categoryIconName = getCategoryIconName(category, { ...shift, isEvening, isShortRest, isSplit });
   const categoryTitle = buildCategoryTitle(category);
   const shareText = buildShareText(shift, segments);
-  const gttTarget = buildGttPassagesTarget(getPrimaryGttChangePoint({ dayData, segments, shift }));
+  const changePoint = getPrimaryGttChangePoint({ dayData, segments, shift });
+  const gttTarget = buildGttPassagesTarget(changePoint);
+  const moovitTarget = buildMoovitFromDepotUrl(changePoint.place);
 
   function updateSegmentVehicle(index, segment, values) {
     const normalized = Array.isArray(values) ? serializeVehicleInputs(values) : sanitizeVehicleNumbersInput(values);
@@ -419,7 +420,7 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
             </div>
 
             <div className="shift-calendar-zone">
-              {calendarActions ? <CalendarActions actions={calendarActions(dayData, segments)} gttTarget={gttTarget} shareText={shareText} shift={shift} /> : null}
+              {calendarActions ? <CalendarActions actions={calendarActions(dayData, segments)} gttTarget={gttTarget} moovitTarget={moovitTarget} shareText={shareText} shift={shift} /> : null}
             </div>
           </div>
 
@@ -621,10 +622,7 @@ function getReminderNote(shift) {
     : 'Promemoria inclusi: sera prima alle 20:00 e 1 ora prima del turno.';
 }
 
-function CalendarActions({ actions, compact = false, gttTarget = null, shareText = '', shift = null }) {
-  const [nearbyUrl, setNearbyUrl] = useState('');
-  const [nearbyBusy, setNearbyBusy] = useState(false);
-  const [nearbyError, setNearbyError] = useState('');
+function CalendarActions({ actions, compact = false, gttTarget = null, moovitTarget = null, shareText = '', shift = null }) {
   const [copied, setCopied] = useState(false);
   if (!actions) return null;
 
@@ -659,16 +657,6 @@ function CalendarActions({ actions, compact = false, gttTarget = null, shareText
     window.open(gttTarget.url, '_blank', 'noopener,noreferrer');
   }
 
-  function findNearbyStops() {
-    setNearbyError('');
-    setNearbyUrl('');
-    setNearbyBusy(true);
-    readNearbyStopsUrl()
-      .then((url) => setNearbyUrl(url))
-      .catch((error) => setNearbyError(error.message))
-      .finally(() => setNearbyBusy(false));
-  }
-
   return (
     <div className={compact ? 'calendar-actions calendar-actions--compact calendar-actions--single' : 'calendar-actions calendar-actions--single'}>
       {/* Una primaria. Il resto sta dietro un tocco: erano cinque bottoni di
@@ -696,34 +684,24 @@ function CalendarActions({ actions, compact = false, gttTarget = null, shareText
               {gttTarget.palina ? 'Passaggi GTT' : 'Itinerario linea'}
             </button>
           ) : null}
-          {nearbyUrl ? (
+          {moovitTarget ? (
             <a
               className="inline-action inline-action--gtt"
-              href={nearbyUrl}
-              onClick={() => setNearbyUrl('')}
+              href={moovitTarget.url}
               rel="noopener noreferrer"
-              target="_blank"
+              title={`Percorso Moovit dal Deposito Gerbido a ${moovitTarget.label}${
+                moovitTarget.hasPosition ? '' : ', cercato per nome: di questo posto cambio non abbiamo la palina'
+              }`}
             >
               <Icon name="mapPin" size={18} />
-              Apri la mappa
+              Vai al cambio
             </a>
-          ) : (
-            <button
-              className="inline-action inline-action--gtt"
-              disabled={nearbyBusy}
-              onClick={findNearbyStops}
-              title="Trova le fermate intorno a dove sei adesso"
-              type="button"
-            >
-              <Icon name="mapPin" size={18} />
-              {nearbyBusy ? 'Leggo…' : 'Qui vicino'}
-            </button>
-          )}
+          ) : null}
         </div>
-        {nearbyError ? <p className="action-note action-note--gtt">{nearbyError}</p> : null}
-        {!nearbyError && gttTarget?.palina ? (
+        {gttTarget?.palina || moovitTarget ? (
           <p className="action-note action-note--gtt">
-            Passaggi GTT apre la palina {gttTarget.palina} del posto cambio di inizio turno.
+            {gttTarget?.palina ? `Passaggi GTT apre la palina ${gttTarget.palina} del posto cambio di inizio turno. ` : ''}
+            {moovitTarget ? `Vai al cambio apre Moovit con il percorso dal deposito fino a ${moovitTarget.label}.` : ''}
           </p>
         ) : null}
       </details>

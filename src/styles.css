@@ -2852,6 +2852,12 @@ a.inline-action {
   border: 2px solid var(--yellow);
 }
 
+/* Il percorso al posto cambio e' un link accanto a bottoni che fanno le stesse
+   cose: deve pesare come loro, non gridare col bordo pieno. */
+a.inline-action--gtt {
+  border: 1px solid rgba(255, 209, 0, 0.38);
+}
+
 .depot-returns-fallback {
   display: grid;
   gap: var(--s2);
