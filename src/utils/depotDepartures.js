@@ -64,9 +64,13 @@ export function findRunDirection(run = [], startIndex = 0) {
  * Le uscite dal deposito intorno a un orario.
  *
  * Serve a raggiungere un posto cambio: si sceglie l'ora in cui si e' al
- * Gerbido e si vede cosa parte in quel momento, su che linea e in che
- * direzione - perche' e' la direzione a decidere se quel mezzo porta dove
- * serve o dalla parte opposta.
+ * Gerbido e si vede cosa parte in quel momento, su che linea, dove va a
+ * finire quel tratto e in che direzione prosegue.
+ *
+ * Il filtro utile e' il posto cambio, non la direzione: chi deve andare a
+ * Cattaneo vuole vedere i mezzi che vanno a Cattaneo, e "andata o ritorno" da
+ * solo non risponde a quella domanda. La direzione resta comunque su ogni
+ * uscita, perche' e' quella a dire da che parte il mezzo prosegue poi.
  *
  * Di ogni uscita si dice solo quello che il dato dice: ora di partenza dal
  * deposito, linea, turno, direzione e dove arriva il tratto. Se quel tratto sia
@@ -78,9 +82,9 @@ export function findRunDirection(run = [], startIndex = 0) {
 export function searchDepartures(developments = {}, options = {}) {
   const {
     now = new Date(),
+    place: requestedPlace = '',
     time = '',
     windowMinutes = DEPARTURE_WINDOW_MINUTES,
-    direction: requestedDirection = '',
     service: requestedService = '',
   } = options;
 
@@ -91,19 +95,23 @@ export function searchDepartures(developments = {}, options = {}) {
   }
   const targetMinutes = targetDate.getHours() * 60 + targetDate.getMinutes();
   const service = SERVICE_TYPES.includes(requestedService) ? requestedService : getTodayServiceType(targetDate);
-  const wantedDirection = normalizeDirection(requestedDirection);
+  const wantedPlace = normalizePlace(requestedPlace);
 
   const result = {
     byLine: [],
     countByService: {},
-    direction: wantedDirection,
     matches: [],
-    /* Uscite dentro la finestra ma dell'altra direzione: e' la ragione piu'
-       frequente di un elenco corto quando si filtra. */
-    otherDirection: 0,
+    /* Uscite dentro la finestra ma dirette altrove: e' la ragione piu'
+       frequente di un elenco corto quando si sceglie un posto cambio. */
+    otherPlace: 0,
     /* Uscite dentro la finestra ma di un altro tipo di servizio. */
     otherServiceCount: 0,
     outsideWindow: 0,
+    place: wantedPlace,
+    /* Dove si va a finire uscendo dal Gerbido, in tutta la giornata: e'
+       l'elenco con cui si riempie il selettore, cosi' offre solo posti che
+       hanno davvero un'uscita e non un menu di destinazioni immaginarie. */
+    places: [],
     service,
     targetMinutes,
     total: 0,
@@ -111,7 +119,8 @@ export function searchDepartures(developments = {}, options = {}) {
   };
 
   const seen = new Set();
-  const found = [];
+  const candidates = [];
+  const perDayPlace = new Map();
 
   Object.entries(developments).forEach(([key, segments]) => {
     if (!Array.isArray(segments)) return;
@@ -130,24 +139,26 @@ export function searchDepartures(developments = {}, options = {}) {
           result.otherServiceCount += 1;
           return;
         }
+
+        const line = segment.lineaNorm || segment.ln || keyLine;
+        const vehicleShift = segment.vett || segment.turnoVettura || '';
+        const toPlace = normalizePlace(segment.loc_e);
+        const identity = [line, shift, segment.start, toPlace, vehicleShift].join('|');
+        if (seen.has(identity)) return;
+        seen.add(identity);
+
+        /* Contato su tutta la giornata, prima della finestra: il selettore non
+           deve svuotarsi mentre si sposta l'orario. */
+        perDayPlace.set(toPlace, (perDayPlace.get(toPlace) || 0) + 1);
+
         if (Math.abs(offsetMinutes) > windowMinutes) {
           result.outsideWindow += 1;
           return;
         }
 
         const direction = findRunDirection(run, index);
-        if (wantedDirection && direction !== wantedDirection) {
-          result.otherDirection += 1;
-          return;
-        }
 
-        const line = segment.lineaNorm || segment.ln || keyLine;
-        const vehicleShift = segment.vett || segment.turnoVettura || '';
-        const identity = [line, shift, segment.start, normalizePlace(segment.loc_e), vehicleShift].join('|');
-        if (seen.has(identity)) return;
-        seen.add(identity);
-
-        found.push({
+        candidates.push({
           arrival: segment.end,
           departure: segment.start,
           direction,
@@ -160,21 +171,28 @@ export function searchDepartures(developments = {}, options = {}) {
           offsetMinutes,
           service,
           shift,
-          toPlace: normalizePlace(segment.loc_e),
+          toPlace,
           vehicleShift,
         });
       });
     });
   });
 
+  const found = wantedPlace ? candidates.filter((item) => item.toPlace === wantedPlace) : candidates;
+  result.otherPlace = candidates.length - found.length;
+
   /* In ordine di orario, non di distanza dall'orario scelto: un elenco che
      salta avanti e indietro nel tempo non si legge. */
   found.sort((a, b) => a.offsetMinutes - b.offsetMinutes || String(a.line).localeCompare(String(b.line)));
 
   const perLine = new Map();
+  const perWindowPlace = new Map();
   found.forEach((item) => {
     const line = String(item.line || '-');
     perLine.set(line, (perLine.get(line) || 0) + 1);
+  });
+  candidates.forEach((item) => {
+    perWindowPlace.set(item.toPlace, (perWindowPlace.get(item.toPlace) || 0) + 1);
   });
 
   result.matches = found;
@@ -182,6 +200,9 @@ export function searchDepartures(developments = {}, options = {}) {
   result.byLine = [...perLine.entries()]
     .map(([line, count]) => ({ count, line }))
     .sort((a, b) => b.count - a.count || a.line.localeCompare(b.line, 'it', { numeric: true }));
+  result.places = [...perDayPlace.entries()]
+    .map(([place, count]) => ({ count, inWindow: perWindowPlace.get(place) || 0, place }))
+    .sort((a, b) => b.count - a.count || a.place.localeCompare(b.place, 'it', { numeric: true }));
 
   return result;
 }

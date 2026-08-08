@@ -49,10 +49,54 @@ test('se il tratto di uscita non ha direzione la prende dalla corsa', () => {
   assert.equal(r.matches[0].directionFromRun, true, 'e va segnalato che arriva da li');
 });
 
-test('si puo chiedere una direzione sola', () => {
-  const r = searchDepartures(SVILUPPI, { now: LUNEDI, time: '05:10', windowMinutes: 10, direction: 'A' });
+/* Il filtro utile e' la destinazione, non la direzione: chi deve andare a
+   Orsini vuole i mezzi che vanno a Orsini, e "andata" da solo non lo dice. */
+test('si puo chiedere un posto cambio solo', () => {
+  const r = searchDepartures(SVILUPPI, { now: LUNEDI, time: '05:10', windowMinutes: 10, place: 'ORSA' });
   assert.deepEqual(r.matches.map((m) => m.line), ['17']);
-  assert.equal(r.otherDirection, 2, 'le due di ritorno restano fuori, ma contate');
+  assert.equal(r.otherPlace, 2, 'le due verso Cattaneo restano fuori, ma contate');
+});
+
+test('senza posto cambio scelto si vedono tutte le uscite', () => {
+  const r = searchDepartures(SVILUPPI, { now: LUNEDI, time: '05:10', windowMinutes: 10 });
+  assert.equal(r.total, 3);
+  assert.equal(r.otherPlace, 0, 'senza filtro non resta fuori niente da contare');
+});
+
+test('un posto cambio senza uscite in quella fascia non ne inventa', () => {
+  const r = searchDepartures(SVILUPPI, { now: LUNEDI, time: '05:10', windowMinutes: 10, place: 'BABE' });
+  assert.equal(r.total, 0, 'BABE e del sabato, non del feriale');
+});
+
+test('il codice del posto cambio si accetta anche minuscolo', () => {
+  const r = searchDepartures(SVILUPPI, { now: LUNEDI, time: '05:10', windowMinutes: 10, place: '  orsa ' });
+  assert.deepEqual(r.matches.map((m) => m.line), ['17']);
+});
+
+/* L'elenco del selettore deve reggere mentre si sposta l'orario: se si
+   svuotasse a ogni finestra stretta non sarebbe un elenco di destinazioni ma
+   un secondo risultato di ricerca. */
+test('le destinazioni offerte sono quelle di tutta la giornata', () => {
+  const stretta = searchDepartures(SVILUPPI, { now: LUNEDI, time: '05:10', windowMinutes: 0 });
+  assert.deepEqual(
+    stretta.places.map((p) => p.place).sort(),
+    ['CATT', 'ORSA'],
+    'anche la 09:40, fuori finestra, porta la sua destinazione',
+  );
+  const cattaneo = stretta.places.find((p) => p.place === 'CATT');
+  assert.equal(cattaneo.count, 3, 'tre uscite verso Cattaneo nella giornata feriale');
+  assert.equal(cattaneo.inWindow, 1, 'ma una sola in questa fascia');
+});
+
+test('le destinazioni seguono il servizio scelto', () => {
+  const sabato = searchDepartures(SVILUPPI, { now: LUNEDI, service: 'sabato', time: '05:08', windowMinutes: 2 });
+  assert.deepEqual(sabato.places.map((p) => p.place), ['BABE']);
+});
+
+test('scegliere un posto cambio non cambia l elenco delle destinazioni', () => {
+  const tutte = searchDepartures(SVILUPPI, { now: LUNEDI, time: '05:10', windowMinutes: 10 });
+  const sola = searchDepartures(SVILUPPI, { now: LUNEDI, time: '05:10', windowMinutes: 10, place: 'ORSA' });
+  assert.deepEqual(sola.places, tutte.places, 'il selettore resta popolato uguale');
 });
 
 test('conta quante uscite ci sono e di quali linee', () => {
