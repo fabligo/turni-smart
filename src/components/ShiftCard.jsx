@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { formatMinutes, minutesBetween } from '../utils/timeUtils.js';
 import { getDevSegments } from '../parserOrari.js';
 import { getLineDisplayName } from '../constants/depotGerbido.js';
+import { getChangePointAddress, normalizeChangePoint } from '../constants/changePoints.js';
 import { BALLOTTAGGI } from '../constants/shiftClassification.js';
 import { buildGttPassagesTarget, buildMoovitFromDepotUrl, getPrimaryGttChangePoint } from '../utils/gttLinks.js';
 import { describeShiftTiming } from '../utils/shiftTiming.js';
@@ -334,6 +335,13 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
   const changePoint = getPrimaryGttChangePoint({ dayData, segments, shift });
   const gttTarget = buildGttPassagesTarget(changePoint);
   const moovitTarget = buildMoovitFromDepotUrl(changePoint.place);
+  /* Un posto cambio che la tabella non conosce faceva sparire il bottone senza
+     dire niente, e da fuori sembrava un guasto. Meglio dirlo: chi legge sa che
+     manca un dato, non che l'app e' rotta. */
+  const unknownPlace = (() => {
+    const code = normalizeChangePoint(changePoint.place);
+    return code && code !== 'GERB' && !getChangePointAddress(code) ? code : '';
+  })();
 
   function updateSegmentVehicle(index, segment, values) {
     const normalized = Array.isArray(values) ? serializeVehicleInputs(values) : sanitizeVehicleNumbersInput(values);
@@ -420,7 +428,7 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
             </div>
 
             <div className="shift-calendar-zone">
-              {calendarActions ? <CalendarActions actions={calendarActions(dayData, segments)} gttTarget={gttTarget} moovitTarget={moovitTarget} shareText={shareText} shift={shift} /> : null}
+              {calendarActions ? <CalendarActions actions={calendarActions(dayData, segments)} gttTarget={gttTarget} moovitTarget={moovitTarget} shareText={shareText} shift={shift} unknownPlace={unknownPlace} /> : null}
             </div>
           </div>
 
@@ -622,7 +630,7 @@ function getReminderNote(shift) {
     : 'Promemoria inclusi: sera prima alle 20:00 e 1 ora prima del turno.';
 }
 
-function CalendarActions({ actions, compact = false, gttTarget = null, moovitTarget = null, shareText = '', shift = null }) {
+function CalendarActions({ actions, compact = false, gttTarget = null, moovitTarget = null, shareText = '', shift = null, unknownPlace = '' }) {
   const [copied, setCopied] = useState(false);
   if (!actions) return null;
 
@@ -680,6 +688,12 @@ function CalendarActions({ actions, compact = false, gttTarget = null, moovitTar
           <Icon name="mapPin" size={18} />
           Vai al cambio · {moovitTarget.label}
         </a>
+      ) : null}
+      {unknownPlace ? (
+        <p className="action-note action-note--missing">
+          Il posto cambio <strong>{unknownPlace}</strong> non e&apos; ancora in archivio: senza il suo indirizzo non si
+          puo&apos; calcolare il percorso ne&apos; puntare la palina.
+        </p>
       ) : null}
       {!compact ? <p className="action-note action-note--calendar">{getReminderNote(shift)}</p> : null}
 

@@ -5629,3 +5629,15 @@ a.inline-action--gtt {
 .inline-action--route {
   width: 100%;
 }
+
+/* Posto cambio che la tabella non conosce: il bottone non c'e', e questa riga
+   dice perche'. Un dato mancante non deve sembrare un guasto. */
+.action-note--missing {
+  width: 100%;
+  justify-self: stretch;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 209, 0, 0.34);
+  border-radius: var(--radius);
+  background: rgba(255, 209, 0, 0.1);
+  color: #ffe9a3;
+}
