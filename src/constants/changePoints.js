@@ -75,6 +75,19 @@ export const CHANGE_POINTS = {
     position: { lat: 45.02446, lng: 7.63614 },
     stops: { A: '1119', R: '1119' },
   },
+  // BABE e BARB sono lo stesso posto, in via Gaspero Barbera: stesse due
+  // paline, 1169 andata e 1170 ritorno. Gli orari GTT usano due codici per
+  // quel punto - BABE sulla 34 - e la preconoscenza riporta quello che trova,
+  // quindi la tabella deve conoscerli entrambi. Il civico che l'ha portato
+  // qui e' il 34; BARB era arrivato col 18. Da chiarire quale sia quello
+  // stampato sulla palina, ma il punto e le paline non cambiano.
+  BABE: {
+    label: 'Barbera',
+    address: 'Via Gaspero Barbera 34, Torino',
+    // Palina 1169, dal GTFS statico GTT, dove si chiama PORTOFINO.
+    position: { lat: 45.01903, lng: 7.63359 },
+    stops: { A: '1169', R: '1170' },
+  },
   BARB: {
     label: 'Portofino',
     address: 'Via Barbera 18, Torino',
