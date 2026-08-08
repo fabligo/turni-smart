@@ -114,8 +114,9 @@ test('i nomi dei posti cambio sono quelli delle paline GTT', () => {
   assert.equal(getChangePointLabel('BARB'), 'Portofino');
   assert.equal(getChangePointLabel('CLGR'), 'Gramsci Nord');
   assert.equal(getChangePointLabel('CLMA'), 'Macedonia');
-  // Un codice che gli orari hanno ma la tabella no resta il codice.
-  assert.equal(getChangePointLabel('BABE'), 'BABE');
+  assert.equal(getChangePointLabel('BABE'), 'Barbera');
+  // Un codice che la tabella non ha resta il codice, cosi' com'e' scritto.
+  assert.equal(getChangePointLabel('ZZZZ'), 'ZZZZ');
 });
 
 test('il percorso fino al posto cambio usa il suo indirizzo', () => {
@@ -125,6 +126,6 @@ test('il percorso fino al posto cambio usa il suo indirizzo', () => {
   assert.match(url, /travelmode=transit/);
 
   // Senza indirizzo non si inventa una destinazione.
-  assert.equal(buildChangePointDirectionsUrl({ lat: 45.06, lng: 7.65 }, 'BABE'), '');
+  assert.equal(buildChangePointDirectionsUrl({ lat: 45.06, lng: 7.65 }, 'ZZZZ'), '');
   assert.equal(buildChangePointDirectionsUrl({}, 'CAIO'), '');
 });

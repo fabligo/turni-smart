@@ -41,6 +41,7 @@ import { StatsPanel } from './components/StatsPanel.jsx';
 import { AdvancedTools } from './components/AdvancedTools.jsx';
 import { LineConsultation } from './components/LineConsultation.jsx';
 import { DepotReturnsPanel } from './components/DepotReturnsPanel.jsx';
+import { DepotDeparturesPanel } from './components/DepotDeparturesPanel.jsx';
 import { OnboardingHome, SuspendedShiftEntry } from './components/OnboardingHome.jsx';
 import { PreconoscenzaOverview } from './components/PreconoscenzaOverview.jsx';
 import { Icon } from './components/Icon.jsx';
@@ -1544,26 +1545,26 @@ export default function App() {
               {orariLoaded ? (
                 <>
                   <div className="section-switch" role="tablist" aria-label="Consultazione linee">
-                    <button
-                      aria-selected={linesTab === 'lines'}
-                      className={linesTab === 'lines' ? 'section-switch__button is-active' : 'section-switch__button'}
-                      onClick={() => setLinesTab('lines')}
-                      role="tab"
-                      type="button"
-                    >
-                      Linee
-                    </button>
-                    <button
-                      aria-selected={linesTab === 'returns'}
-                      className={linesTab === 'returns' ? 'section-switch__button is-active' : 'section-switch__button'}
-                      onClick={() => setLinesTab('returns')}
-                      role="tab"
-                      type="button"
-                    >
-                      Rientri
-                    </button>
+                    {[
+                      ['lines', 'Linee'],
+                      ['returns', 'Rientri'],
+                      ['departures', 'Uscite'],
+                    ].map(([key, label]) => (
+                      <button
+                        aria-selected={linesTab === key}
+                        className={linesTab === key ? 'section-switch__button is-active' : 'section-switch__button'}
+                        key={key}
+                        onClick={() => setLinesTab(key)}
+                        role="tab"
+                        type="button"
+                      >
+                        {label}
+                      </button>
+                    ))}
                   </div>
-                  {linesTab === 'lines' ? <LineConsultation developments={developments} /> : <DepotReturnsPanel developments={developments} />}
+                  {linesTab === 'lines' ? <LineConsultation developments={developments} /> : null}
+                  {linesTab === 'returns' ? <DepotReturnsPanel developments={developments} /> : null}
+                  {linesTab === 'departures' ? <DepotDeparturesPanel developments={developments} /> : null}
                 </>
               ) : (
                 <EmptySection

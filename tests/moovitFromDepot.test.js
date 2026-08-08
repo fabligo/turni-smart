@@ -73,7 +73,7 @@ test('la pagina Moovit di riserva esiste anche quando si apre l app', () => {
 });
 
 test('ogni posto cambio con palina ha un punto dentro Torino e dintorni', () => {
-  const codes = ['CATT', 'ORSN', 'ORSA', 'FILA', 'OMRO', 'SIRA', 'LING', 'BENS', 'OSET', 'CAIO', 'BARB', 'CLGR', 'CLMA'];
+  const codes = ['CATT', 'ORSN', 'ORSA', 'FILA', 'OMRO', 'SIRA', 'LING', 'BENS', 'OSET', 'CAIO', 'BABE', 'BARB', 'CLGR', 'CLMA'];
   codes.forEach((code) => {
     const position = getChangePointPosition(code);
     assert.ok(position, `${code} deve avere il punto`);
@@ -111,11 +111,24 @@ test('i codici dei festivi hanno il nome che compare in preconoscenza', () => {
   assert.equal(buildMoovitFromDepotUrl('SIRA').label, 'Siracusa');
 });
 
-/* Il caso visto sul campo: la linea 34 parte da BABE, un codice che gli orari
-   GTT usano e la tabella non ha. Il percorso non si puo' costruire - senza
-   indirizzo non c'e' destinazione - e la card deve dirlo invece di limitarsi a
-   non mostrare il bottone. */
+/* Un codice che la tabella non ha: il percorso non si puo' costruire, perche'
+   senza indirizzo non c'e' destinazione, e la card lo dice invece di limitarsi
+   a non mostrare il bottone. */
 test('un posto cambio fuori tabella non produce un percorso inventato', () => {
-  assert.equal(getChangePointAddress('BABE'), '');
-  assert.equal(buildMoovitFromDepotUrl('BABE'), null);
+  assert.equal(getChangePointAddress('ZZZZ'), '');
+  assert.equal(buildMoovitFromDepotUrl('ZZZZ'), null);
+});
+
+/* BABE era il caso visto sul campo, sulla linea 34: adesso c'e'. E' lo stesso
+   posto di BARB - via Gaspero Barbera, paline 1169 e 1170 - con due codici
+   diversi negli orari GTT. */
+test('BABE e BARB sono lo stesso posto con due codici', () => {
+  assert.equal(buildMoovitFromDepotUrl('BABE').hasPosition, true);
+  assert.equal(getChangePointStop('BABE', { direction: 'A' }), '1169');
+  assert.equal(getChangePointStop('BABE', { direction: 'R' }), '1170');
+  assert.deepEqual(getChangePointPosition('BABE'), getChangePointPosition('BARB'));
+  assert.deepEqual(
+    ['A', 'R'].map((d) => getChangePointStop('BABE', { direction: d })),
+    ['A', 'R'].map((d) => getChangePointStop('BARB', { direction: d })),
+  );
 });

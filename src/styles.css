@@ -5641,3 +5641,34 @@ a.inline-action--gtt {
   background: rgba(255, 209, 0, 0.1);
   color: #ffe9a3;
 }
+
+/* Uscite dal deposito, riepilogo per linea. Le pastiglie rispondono alla
+   domanda "di che linee sono" prima che si scorra l'elenco. */
+.departure-lines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.departure-line-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid rgba(141, 216, 255, 0.24);
+  border-radius: 999px;
+  background: rgba(6, 26, 45, 0.4);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 880;
+}
+
+.departure-line-chip em {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--yellow);
+  color: #2a2000;
+  font-style: normal;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+}
