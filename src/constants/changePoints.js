@@ -90,19 +90,24 @@ export const CHANGE_POINTS = {
     stops: { A: '969', R: '968' },
   },
   // Nei festivi la 58 non gira e il suo percorso lo copre la 12 modificata:
-  // e' li' che compaiono i due posti cambio di piazza Omero. Le due paline
-  // sono la 309 e la 310, a 28 metri l'una dall'altra sui due lati del corso;
-  // quale delle due sia l'andata e quale il ritorno non e' ancora confermato,
-  // percio' qui c'e' solo il punto - che per un percorso a piedi basta - e
-  // non la coppia A/R, che manderebbe i passaggi GTT sulla palina sbagliata.
+  // e' li' che compaiono i due posti cambio di piazza Omero.
+  //
+  // Il ritorno e' la palina davanti al civico 274 di corso Orbassano, l'andata
+  // quella di fronte, verso il centro: lo dice chi guida la linea. Le due
+  // paline distano 28 metri e i tracciati della 58 - che nei festivi la 12
+  // ricalca - dicono con 15 metri di scarto che la 309 sta sulla carreggiata
+  // verso il centro. Le due cose combaciano, quindi A = 309 e R = 310.
   OMRO: {
     label: 'Omero',
     address: 'Corso Orbassano, Piazza Omero, Torino',
     // Palina 309, dal GTFS statico GTT: il lato verso il centro.
     position: { lat: 45.03821, lng: 7.63044 },
+    stops: { A: '309', R: '310' },
   },
-  // Sulla 56, in corso Siracusa. Il GTFS conosce una sola fermata della 56 su
-  // quel corso, la palina 711: il punto e' quello, la coppia A/R no.
+  // Sulla 56, in corso Siracusa: A verso Largo Tabacchi, R verso Grugliasco.
+  // Il GTFS conosce una sola fermata della 56 su quel corso, la palina 711, e
+  // da un elemento solo una coppia non si ricava: per ora resta in sospeso,
+  // quindi c'e' il punto ma non le paline.
   SIRA: {
     label: 'Siracusa',
     address: 'Corso Siracusa, Torino',

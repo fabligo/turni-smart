@@ -95,11 +95,32 @@ def rounded(img, radius_ratio=0.22):
 # Nel master il bus occupa il 65% del lato: gli angoli inferiori arrivano a
 # raggio 40,6%, appena oltre il cerchio di sicurezza Android (40%). Nella
 # variante maskable scende al 58% e ci sta con margine.
+def mark(size=256, color=(235, 245, 255), opacity=185, fill=0.965):
+    """Il bus da mettere dentro le card blu: sagoma sola, niente sfondo.
+
+    Riusa lo stesso alpha del master, quindi il disegno e' identico a quello
+    dell'icona; i finestrini restano vuoti perche' nel master sono gialli come
+    lo sfondo, e sul blu della card si vede attraverso.
+    """
+    crop = bus.crop(box)
+    w = int(round(size * fill))
+    h = int(round(w * crop.height / crop.width))
+    crop = crop.resize((w, h), Image.LANCZOS)
+
+    tinted = Image.new('RGBA', crop.size, (*color, 0))
+    tinted.putalpha(crop.getchannel('A').point(lambda v: int(v * opacity / 255)))
+
+    canvas = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    canvas.alpha_composite(tinted, ((size - w) // 2, (size - h) // 2))
+    return canvas
+
+
+mark().save(f'{OUT}/bus-front-mark.webp', 'WEBP', quality=95, method=6)
 rounded(full(512)).save(f'{OUT}/bus-front-icon.webp', 'WEBP', quality=95, method=6)
 shrunk(512, 0.58).convert('RGB').save(f'{OUT}/bus-icon-maskable.png', optimize=True)
 full(180).convert('RGB').save(f'{OUT}/apple-touch-icon.png', optimize=True)
 rounded(full(64)).save(f'{OUT}/favicon-64.png', optimize=True)
 
-for name in ['bus-front-icon.webp', 'bus-icon-maskable.png', 'apple-touch-icon.png', 'favicon-64.png']:
+for name in ['bus-front-mark.webp', 'bus-front-icon.webp', 'bus-icon-maskable.png', 'apple-touch-icon.png', 'favicon-64.png']:
     im = Image.open(f'{OUT}/{name}')
     print(name, im.size, im.mode, '%.1f kB' % (os.path.getsize(f'{OUT}/{name}') / 1024))

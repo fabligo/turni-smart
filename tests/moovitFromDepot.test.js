@@ -83,19 +83,27 @@ test('ogni posto cambio con palina ha un punto dentro Torino e dintorni', () => 
 });
 
 /* I posti cambio dei festivi: la 58 non gira e il suo percorso lo copre la 12
-   modificata, che porta i due punti di piazza Omero. Delle paline non sappiamo
-   ancora quale sia andata e quale ritorno, quindi hanno il punto ma non la
-   coppia: i passaggi GTT restano sull'itinerario di linea invece di puntare
-   una fermata che potrebbe essere quella sbagliata. */
-test('Omero e Siracusa portano al percorso ma non a una palina', () => {
+   modificata, che porta i due punti di piazza Omero. */
+test('Omero e Siracusa hanno il percorso dal deposito', () => {
   ['OMRO', 'SIRA'].forEach((code) => {
     const target = buildMoovitFromDepotUrl(code);
     assert.ok(target, `${code} deve avere un percorso`);
     assert.equal(target.hasPosition, true, `${code} deve avere il punto`);
     assert.ok(target.url.startsWith('moovit://directions?'));
-    assert.equal(getChangePointStop(code, { direction: 'A' }), '', `${code} non deve indovinare la palina`);
-    assert.equal(getChangePointStop(code, { direction: 'R' }), '');
   });
+});
+
+test('a Omero l andata e il lato verso il centro', () => {
+  assert.equal(getChangePointStop('OMRO', { direction: 'A' }), '309');
+  // Il ritorno e' la palina del civico 274, quella di fronte.
+  assert.equal(getChangePointStop('OMRO', { direction: 'R' }), '310');
+});
+
+/* Su corso Siracusa il GTFS conosce una sola fermata della 56: finche' la
+   seconda non arriva dal campo, meglio nessuna palina che quella di fronte. */
+test('Siracusa resta senza paline finche non sono confermate', () => {
+  assert.equal(getChangePointStop('SIRA', { direction: 'A' }), '');
+  assert.equal(getChangePointStop('SIRA', { direction: 'R' }), '');
 });
 
 test('i codici dei festivi hanno il nome che compare in preconoscenza', () => {
