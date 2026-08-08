@@ -28,6 +28,7 @@ import {
 } from './storage.js';
 import { buildCsv, buildPreconoscenzaInfographicBlob, downloadBlobFile, downloadTextFile } from './exportUtils.js';
 import { getDevSegments, normalizeShiftKey, parseOrari, summarizeDevelopments } from './parserOrari.js';
+import { buildOrariReport } from './utils/orariDiagnostics.js';
 import { parseNaturalDate, toIsoDate } from './utils/dateUtils.js';
 import { isGerbidoLine as checkGerbidoLine } from './constants/depotGerbido.js';
 import { DEFAULT_REST_CODE, getOfficialRestEntries } from './constants/restCodes2026.js';
@@ -537,6 +538,18 @@ async function extractTextPagesFromPdf(file) {
   return { pages, pageCount: pdf.numPages };
 }
 
+/* Una botola, non una funzione: si apre solo aggiungendo ?diag=orari
+   all'indirizzo, e serve a leggere come il parser ha diviso le pagine del PDF
+   fra feriale, sabato e festivo - una cosa che dai dati caricati non si vede.
+   Senza il parametro nella app non compare niente. */
+function readOrariDiagnosticsFlag() {
+  try {
+    return new URLSearchParams(window.location.search).get('diag') === 'orari';
+  } catch {
+    return false;
+  }
+}
+
 export default function App() {
   const onboardingInputRef = useRef(null);
   const monthPreconoscenzaInputRef = useRef(null);
@@ -549,6 +562,10 @@ export default function App() {
   const [developments, setDevelopments] = useState({});
   const [orariInfo, setOrariInfo] = useState(null);
   const [orariLoaded, setOrariLoaded] = useState(false);
+  const diagnosticsOn = useMemo(() => readOrariDiagnosticsFlag(), []);
+  /* Il referto per pagina esiste solo se il PDF viene riletto con la botola
+     aperta: le pagine non si salvano, negli sviluppi restano solo i segmenti. */
+  const [orariPageDiagnostics, setOrariPageDiagnostics] = useState(null);
   const savedSection = savedPrefs.activeSection || SECTION_ALIASES[savedPrefs.activeTab] || '';
   const [activeSection, setActiveSection] = useState(SECTIONS.includes(savedSection) ? savedSection : 'oggi');
   const [linesTab, setLinesTab] = useState('lines');
@@ -710,7 +727,9 @@ export default function App() {
         throw new Error('Questo sembra la Preconoscenza, non gli Orari Deposito.');
       }
 
-      const parsedDevelopments = parseOrari(pages);
+      const pageDiagnostics = diagnosticsOn ? [] : null;
+      const parsedDevelopments = parseOrari(pages, { diagnostics: pageDiagnostics });
+      if (pageDiagnostics) setOrariPageDiagnostics(pageDiagnostics);
       const summary = summarizeDevelopments(parsedDevelopments);
       if (!summary.totalTurns) {
         throw new Error('Nessun turno trovato nel PDF Orari Deposito.');
@@ -1605,6 +1624,21 @@ export default function App() {
                 storageReport={storageReport}
               />
               {storageMessage ? <p className="storage-alert">{storageMessage}</p> : null}
+            </div>
+          ) : null}
+
+          {/* La botola: compare solo con ?diag=orari nell'indirizzo. */}
+          {diagnosticsOn ? (
+            <div className="orari-diagnostics">
+              <pre>{buildOrariReport({ developments, pages: orariPageDiagnostics })}</pre>
+              <button
+                onClick={() =>
+                  navigator.clipboard?.writeText(buildOrariReport({ developments, pages: orariPageDiagnostics }))
+                }
+                type="button"
+              >
+                Copia il referto
+              </button>
             </div>
           ) : null}
 
