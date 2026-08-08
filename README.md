@@ -40,6 +40,10 @@ Il deploy non richiede il Mac acceso, chiavi SSH locali o comandi manuali.
 Per il flusso remoto e l'uso da iPhone consulta
 [`docs/cloud-workflow.md`](docs/cloud-workflow.md).
 
+Il registro dei lavori di agosto 2026, con l'origine dei dati dei posti
+cambio, i difetti trovati e cosa resta aperto, sta in
+[`docs/registro-interventi-2026-08.md`](docs/registro-interventi-2026-08.md).
+
 Per una verifica locale della versione di produzione:
 
 ```bash
