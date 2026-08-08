@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { getLineDisplayName } from '../constants/depotGerbido.js';
 import { getChangePointLabel, getChangePointStop } from '../constants/changePoints.js';
 import { DEPARTURE_WINDOW_MINUTES, searchDepartures } from '../utils/depotDepartures.js';
-import { DEPOT_CODE } from '../utils/depotReturns.js';
 import { formatClock } from '../utils/depotReturns.js';
 import { formatMinutes } from '../utils/timeUtils.js';
 import { Icon } from './Icon.jsx';
@@ -35,9 +34,6 @@ function formatOffset(minutes, anchor) {
 /* Dove va a finire il tratto che esce: e' la riga che risponde alla domanda
    vera, "questo mezzo mi porta dove devo andare?". */
 function formatDestination(item) {
-  /* Certi tratti partono e finiscono al deposito: dire "verso Deposito
-     Gerbido" sarebbe solo confuso. */
-  if (item.toPlace === DEPOT_CODE) return 'rientra al Gerbido';
   const place = getChangePointLabel(item.toPlace);
   return item.directionLabel ? `${item.directionLabel} verso ${place}` : `verso ${place}`;
 }
@@ -94,7 +90,7 @@ export function DepotDeparturesPanel({ developments = {} }) {
   const placeOptions = useMemo(() => {
     const options = result.places.map((item) => ({
       count: item.count,
-      label: item.place === DEPOT_CODE ? 'Rientro al Gerbido' : getChangePointLabel(item.place),
+      label: getChangePointLabel(item.place),
       value: item.place,
     }));
     if (form.place && !options.some((option) => option.value === form.place)) {
@@ -262,14 +258,14 @@ export function DepotDeparturesPanel({ developments = {} }) {
               return (
                 <article
                   className="depot-return-card"
-                  key={`${item.line}-${item.shift}-${item.departure}-${item.toPlace}-${item.vehicleShift}`}
+                  key={`${item.line}-${item.vehicleShift}-${item.departure}-${item.toPlace}`}
                 >
                   <div>
                     <strong>Linea {getLineDisplayName(item.line)}</strong>
-                    <span>
-                      turno {item.shift || '-'}
-                      {item.vehicleShift ? ` · vettura ${item.vehicleShift}` : ''}
-                    </span>
+                    {/* Solo la vettura: negli orari il turno che guida quel
+                        mezzo non e' sempre distinguibile dalla vettura, e
+                        scriverne uno sbagliato e' peggio che non scriverlo. */}
+                    <span>{item.vehicleShift ? `vettura ${item.vehicleShift}` : 'vettura non indicata'}</span>
                   </div>
                   <div>
                     <strong>esce alle {item.departure}</strong>
@@ -279,7 +275,7 @@ export function DepotDeparturesPanel({ developments = {} }) {
                     <strong>{formatDestination(item)}</strong>
                     <span>
                       arriva alle {item.arrival}
-                      {item.toPlace !== DEPOT_CODE && palina ? ` · palina ${palina}` : ''}
+                      {palina ? ` · palina ${palina}` : ''}
                     </span>
                     {/* Se la direzione arriva da un tratto successivo della corsa
                         lo diciamo: e' la direzione del mezzo una volta in linea,

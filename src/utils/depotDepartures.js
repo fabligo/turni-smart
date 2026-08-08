@@ -118,9 +118,8 @@ export function searchDepartures(developments = {}, options = {}) {
     windowMinutes,
   };
 
-  const seen = new Set();
-  const candidates = [];
-  const perDayPlace = new Map();
+  /* Una voce per uscita reale, non per riga letta: le copie si fondono qui. */
+  const byIdentity = new Map();
 
   Object.entries(developments).forEach(([key, segments]) => {
     if (!Array.isArray(segments)) return;
@@ -129,6 +128,12 @@ export function searchDepartures(developments = {}, options = {}) {
     groupByRun(segments).forEach((run) => {
       run.forEach((segment, index) => {
         if (normalizePlace(segment.loc_s) !== DEPOT_CODE) return;
+
+        /* Un tratto che dal deposito torna al deposito non porta a nessun
+           posto cambio: negli orari sono le righe che riassumono lo sviluppo
+           intero, non un'uscita da prendere. */
+        const toPlace = normalizePlace(segment.loc_e);
+        if (toPlace === DEPOT_CODE) return;
 
         /* Negativo = parte prima dell'orario scelto. */
         const offsetMinutes = minutesFromNow(segment.start, targetMinutes);
@@ -141,24 +146,36 @@ export function searchDepartures(developments = {}, options = {}) {
         }
 
         const line = segment.lineaNorm || segment.ln || keyLine;
-        const vehicleShift = segment.vett || segment.turnoVettura || '';
-        const toPlace = normalizePlace(segment.loc_e);
-        const identity = [line, shift, segment.start, toPlace, vehicleShift].join('|');
-        if (seen.has(identity)) return;
-        seen.add(identity);
+        /* Solo il numero letto da LINEA/VETTURA. Quando manca, il parser ci
+           mette la chiave dello sviluppo come ripiego, che vettura non e'. */
+        const vehicleShift = String(segment.vett || '').trim();
 
-        /* Contato su tutta la giornata, prima della finestra: il selettore non
-           deve svuotarsi mentre si sposta l'orario. */
-        perDayPlace.set(toPlace, (perDayPlace.get(toPlace) || 0) + 1);
-
-        if (Math.abs(offsetMinutes) > windowMinutes) {
-          result.outsideWindow += 1;
+        /* L'identita' e' l'uscita reale - linea, ora di partenza, ora di
+           arrivo, destinazione - non la riga da cui l'abbiamo letta. Lo stesso
+           sviluppo finisce sotto piu' chiavi (il turno e la vettura) e il PDF
+           lo ripete in ogni versione dell'orario: tenendo la chiave, o la
+           vettura che in qualche copia si perde, la stessa uscita si contava
+           una volta per copia. Un mezzo dal deposito esce una volta sola. */
+        const identity = [line, segment.start, segment.end, toPlace].join('|');
+        const existing = byIdentity.get(identity);
+        if (existing) {
+          /* Fra due copie vince quella che porta l'informazione: se una ha il
+             numero di vettura e l'altra no, si tiene il numero. */
+          if (!existing.vehicleShift && vehicleShift) existing.vehicleShift = vehicleShift;
+          if (!existing.direction) {
+            const recovered = findRunDirection(run, index);
+            if (recovered) {
+              existing.direction = recovered;
+              existing.directionLabel = getDirectionLabel(recovered);
+              existing.directionFromRun = normalizeDirection(segment.dir) === '';
+            }
+          }
           return;
         }
 
         const direction = findRunDirection(run, index);
 
-        candidates.push({
+        byIdentity.set(identity, {
           arrival: segment.end,
           departure: segment.start,
           direction,
@@ -170,12 +187,27 @@ export function searchDepartures(developments = {}, options = {}) {
           line,
           offsetMinutes,
           service,
+          /* La chiave da cui il tratto e' stato letto: a volte e' il turno,
+             a volte la vettura, e non c'e' modo di distinguerli. Resta qui
+             perche' aiuta a rileggere il dato, ma non si mostra come turno. */
           shift,
           toPlace,
           vehicleShift,
         });
       });
     });
+  });
+
+  const exits = [...byIdentity.values()];
+  const perDayPlace = new Map();
+  const candidates = [];
+
+  exits.forEach((item) => {
+    /* Contate su tutta la giornata, prima della finestra: il selettore non
+       deve svuotarsi mentre si sposta l'orario. */
+    perDayPlace.set(item.toPlace, (perDayPlace.get(item.toPlace) || 0) + 1);
+    if (Math.abs(item.offsetMinutes) > windowMinutes) result.outsideWindow += 1;
+    else candidates.push(item);
   });
 
   const found = wantedPlace ? candidates.filter((item) => item.toPlace === wantedPlace) : candidates;

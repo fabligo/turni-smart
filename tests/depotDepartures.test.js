@@ -156,6 +156,81 @@ test('la stessa uscita non si conta due volte', () => {
   assert.equal(searchDepartures(doppio, { now: LUNEDI, time: '05:10', windowMinutes: 5 }).total, 1);
 });
 
+/* Il parser archivia lo stesso sviluppo sotto piu' chiavi - il turno e la
+   vettura - e il PDF ripete la stessa corsa in piu' versioni dell'orario. Un
+   mezzo pero' dal deposito esce una volta sola: se l'identita' include la
+   chiave, il pannello moltiplica le uscite per il numero di copie. */
+test('la stessa uscita sotto due chiavi diverse resta una', () => {
+  const corsa = { start: '05:10', loc_s: 'GERB', dir: 'A', end: '05:32', loc_e: 'CATT', vett: '1', gt: 'LUN - VEN', run_id: 1 };
+  const duplicato = {
+    '05 101': [{ ...corsa }],
+    '05 1': [{ ...corsa }],
+  };
+  assert.equal(searchDepartures(duplicato, { now: LUNEDI, time: '05:10', windowMinutes: 5 }).total, 1);
+});
+
+test('la stessa uscita in due versioni dello stesso servizio resta una', () => {
+  const corsa = { start: '05:10', loc_s: 'GERB', dir: 'A', end: '05:32', loc_e: 'CATT', vett: '1', run_id: 1 };
+  const dueVersioni = {
+    '05 101': [
+      { ...corsa, gt: 'LUN - VEN', ver: 'A' },
+      { ...corsa, gt: 'FERIALE INVERNALE', ver: 'B' },
+    ],
+  };
+  const r = searchDepartures(dueVersioni, { now: LUNEDI, time: '05:10', windowMinutes: 5 });
+  assert.equal(r.total, 1, 'due righe dello stesso feriale, un mezzo solo');
+  assert.equal(r.places.find((p) => p.place === 'CATT').count, 1);
+});
+
+/* Quando la vettura non e' leggibile il parser ci mette la chiave dello
+   sviluppo: due copie della stessa uscita finivano con due vetture diverse e
+   sopravvivevano entrambe. */
+test('la vettura di ripiego non crea una seconda uscita', () => {
+  const conRipiego = {
+    '05 101': [
+      { start: '05:10', loc_s: 'GERB', dir: 'A', end: '05:32', loc_e: 'CATT', vett: '', turnoVettura: '05 101', gt: 'LUN - VEN', run_id: 1 },
+    ],
+    '05 1': [
+      { start: '05:10', loc_s: 'GERB', dir: 'A', end: '05:32', loc_e: 'CATT', vett: '', turnoVettura: '05 1', gt: 'LUN - VEN', run_id: 1 },
+    ],
+  };
+  const r = searchDepartures(conRipiego, { now: LUNEDI, time: '05:10', windowMinutes: 5 });
+  assert.equal(r.total, 1);
+  assert.equal(r.matches[0].vehicleShift, '', 'e la vettura resta vuota invece di fingere un numero');
+});
+
+test('fra due copie della stessa uscita vince quella che ha la vettura', () => {
+  const senzaESenza = {
+    '05 1': [{ start: '05:10', loc_s: 'GERB', dir: 'A', end: '05:32', loc_e: 'CATT', ln: '05', vett: '', turnoVettura: '05 1', gt: 'LUN - VEN' }],
+    '05 101': [{ start: '05:10', loc_s: 'GERB', dir: 'A', end: '05:32', loc_e: 'CATT', ln: '05', vett: '7', gt: 'LUN - VEN' }],
+  };
+  const r = searchDepartures(senzaESenza, { now: LUNEDI, time: '05:10', windowMinutes: 5 });
+  assert.equal(r.total, 1);
+  assert.equal(r.matches[0].vehicleShift, '7');
+});
+
+/* La copia senza direzione non deve cancellare quella che ce l'ha. */
+test('fra due copie della stessa uscita vince quella che ha la direzione', () => {
+  const mista = {
+    '05 1': [{ start: '05:10', loc_s: 'GERB', dir: '-', end: '05:32', loc_e: 'CATT', ln: '05', vett: '7', gt: 'LUN - VEN' }],
+    '05 101': [{ start: '05:10', loc_s: 'GERB', dir: 'A', end: '05:32', loc_e: 'CATT', ln: '05', vett: '7', gt: 'LUN - VEN' }],
+  };
+  const r = searchDepartures(mista, { now: LUNEDI, time: '05:10', windowMinutes: 5 });
+  assert.equal(r.total, 1);
+  assert.equal(r.matches[0].direction, 'A');
+});
+
+/* Le righe che riassumono lo sviluppo intero partono e finiscono in deposito:
+   non portano a nessun posto cambio e non sono un mezzo da prendere. */
+test('un tratto che dal deposito torna al deposito non e un uscita', () => {
+  const interoSviluppo = {
+    '05 101': [{ start: '04:00', loc_s: 'GERB', dir: '-', end: '10:15', loc_e: 'GERB', vett: '1', gt: 'LUN - VEN', run_id: 1 }],
+  };
+  const r = searchDepartures(interoSviluppo, { now: LUNEDI, time: '04:00', windowMinutes: 5 });
+  assert.equal(r.total, 0);
+  assert.deepEqual(r.places, [], 'e nemmeno una destinazione da offrire');
+});
+
 test('le etichette di direzione sono quelle degli orari', () => {
   assert.equal(getDirectionLabel('A'), 'Andata');
   assert.equal(getDirectionLabel('r'), 'Ritorno');
