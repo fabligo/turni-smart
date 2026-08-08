@@ -8,6 +8,7 @@
 // indovinato ma lo stesso che GTT pubblica per quella fermata. FILA non ne ha
 // perche' su via Filadelfia ci sono quattordici fermate omonime e nessuna
 // palina raccolta che dica quale sia: meglio nessun punto che quello sbagliato.
+// (Filadelfia le ha avute da chi guida la linea, quindi ora ce le ha anche lei.)
 export const CHANGE_POINTS = {
   GERB: {
     label: 'Deposito Gerbido',
@@ -39,6 +40,12 @@ export const CHANGE_POINTS = {
   FILA: {
     label: 'Filadelfia',
     address: 'Via Filadelfia, Torino',
+    // Palina 1665, dal GTFS statico GTT.
+    position: { lat: 45.04447, lng: 7.64046 },
+    // Il ritorno alla 1666 lo conferma chi guida queste linee. L'andata alla
+    // 1665 e' una deduzione, ma regge: stesso nome sulla palina, 42 metri
+    // dall'altra, e sono le due fermate della 58, che e' del Gerbido.
+    stops: { A: '1665', R: '1666' },
   },
   LING: {
     label: 'Stazione Lingotto',
