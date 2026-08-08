@@ -102,13 +102,23 @@ export function getAverageShiftDuration(days = {}, developments = {}) {
   return { minutes, label: formatMinutes(minutes) };
 }
 
-export function getNextWorkingShift(days = {}, developments = {}, fromDate = new Date()) {
+/**
+ * Il primo turno che comincia da qui in avanti.
+ *
+ * `excludeIso` toglie un giorno dai candidati: serve quando quel turno e' gia'
+ * in evidenza altrove. Aprendo la app alle tre e mezza per il turno delle
+ * quattro, quel turno non e' ancora cominciato e quindi sarebbe il "prossimo"
+ * - ma e' lo stesso che si sta guardando, e chiamarlo prossimo vuol dire non
+ * rispondere alla domanda.
+ */
+export function getNextWorkingShift(days = {}, developments = {}, fromDate = new Date(), { excludeIso = '' } = {}) {
   const from = new Date(fromDate);
   const fromTime = from.getTime();
   const enriched = enrichShiftDays(days, developments);
 
   return Object.values(enriched)
     .filter((entry) => entry.day?.t === 'turno')
+    .filter((entry) => !excludeIso || entry.day?.iso !== excludeIso)
     .map((entry) => {
       const date = shiftDate(entry.day);
       const start = new Date(date);

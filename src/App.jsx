@@ -1276,7 +1276,15 @@ export default function App() {
       .filter(shouldShowMonthDay)
       .sort((a, b) => a.date - b.date);
   }, [calendarDays, monthFilters, viewMonth, viewYear]);
-  const nextWorkingShift = useMemo(() => (pdfLoaded ? getNextWorkingShift(days, developments, new Date()) : null), [days, developments, pdfLoaded]);
+  /* Il turno gia' in cima non e' il prossimo: escluderlo e' l'unico modo
+     perche' "Prossimo turno" dica davvero quello dopo. */
+  const nextWorkingShift = useMemo(
+    () =>
+      pdfLoaded
+        ? getNextWorkingShift(days, developments, new Date(), { excludeIso: homeSelection.day?.iso })
+        : null,
+    [days, developments, homeSelection.day?.iso, pdfLoaded],
+  );
   const allDayEntries = useMemo(
     () =>
       Object.keys(days)
