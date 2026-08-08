@@ -343,7 +343,7 @@ repository.
 | BARB | Portofino | 1169 / 1170 | Stesso posto di BABE, altro codice GTT |
 | CLGR | Gramsci Nord | 969 / 968 | |
 | OMRO | Omero | 309 / 310 | Festivi |
-| SIRA | Siracusa | **assenti** | Deliberatamente in sospeso |
+| SIRA | Siracusa | 711 / 128 | La R si chiama MONFALCONE, non SIRACUSA |
 | CLMA | Macedonia | 853 / 852 | |
 
 ### Tre cose da non "correggere"
@@ -352,16 +352,44 @@ repository.
    codici diversi negli orari GTT e due civici diversi nell'anagrafica (34 e
    18). L'utente ha confermato che **a valere sono le paline, non il civico**.
    I civici restano com'erano perché sono etichette.
-2. **SIRA ha `position` ma non `stops`**, ed è voluto. Su corso Siracusa il
-   GTFS conosce una sola fermata della 56 (palina 711): da un elemento solo
-   non si ricava una coppia. L'utente non ha ancora l'informazione. **Meglio
-   nessuna palina che quella di fronte.** Un test lo blocca:
-   `Siracusa resta senza paline finche non sono confermate`.
+2. **A Siracusa la palina di ritorno si chiama MONFALCONE.** Le due paline
+   (711 andata, 128 ritorno) stanno all'incrocio fra corso Siracusa e via
+   Monfalcone, a una sessantina di metri, e GTT le ha chiamate con le due vie
+   diverse. Per mesi la coppia è rimasta incompleta perché la ricerca nel
+   GTFS era stata fatta **per nome** invece che per linea e prossimità: la
+   seconda fermata c'era sempre stata. Vedi § 6.1.
 3. **Nei festivi la linea 58 non gira**: il suo percorso lo copre la **linea
    12 modificata**, ed è lì che compaiono i due posti cambio di piazza Omero.
    La palina davanti al civico 274 di corso Orbassano è il **ritorno**, quella
    di fronte l'**andata** verso il centro (lo dice chi guida la linea; i
    tracciati lo confermano con 15 m di scarto).
+
+### 6.1 Come si verifica una palina contro il GTFS
+
+Procedura usata per Omero e per Siracusa, e da riusare quando arriva un
+numero nuovo. Il dataset è `frontend/public/assets/gtfs-network.json` e
+`gtfs-stop-times.json` nel repository `trailpress/BusRadar` (pubblico, si
+clona senza credenziali).
+
+**Attenzione a due trappole**, entrambe già costate un errore:
+
+1. **`code` e `id` sono spazi diversi.** Il numero di palina che l'autista
+   legge sulla fermata è il campo `code` di `gtfs-network.json`. Le corse in
+   `gtfs-stop-times.json` invece elencano le fermate per `id`. Confrontarli
+   direttamente non dà errore: dà risultati sbagliati in silenzio, perché
+   entrambi gli spazi contengono gli stessi numeri riferiti a fermate diverse.
+   Passare sempre per `stops.find(s => s.code === n).id`.
+2. **Non cercare per nome.** Due paline che si fronteggiano possono avere
+   nomi diversi, perché GTT le intitola alle vie che si incrociano lì. È
+   esattamente il caso di Siracusa (711 SIRACUSA / 128 MONFALCONE). Cercare
+   per linea e per prossimità, non per etichetta.
+
+**Come si conferma il verso**: si contano le corse della linea che toccano
+ciascuna palina e si guarda il loro capolinea. Per la 56 la palina 711 sta su
+340 corse dirette a TABACCHI CAP — verso il centro, cioè l'andata — e la 128
+su 346 dirette a TIRRENO CAP e Parco Ruffini, cioè il ritorno. Coincide con
+quello che dice chi guida la linea, e le due conferme indipendenti valgono
+più di ciascuna da sola.
 
 ### Il deposito
 
@@ -683,26 +711,22 @@ contiene davvero.
 
 ## 13. Cosa resta aperto
 
-1. **Siracusa (SIRA)** — mancano le due paline su corso Siracusa per la linea
-   56: `SIRA A` verso il centro (Largo Tabacchi), `SIRA R` verso Grugliasco.
-   L'utente non ha ancora l'informazione. **Non dedurle dal GTFS**: c'è una
-   sola fermata nota (711) e la seconda sarebbe un'invenzione.
-2. **`MERCOLEDI'`** — 17 segmenti su una pagina sola (p18). Oggi vale come
+1. **`MERCOLEDI'`** — 17 segmenti su una pagina sola (p18). Oggi vale come
    feriale generico, il che è corretto ma grossolano. Se è una linea
    scolastica o un servizio di mercato, meriterebbe un trattamento a parte.
    Domanda posta all'utente, senza risposta al momento della scrittura.
-3. **Uscite che toccano un posto cambio più avanti nella corsa.** Il filtro
+2. **Uscite che toccano un posto cambio più avanti nella corsa.** Il filtro
    "Vado a" guarda dove **arriva il tratto che esce dal deposito**. Se un
    mezzo esce verso un posto cambio e più tardi ne tocca un altro, quella
    seconda tappa oggi non compare. Segnalato all'utente; nessun caso reale
    riportato finora.
-4. **`detectGt` senza test.** Vedi § 10.
-5. **I due parser sono la zona meno coperta.** `parserPreconoscenza.js` e la
+3. **`detectGt` senza test.** Vedi § 10.
+4. **I due parser sono la zona meno coperta.** `parserPreconoscenza.js` e la
    parte di `parserOrari.js` che ricostruisce lo sviluppo di un turno
    (`getDevSegments`, `findExactShiftPath`, `pickBestWindowChain`) sono
    arrivati già fatti e non hanno test propri. Il vincolo di `AGENTS.md` è
    prudenza, non pigrizia.
-6. **Il bundle è grosso** (~725 kB js, ~2.3 MB il worker pdf.js). Vite
+5. **Il bundle è grosso** (~725 kB js, ~2.3 MB il worker pdf.js). Vite
    avverte a ogni build. Mai affrontato perché mai lamentato.
 
 ---
@@ -713,9 +737,14 @@ Sono impliciti in tutto il codice, e spiegano scelte che altrimenti sembrano
 scomode.
 
 - **Non inventare dati di dominio.** Sono stati rifiutati: l'assegnazione A/R
-  dal `directionId` GTFS, la seconda palina di Siracusa, e la posizione di
-  BABE prima che l'utente la fornisse. Quando un dato manca, **si rende
-  visibile che manca** — vedi `.action-note--missing`.
+  dal `directionId` GTFS, la seconda palina di Siracusa finché non è arrivata
+  dal campo, e la posizione di BABE prima che l'utente la fornisse. Quando un
+  dato manca, **si rende visibile che manca** — vedi `.action-note--missing`.
+- **Ma non confondere "non lo so" con "non c'è".** La seconda palina di
+  Siracusa esisteva da sempre nel GTFS: era stata cercata per nome, e si
+  chiama MONFALCONE. Aspettare il dato è stato giusto; dichiarare che il
+  GTFS non lo conteneva, no. Prima di scrivere che un dato non esiste,
+  controllare di averlo cercato nel modo giusto (§ 6.1).
 - **Dire in interfaccia quello che il dato dice, non di più.** Un'etichetta
   come «si inserisce a Cattaneo» su un tratto `GERB→CATT` di cinque ore era
   una promessa che il dato non sostiene: è diventata «verso Cattaneo».

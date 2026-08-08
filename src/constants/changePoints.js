@@ -121,14 +121,20 @@ export const CHANGE_POINTS = {
     stops: { A: '309', R: '310' },
   },
   // Sulla 56, in corso Siracusa: A verso Largo Tabacchi, R verso Grugliasco.
-  // Il GTFS conosce una sola fermata della 56 su quel corso, la palina 711, e
-  // da un elemento solo una coppia non si ricava: per ora resta in sospeso,
-  // quindi c'e' il punto ma non le paline.
+  // Le due paline le ha date chi guida la linea: 711 andata, 128 ritorno.
+  //
+  // Il GTFS le conferma da solo. La 711 compare su 340 corse della 56 dirette
+  // a TABACCHI CAP, la 128 su 346 dirette dall'altra parte, a TIRRENO CAP e
+  // Parco Ruffini: l'andata e' il lato verso il centro, come dice l'autista.
+  // Distano una sessantina di metri e portano il nome delle due vie che si
+  // incrociano li', ed e' per questo che erano sfuggite: cercando "SIRACUSA"
+  // la seconda non si trova, perche' si chiama MONFALCONE.
   SIRA: {
     label: 'Siracusa',
     address: 'Corso Siracusa, Torino',
     // Palina 711, dal GTFS statico GTT.
     position: { lat: 45.05287, lng: 7.63380 },
+    stops: { A: '711', R: '128' },
   },
   CLMA: {
     label: 'Macedonia',
