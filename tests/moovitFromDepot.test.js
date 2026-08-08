@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildMoovitFromDepotUrl } from '../src/utils/gttLinks.js';
-import { getChangePointPosition, getChangePointStop } from '../src/constants/changePoints.js';
+import { getChangePointAddress, getChangePointPosition, getChangePointStop } from '../src/constants/changePoints.js';
 
 test('il percorso parte dal deposito e arriva al posto cambio', () => {
   const target = buildMoovitFromDepotUrl('CATT');
@@ -109,4 +109,13 @@ test('Siracusa resta senza paline finche non sono confermate', () => {
 test('i codici dei festivi hanno il nome che compare in preconoscenza', () => {
   assert.equal(buildMoovitFromDepotUrl('OMRO').label, 'Omero');
   assert.equal(buildMoovitFromDepotUrl('SIRA').label, 'Siracusa');
+});
+
+/* Il caso visto sul campo: la linea 34 parte da BABE, un codice che gli orari
+   GTT usano e la tabella non ha. Il percorso non si puo' costruire - senza
+   indirizzo non c'e' destinazione - e la card deve dirlo invece di limitarsi a
+   non mostrare il bottone. */
+test('un posto cambio fuori tabella non produce un percorso inventato', () => {
+  assert.equal(getChangePointAddress('BABE'), '');
+  assert.equal(buildMoovitFromDepotUrl('BABE'), null);
 });
