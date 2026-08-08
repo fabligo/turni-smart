@@ -5,6 +5,7 @@ import {
   buildReturnMatches,
   parseClockMinutes,
   RETURN_WINDOW_MINUTES,
+  getServiceTypes,
   searchReturns,
 } from '../src/utils/depotReturns.js';
 
@@ -292,4 +293,45 @@ test('mette per primo chi arriva in deposito prima, non chi parte prima', () => 
   assert.deepEqual(matches.map((item) => item.arrival), ['14:50', '15:20']);
   assert.equal(matches[0].totalMinutes, 50);
   assert.equal(matches[1].totalMinutes, 80);
+});
+
+/* "LUN - SAB" vuol dire dal lunedi' al sabato: vale in entrambi i giorni.
+   Con un tipo solo finiva nel sabato e in settimana spariva. */
+test('un orario LUN - SAB vale sia in settimana sia di sabato', () => {
+  const sviluppi = {
+    '05 101': [
+      { start: '10:00', loc_s: 'CATT', dir: 'R', end: '10:40', loc_e: 'GERB', vett: '1', gt: 'LUN - SAB', run_id: 1 },
+    ],
+  };
+  const feriale = searchReturns(sviluppi, 'CATT', { now: new Date('2026-04-06T09:50:00'), time: '09:50' });
+  assert.equal(feriale.matches.length, 1, 'di lunedi');
+
+  const sabato = searchReturns(sviluppi, 'CATT', {
+    now: new Date('2026-04-06T09:50:00'),
+    service: 'sabato',
+    time: '09:50',
+  });
+  assert.equal(sabato.matches.length, 1, 'e di sabato');
+
+  const festivo = searchReturns(sviluppi, 'CATT', {
+    now: new Date('2026-04-06T09:50:00'),
+    service: 'festivi',
+    time: '09:50',
+  });
+  assert.equal(festivo.matches.length, 0, 'ma non di domenica');
+});
+
+/* Le intestazioni sono quelle viste davvero nel PDF degli Orari del Gerbido:
+   154 pagine, cinque stringhe diverse. Non sono casi inventati. */
+test('le intestazioni del PDF vero finiscono nei giorni giusti', () => {
+  assert.deepEqual(getServiceTypes('LUN - VEN'), ['feriali']);
+  assert.deepEqual(getServiceTypes('SABATO'), ['sabato']);
+  assert.deepEqual(getServiceTypes('FESTIVO'), ['festivi']);
+  assert.deepEqual(getServiceTypes("MERCOLEDI'"), ['feriali']);
+  assert.deepEqual(getServiceTypes('LUN - SAB'), ['feriali', 'sabato']);
+});
+
+test('un orario che non dice niente vale come feriale', () => {
+  assert.deepEqual(getServiceTypes('TUTTI'), ['feriali'], "e' quello che il parser usa quando non sa");
+  assert.deepEqual(getServiceTypes(''), ['feriali']);
 });
