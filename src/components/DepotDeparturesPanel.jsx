@@ -2,13 +2,18 @@ import { useMemo, useState } from 'react';
 import { getLineDisplayName } from '../constants/depotGerbido.js';
 import { getChangePointLabel, getChangePointStop } from '../constants/changePoints.js';
 import { DEPARTURE_WINDOW_MINUTES, searchDepartures } from '../utils/depotDepartures.js';
+import { DEPOT_CODE } from '../utils/depotReturns.js';
 import { formatClock } from '../utils/depotReturns.js';
 import { formatMinutes } from '../utils/timeUtils.js';
 import { Icon } from './Icon.jsx';
 
 /* La finestra guarda da entrambe le parti: un mezzo partito pochi minuti prima
    si prende ancora, quindi tenerlo fuori sarebbe un artificio del filtro. */
-const WINDOW_OPTIONS = [5, 10, DEPARTURE_WINDOW_MINUTES, 30, 60];
+const WINDOW_OPTIONS = [5, 10, DEPARTURE_WINDOW_MINUTES, 30, 60, 120];
+
+/* Con la giornata intera si pianifica, non si corre a prendere un mezzo: la
+   finestra copre tutto e l'elenco si legge per fasce orarie. */
+const ALL_DAY_MINUTES = 720;
 
 const DIRECTION_OPTIONS = [
   { value: '', label: 'Tutte le direzioni' },
@@ -31,6 +36,20 @@ function formatOffset(minutes, anchor) {
   if (minutes === 0) return `esattamente alle ${anchor}`;
   const amount = Math.abs(minutes) >= 60 ? formatMinutes(Math.abs(minutes)) : `${Math.abs(minutes)} min`;
   return minutes < 0 ? `${amount} prima delle ${anchor}` : `${amount} dopo le ${anchor}`;
+}
+
+/* Le uscite lette per fascia oraria: con la giornata intera un elenco piatto
+   non si scorre, e la fascia e' il modo in cui si ragiona pianificando. Con
+   una finestra stretta resta un gruppo solo e non da' fastidio. */
+function groupByHour(matches = []) {
+  const groups = [];
+  matches.forEach((item) => {
+    const hour = `${String(item.departure).slice(0, 2)}:00`;
+    const last = groups[groups.length - 1];
+    if (last && last.hour === hour) last.items.push(item);
+    else groups.push({ hour, items: [item] });
+  });
+  return groups;
 }
 
 /**
@@ -104,6 +123,7 @@ export function DepotDeparturesPanel({ developments = {} }) {
                   &plusmn; {minutes} min
                 </option>
               ))}
+              <option value={ALL_DAY_MINUTES}>tutta la giornata</option>
             </select>
           </label>
           <label>
@@ -135,10 +155,15 @@ export function DepotDeparturesPanel({ developments = {} }) {
             <strong>
               {result.total} {result.total === 1 ? 'uscita' : 'uscite'}
             </strong>{' '}
-intorno alle {anchor} (&plusmn; {form.windowMinutes} min), servizio {serviceLabel}
+{form.windowMinutes >= ALL_DAY_MINUTES
+              ? ` nella giornata, servizio ${serviceLabel}`
+              : ` intorno alle ${anchor} (± ${form.windowMinutes} min), servizio ${serviceLabel}`}
           </>
         ) : (
-          <>Nessuna uscita intorno alle {anchor} con il servizio {serviceLabel}.</>
+          <>
+            Nessuna uscita{form.windowMinutes >= ALL_DAY_MINUTES ? ' nella giornata' : ` intorno alle ${anchor}`} con il
+            servizio {serviceLabel}.
+          </>
         )}
       </p>
 
@@ -181,41 +206,54 @@ intorno alle {anchor} (&plusmn; {form.windowMinutes} min), servizio {serviceLabe
       ) : null}
 
       <div className="depot-returns-results" aria-live="polite">
-        {result.matches.map((item) => {
-          const palina = getChangePointStop(item.toPlace, { line: item.line });
-          return (
-            <article
-              className="depot-return-card"
-              key={`${item.line}-${item.shift}-${item.departure}-${item.toPlace}-${item.vehicleShift}`}
-            >
-              <div>
-                <strong>Linea {getLineDisplayName(item.line)}</strong>
-                <span>
-                  turno {item.shift || '-'}
-                  {item.vehicleShift ? ` · vettura ${item.vehicleShift}` : ''}
-                </span>
-              </div>
-              <div>
-                <strong>
-                  {item.departure}
-                  {item.directionLabel ? ` · ${item.directionLabel}` : ''}
-                </strong>
-                <span>
-                  verso {getChangePointLabel(item.toPlace)}
-                  {palina ? ` · palina ${palina}` : ''}
-                  {/* Se la direzione arriva da un tratto successivo della corsa
-                      lo diciamo: e' la direzione del mezzo, non del
-                      trasferimento con cui esce. */}
-                  {item.directionFromRun ? ' · direzione della corsa' : ''}
-                </span>
-              </div>
-              <div>
-                <strong>{formatOffset(item.offsetMinutes, anchor)}</strong>
-                <span>arriva alle {item.arrival}</span>
-              </div>
-            </article>
-          );
-        })}
+        {groupByHour(result.matches).map((group) => (
+          <div className="departure-hour" key={group.hour}>
+            <h3 className="departure-hour__title">
+              {group.hour}
+              <em>
+                {group.items.length} {group.items.length === 1 ? 'uscita' : 'uscite'}
+              </em>
+            </h3>
+            {group.items.map((item) => {
+              const palina = getChangePointStop(item.toPlace, { line: item.line });
+              return (
+                <article
+                      className="depot-return-card"
+                      key={`${item.line}-${item.shift}-${item.departure}-${item.toPlace}-${item.vehicleShift}`}
+                    >
+                  <div>
+                    <strong>Linea {getLineDisplayName(item.line)}</strong>
+                    <span>
+                      turno {item.shift || '-'}
+                      {item.vehicleShift ? ` · vettura ${item.vehicleShift}` : ''}
+                    </span>
+                  </div>
+                  <div>
+                    <strong>
+                      {item.departure}
+                      {item.directionLabel ? ` · ${item.directionLabel}` : ''}
+                    </strong>
+                    <span>
+                      {/* Certi tratti partono e finiscono al deposito: dire
+                          "verso Deposito Gerbido" sarebbe solo confuso. */}
+                      {item.toPlace === DEPOT_CODE
+                        ? 'torna al Gerbido'
+                        : `verso ${getChangePointLabel(item.toPlace)}${palina ? ` · palina ${palina}` : ''}`}
+                      {/* Se la direzione arriva da un tratto successivo della corsa
+                          lo diciamo: e' la direzione del mezzo, non del
+                          trasferimento con cui esce. */}
+                      {item.directionFromRun ? ' · direzione della corsa' : ''}
+                    </span>
+                  </div>
+                  <div>
+                    <strong>{formatOffset(item.offsetMinutes, anchor)}</strong>
+                    <span>arriva alle {item.arrival}</span>
+                      </div>
+                </article>
+              );
+            })}
+          </div>
+        ))}
       </div>
     </section>
   );

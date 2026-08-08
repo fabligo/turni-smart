@@ -5672,3 +5672,36 @@ a.inline-action--gtt {
   font-weight: 950;
   font-variant-numeric: tabular-nums;
 }
+
+/* Uscite raggruppate per fascia oraria: con la giornata intera l'elenco piatto
+   non si scorre, e la fascia e' il modo in cui si ragiona pianificando. */
+.departure-hour {
+  display: grid;
+  gap: 6px;
+}
+
+.departure-hour__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0 0;
+  color: var(--yellow);
+  font-size: 0.9rem;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+}
+
+.departure-hour__title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(141, 216, 255, 0.22);
+}
+
+.departure-hour__title em {
+  order: 1;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 780;
+}
