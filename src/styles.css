@@ -5705,3 +5705,38 @@ a.inline-action--gtt {
   font-style: normal;
   font-weight: 780;
 }
+
+/* La botola di diagnostica degli Orari: non fa parte dell'interfaccia e si
+   apre solo con ?diag=orari nell'indirizzo. Volutamente spoglia - deve essere
+   leggibile in uno screenshot, non bella. */
+.orari-diagnostics {
+  background: #0b1b2b;
+  border: 1px solid #24405c;
+  border-radius: 12px;
+  margin: 16px 0 96px;
+  max-width: 100%;
+  /* Senza questo il contenuto largo del referto allarga la pagina invece di
+     scorrere dentro il suo riquadro. */
+  min-width: 0;
+  padding: 12px;
+}
+
+.orari-diagnostics pre {
+  color: #d8e6f5;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  margin: 0;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.orari-diagnostics button {
+  background: #16324c;
+  border: 1px solid #2f5479;
+  border-radius: 10px;
+  color: #d8e6f5;
+  margin-top: 10px;
+  min-height: 44px;
+  padding: 0 14px;
+}

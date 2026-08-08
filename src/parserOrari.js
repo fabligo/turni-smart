@@ -376,18 +376,34 @@ export function parseOrariPageLines(text, gt, ver, developments, tableState = nu
   }
 }
 
-export function parseOrari(pagesText) {
+/**
+ * @param pagesText  il testo delle pagine del PDF
+ * @param diagnostics  array facoltativo: se passato, riceve una riga per
+ *   pagina con il tipo di servizio che la pagina dichiara di suo e quello che
+ *   le viene infine assegnato. Serve solo a leggere cosa e' successo: non
+ *   cambia niente di quello che il parser produce.
+ */
+export function parseOrari(pagesText, { diagnostics = null } = {}) {
   const pages = Array.isArray(pagesText) ? pagesText : [pagesText];
   const developments = {};
   let lastGt = '';
   const tableStateByService = {};
 
-  pages.forEach((pageText) => {
+  pages.forEach((pageText, index) => {
     const { gt, ver } = detectGt(pageText, lastGt);
     if (gt) lastGt = gt;
-    const serviceKey = `${gt || lastGt || 'TUTTI'}|${ver || ''}`;
+    const resolved = gt || lastGt || 'TUTTI';
+
+    if (diagnostics) {
+      /* Cosa la pagina dice di se', senza eredita': quando e' vuoto la pagina
+         non e' stata riconosciuta e sta prendendo il tipo da quella prima. */
+      const own = detectGt(pageText, '');
+      diagnostics.push({ gt: resolved, own: own.gt, page: index + 1, ver: own.ver });
+    }
+
+    const serviceKey = `${resolved}|${ver || ''}`;
     tableStateByService[serviceKey] = tableStateByService[serviceKey] || { currentCode: '', currentRun: 0 };
-    parseOrariPageLines(pageText, gt || lastGt || 'TUTTI', ver, developments, tableStateByService[serviceKey]);
+    parseOrariPageLines(pageText, resolved, ver, developments, tableStateByService[serviceKey]);
   });
 
   return developments;
