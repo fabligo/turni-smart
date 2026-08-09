@@ -13,6 +13,9 @@ test('dice l ora vera dell avviso, non "un ora prima"', () => {
   assert.match(nota, /alle 11:26/);
 });
 
+/* Le 04:00 sono l'attacco piu' presto che l'Accordo prevede - e' l'inizio
+   minimo dei T2R e dei 100 - quindi questo e' il caso limite vero, non un
+   caso di comodo. */
 test('un turno di primo mattino avverte che non e una sveglia', () => {
   const nota = getReminderNote({ start: '04:00' });
   assert.match(nota, /alle 03:00/);
@@ -25,9 +28,12 @@ test('dopo le sei la precisazione sulla sveglia non serve', () => {
   assert.doesNotMatch(nota, /Orologio/);
 });
 
-/* Un'ora prima di mezzanotte e mezza e' il giorno prima: l'ora resta giusta
-   e non deve diventare un numero negativo o un 24:xx. */
-test('l ora prima di un turno di notte non esce dal quadrante', () => {
+/* Difesa, non un caso reale: nessun turno comincia di notte. L'Accordo mette
+   l'attacco piu' presto alle 04:00, e i serali finiscono alle 02:30 ma non
+   cominciano li'. Un 00:30 puo' arrivare solo da un turno battuto a mano con
+   un errore, e allora l'ora tolta deve restare un'ora del quadrante invece di
+   diventare un numero negativo o un 24:xx. */
+test('un orario impossibile non produce un orario impossibile', () => {
   assert.match(getReminderNote({ start: '00:30' }), /alle 23:30/);
 });
 

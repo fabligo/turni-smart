@@ -449,6 +449,12 @@ ballottaggi.
 non a riscriverne l'orario. I turni 900, se compaiono, la scheda lo dice
 invece di trattarli come normali.
 
+**Nessun turno comincia di notte.** L'attacco più presto previsto è alle
+**04:00** (T2R e 100). I serali *finiscono* alle 02:30 ma non cominciano lì:
+un turno che scavalca la mezzanotte è normale, uno che parte a mezzanotte non
+esiste. Vale la pena saperlo prima di costruire un caso di prova su un orario
+notturno — è già successo, e l'ha corretto chi guida.
+
 I **ballottaggi** (`BALLOTTAGGI`, da B00 in poi) descrivono quali tipologie
 un ballottaggio comprende.
 
