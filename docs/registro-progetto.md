@@ -715,7 +715,172 @@ contiene davvero.
 
 ---
 
-## 13. Cosa resta aperto
+## 13. L'app senza rete — il service worker
+
+I turni e i PDF sono sempre stati nel telefono, in `localStorage`. Mancava il
+programma per aprirli: senza campo — in deposito, in galleria, nel sottopasso —
+la pagina non partiva. Il paradosso era questo, ed è quello che il service
+worker risolve.
+
+### Perché il primo tentativo era stato rimosso
+
+Una versione passata dell'app ne registrava già uno. Si è rotto nel modo
+classico: è rimasto a servire file vecchi anche dopo una pubblicazione nuova,
+e l'unico modo di uscirne era `public/reset-cache.html`. Quel file esiste per
+questo, e il codice in `src/main.jsx` che *disinstallava* i service worker era
+la pulizia di quel guasto.
+
+Quel difetto ha una causa nota — cache non legata alla versione, e ricambio mai
+imposto — e qui è affrontata su quattro fronti, tutti in `src/sw.js`:
+
+1. **Le cache portano la versione nel nome.** Quando cambia, la vecchia non
+   viene aggiornata: viene cancellata.
+2. **`dist/sw.js` cambia a ogni pubblicazione**, e il client lo registra con
+   `updateViaCache: 'none'`: il browser non lo serve mai dalla propria cache
+   HTTP, quindi si accorge sempre che c'è qualcosa di nuovo.
+3. **Il ricambio non avviene di nascosto.** Il service worker nuovo resta in
+   attesa, l'app mostra l'avviso «Versione nuova pronta», e la ricarica parte
+   solo al tocco. Sostituire i file sotto i piedi di chi sta guardando il turno
+   di domani manderebbe in errore il primo tocco successivo.
+4. **`reset-cache.html` non viene mai intercettata.** La via di fuga manuale
+   deve funzionare anche quando il colpevole è il service worker stesso.
+
+La marca di build in fondo alla schermata resta la verifica dall'esterno: se
+dice la data giusta, stai guardando l'ultima versione.
+
+### Due cache, due vite diverse
+
+La distinzione conta, ed è la ragione per cui non basta una cache sola:
+
+- **`turni-smart-core-<versione>`** — i file dal nome fisso: `index.html`, il
+  manifest, le icone. Il contenuto può cambiare senza che cambi il nome,
+  quindi la cache è legata alla versione e viene rifatta a ogni pubblicazione.
+- **`turni-smart-immutable`** — i file che Vite firma con l'impronta del
+  contenuto (`index-Rs3mXWnI.js`): a parità di nome sono identici per sempre.
+  **Non** è legata alla versione, apposta: così il worker di pdf.js da 2,3 MB
+  non viene riscaricato a ogni pubblicazione quando non è cambiato. Le voci
+  che non servono più vengono tolte all'attivazione.
+
+Il worker di pdf.js è inoltre l'unico file **facoltativo**: viene preso con
+`allSettled`, fuori dall'elenco bloccante. Se entrasse tra i file obbligatori,
+una rete che cade a metà di quei 2,3 MB annullerebbe tutta l'installazione. La
+shell, invece, o c'è tutta o non si installa: meglio nessun aggiornamento che
+un aggiornamento a metà.
+
+### Come viene costruito
+
+`src/sw.js` è un modello con dei segnaposto. Al momento della build, il plugin
+in `vite.config.js` ci scrive dentro l'elenco dei file di *quella* build e lo
+pubblica come `dist/sw.js`. Due dettagli che sono già costati un difetto
+ciascuno:
+
+- Il plugin è **`enforce: 'post'`**. Senza, `index.html` non c'è ancora quando
+  l'elenco viene calcolato — il plugin HTML di Vite lo crea dentro
+  `generateBundle` — e si conserverebbe tutto tranne la pagina da aprire.
+  L'offline sembrava funzionare e non funzionava.
+- La **versione è l'impronta del contenuto**, non la data di build: due build
+  identiche devono dare la stessa versione, altrimenti l'app annuncia
+  aggiornamenti che non esistono.
+
+La parte che decide "questo file è immutabile, quest'altro no" è coperta da
+`tests/serviceWorker.test.js`, compreso il caso del segnaposto dimenticato:
+produrrebbe un service worker che va in errore all'avvio e lascia l'app senza
+offline **senza dire niente**, quindi ferma la build.
+
+### Come è stato verificato
+
+I test della suite non bastavano — § 16 lo dice, ed è vero anche qui: un
+service worker si rompe in modi che Node non vede. La verifica è stata fatta in
+Chromium con Playwright, controllando le cose che contano davvero: che la app
+si apra e si disegni **davvero offline**, che `reset-cache.html` fallisca
+offline (prova che non è intercettata), che l'avviso compaia solo quando esiste
+una versione nuova, che dopo «Aggiorna» resti **una sola** cache core e quella
+immutabile sopravviva, e che al primo avvio la pagina **non** si ricarichi da
+sola.
+
+Quest'ultimo è il difetto più facile da introdurre: `controllerchange` scatta
+anche al primo `clients.claim()`, e ricaricare lì significa un riavvio a
+sorpresa ogni volta che l'app viene aperta la prima volta. Si ricarica solo se
+il cambio l'ha chiesto l'utente.
+
+### Cosa il service worker non fa
+
+Non porta le notifiche. Le sveglie del turno restano quelle del calendario
+(§ 12): una notifica web programmata richiederebbe un server, e questo progetto
+non ne ha né deve averne.
+
+---
+
+## 14. Le sveglie del mattino
+
+Il Riepilogo elenca ogni turno che attacca **dalle 04:00 alle 08:30** con la
+sua sveglia — un'ora prima dell'attacco — e le esporta tutte in un colpo solo.
+`src/utils/wakeAlarms.js`, `buildWakeAlarmsICS()` in `calendarExport.js`, il
+riquadro in `PreconoscenzaOverview.jsx`. I passaggi per l'utente stanno in
+`docs/sveglia-automatica.md`.
+
+**Il vincolo che spiega tutta la forma:** su iPhone nessuna app può creare una
+sveglia dell'Orologio. Può farlo solo Comandi Rapidi. Quindi il lavoro è
+diviso: l'app decide **quali** turni e **a che ora** — la parte che richiede di
+sapere cos'è un turno, e che sta qui coperta dai test — e una scorciatoia
+dell'utente trasforma l'evento di domani in una sveglia vera. La scorciatoia
+resta ignorante di proposito: non sa niente di GTT, quindi non si rompe quando
+cambia qualcosa nei turni.
+
+### Tre decisioni da non ribaltare per distrazione
+
+1. **Il filtro è l'ora d'attacco, non la categoria dell'Accordo.** Un 100 è
+   "Ripresa unica mattino", ma anche un T2R 001-049 ha `earliestStart: '04:00'`
+   e chi lo fa deve alzarsi uguale. Nei dati demo c'è il caso reale: il turno
+   31 che attacca alle 05:54 entra nell'elenco, e con un filtro per categoria
+   sarebbe rimasto fuori — cioè senza sveglia proprio il turno che ne ha più
+   bisogno.
+2. **La finestra è un dato dell'utente, non una deduzione.** `04:00-08:30`,
+   estremi compresi (`ALARM_WINDOW_FROM_MINUTES` / `ALARM_WINDOW_TO_MINUTES`).
+   Il limite alto è compreso perché fra una sveglia di troppo e una mancante,
+   la seconda costa un turno.
+   Nella prima stesura questa soglia era agganciata a `EARLY_START_MINUTES`
+   (06:00) di `shiftTiming.js`, con l'argomento che due definizioni di "turno
+   che richiede la sveglia" avrebbero finito per divergere. L'argomento era
+   sbagliato perché le domande sono due, non una: `EARLY_START_MINUTES` decide
+   quando *suggerire* la sveglia nella card, la finestra decide per quali
+   turni il telefono deve *suonare*. Alla prima l'app risponde da sé, alla
+   seconda risponde il committente — ed è la regola generale del progetto
+   (§ 1). Le due costanti ora sono separate e ognuna dice nel commento che
+   cos'è l'altra.
+3. **L'anticipo qui è 60 minuti, nella card 75.** Non è una svista: il 75 è un
+   consiglio a schermo (`DEFAULT_WAKE_LEAD_MINUTES`), il 60 è un orario che
+   suona davvero ed è quello che è stato chiesto. Due numeri per due domande.
+
+### Il titolo è un contratto
+
+`WAKE_EVENT_PREFIX` (`Sveglia turno`) è cercato dalla scorciatoia dell'utente.
+Cambiarlo la fa smettere di trovare gli eventi **in silenzio**, e uno se ne
+accorge la mattina che non suona. C'è un test che lo blocca; se va cambiato
+davvero, va cambiato anche nella scorciatoia, e va detto all'utente.
+
+### Cosa succede a chi non costruisce la scorciatoia
+
+Gli eventi portano un `VALARM` a `TRIGGER:-PT0M`, quindi il calendario avvisa
+comunque all'ora esatta. È meglio di niente e **peggio di una sveglia**: a
+telefono silenziato non suona. L'app lo dice sotto l'elenco, a schermo, perché
+non è una cosa da scoprire sul campo — vale lo stesso principio della nota
+sul calendario (§ 12): chiamare le notifiche col loro nome.
+
+### Verificato nel browser
+
+Come per il service worker, la suite in Node non basta a dire che il pulsante
+funziona. In Chromium, sui dati demo: il riquadro compare, elenca 9 sveglie,
+ognuna è esattamente un'ora prima del suo attacco, nessun turno fuori dalla
+finestra entra, e il file scaricato ha un evento per riga elencata con il
+titolo giusto. Da lì è emersa anche una cosa da sapere: con lo user agent di iPhone,
+`openCalendarICS` naviga a un `data:` URL — giusto per Safari, bloccato da
+Chromium. Non è un difetto, ma va tenuto presente quando si prova quel
+pulsante in un browser desktop.
+
+---
+
+## 15. Cosa resta aperto
 
 1. **`MERCOLEDI'`** — 17 segmenti su una pagina sola (p18). Oggi vale come
    feriale generico, il che è corretto ma grossolano. Se è una linea
@@ -733,11 +898,13 @@ contiene davvero.
    arrivati già fatti e non hanno test propri. Il vincolo di `AGENTS.md` è
    prudenza, non pigrizia.
 5. **Il bundle è grosso** (~725 kB js, ~2.3 MB il worker pdf.js). Vite
-   avverte a ogni build. Mai affrontato perché mai lamentato.
+   avverte a ogni build. Mai affrontato perché mai lamentato. Il service
+   worker (§ 13) ne attenua l'effetto — la cache immutabile non lo riscarica
+   a ogni pubblicazione — ma la prima apertura resta pesante.
 
 ---
 
-## 14. Principi che conviene mantenere
+## 16. Principi che conviene mantenere
 
 Sono impliciti in tutto il codice, e spiegano scelte che altrimenti sembrano
 scomode.
@@ -764,5 +931,6 @@ scomode.
 
 ---
 
-*Ultimo aggiornamento: 8 agosto 2026, dopo la PR #40. Copre dal commit
-`7f8a70d` (26 maggio 2026) in poi.*
+*Ultimo aggiornamento: 9 agosto 2026, con il service worker (§ 13) e le
+sveglie del mattino (§ 14). Copre dal commit `7f8a70d` (26 maggio 2026) in
+poi.*

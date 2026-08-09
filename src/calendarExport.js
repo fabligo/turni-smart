@@ -28,6 +28,10 @@ function dateTime(date, time) {
   return `${dateOnly(date)}T${pad(hours)}${pad(minutes)}00`;
 }
 
+function dateTimeFromDate(date) {
+  return `${dateOnly(date)}T${pad(date.getHours())}${pad(date.getMinutes())}00`;
+}
+
 function stamp(date = new Date()) {
   return `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}T${pad(date.getUTCHours())}${pad(
     date.getUTCMinutes(),
@@ -150,7 +154,11 @@ export function getReminderNote(shift) {
   /* Sotto le sei del mattino la differenza fra una notifica e una sveglia
      conta davvero: la notifica non suona a telefono silenziato. */
   const earlyShift = startMinutes !== null && startMinutes < 6 * 60;
-  return earlyShift ? `${base} Sono avvisi del calendario, non una sveglia: quella impostala in Orologio.` : base;
+  /* Chi legge questa nota sta pensando alla sveglia proprio adesso: e' il
+     momento giusto per dire che esiste il modo di impostarle tutte insieme. */
+  return earlyShift
+    ? `${base} Sono avvisi del calendario, non una sveglia: quella impostala in Orologio, oppure imposta le sveglie di tutto il periodo dal Riepilogo.`
+    : base;
 }
 
 export function buildICS(entries, developments = {}) {
@@ -165,6 +173,47 @@ export function buildICS(entries, developments = {}) {
 }
 
 export const buildRangeICS = buildICS;
+
+/* Il titolo e' un contratto, non una scritta: la scorciatoia che crea le
+   sveglie in Orologio cerca gli eventi da qui. Cambiarlo le fa smettere di
+   trovare niente **in silenzio**, e uno se ne accorge la mattina che non
+   suona. Se va cambiato, va cambiato anche nella scorciatoia dell'utente. */
+export const WAKE_EVENT_PREFIX = 'Sveglia turno';
+
+/**
+ * Un calendario di sole sveglie: un evento per ogni turno che richiede di
+ * alzarsi, all'ora in cui deve suonare.
+ *
+ * Serve a due cose insieme. Da solo e' gia' meglio di niente: il calendario
+ * avvisa all'ora giusta. Ma il suo lavoro vero e' fare da ponte verso
+ * l'Orologio, l'unico che su iPhone suona a telefono silenziato: una
+ * scorciatoia legge l'evento di domani e ne ricava una sveglia vera.
+ * I passaggi stanno in `docs/sveglia-automatica.md`.
+ */
+export function buildWakeAlarmsICS(alarms = []) {
+  const events = alarms.map((alarm) =>
+    eventBlock({
+      uid: `turni-smart-sveglia-${alarm.iso}@local`,
+      dtStart: dateTimeFromDate(alarm.wakeAt),
+      /* Quindici minuti: abbastanza da vedersi nella griglia del calendario,
+         abbastanza poco da non sembrare un impegno. */
+      dtEnd: dateTimeFromDate(new Date(alarm.wakeAt.getTime() + 15 * 60000)),
+      summary: `${WAKE_EVENT_PREFIX} ${alarm.line} ${alarm.turn}`,
+      description: [`Attacco ${alarm.startTime}`, `Linea ${alarm.line}`, `Turno ${alarm.turn}`].join('\n'),
+      alarms: [{ trigger: '-PT0M', description: `Sveglia: turno ${alarm.line} ${alarm.turn} alle ${alarm.startTime}.` }],
+    }),
+  );
+
+  return [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Turni Smart//IT',
+    'CALSCALE:GREGORIAN',
+    'X-WR-CALNAME:Sveglie turni',
+    ...events,
+    'END:VCALENDAR',
+  ].join('\r\n');
+}
 
 export function buildBallotICS(entries = []) {
   return buildICS(entries.filter((day) => day?.t === 'RIS'), {});

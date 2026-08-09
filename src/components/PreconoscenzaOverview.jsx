@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Icon } from './Icon.jsx';
+import { ALARM_WINDOW_LABEL, summarizeWakeAlarms } from '../utils/wakeAlarms.js';
 import {
   OVERVIEW_FILTERS,
   TIMELINE_TICKS,
@@ -123,6 +124,67 @@ function OverviewDay({ row, onSelectDay }) {
   );
 }
 
+const WEEKDAY_SHORT = ['DOM', 'LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB'];
+
+function formatAlarmDay(iso) {
+  const date = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return iso;
+  return `${WEEKDAY_SHORT[date.getDay()]} ${date.getDate()}`;
+}
+
+/* Prima di impostare venti sveglie notturne uno vuole vedere quali sono.
+   L'elenco non e' un dettaglio di cortesia: e' il controllo. Un turno di
+   troppo qui significa un telefono che suona alle tre in un giorno di riposo,
+   uno mancante significa un turno perso. */
+function WakeAlarmsBlock({ alarms = [], onSetWakeAlarms }) {
+  if (!onSetWakeAlarms) return null;
+
+  const summary = summarizeWakeAlarms(alarms);
+
+  return (
+    <section className="wake-alarms" aria-labelledby="wake-alarms-title">
+      <div className="wake-alarms__head">
+        <div>
+          <h3 id="wake-alarms-title">
+            <Icon name="clock" size={17} />
+            Sveglie del mattino
+          </h3>
+          <p>
+            {summary.count
+              ? `${summary.count} ${summary.count === 1 ? 'turno attacca' : 'turni attaccano'} ${ALARM_WINDOW_LABEL}. Sveglia un'ora prima dell'attacco, dalle ${summary.earliest} alle ${summary.latest}.`
+              : `Nessun turno del periodo attacca ${ALARM_WINDOW_LABEL}.`}
+          </p>
+        </div>
+        <button className="small-button" disabled={!summary.count} onClick={onSetWakeAlarms} type="button">
+          Imposta le sveglie
+        </button>
+      </div>
+
+      {summary.count ? (
+        <>
+          <ul className="wake-alarms__list">
+            {alarms.map((alarm) => (
+              <li key={alarm.iso}>
+                <span className="wake-alarms__day">{formatAlarmDay(alarm.iso)}</span>
+                <strong>{alarm.wakeTime}</strong>
+                <span className="wake-alarms__shift">
+                  turno {alarm.line} {alarm.turn}, attacco {alarm.startTime}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {/* Va detto qui, non solo nella documentazione: chi preme si aspetta
+              che suoni, e senza la scorciatoia questi restano avvisi. */}
+          <p className="wake-alarms__note">
+            Si apre il calendario per confermare. Perche' suonino come sveglie vere, anche a telefono silenziato, serve la
+            scorciatoia descritta in <strong>docs/sveglia-automatica.md</strong>: senza, restano avvisi del calendario.
+          </p>
+        </>
+      ) : null}
+    </section>
+  );
+}
+
 export function PreconoscenzaOverview({
   days = {},
   enrichedDays = {},
@@ -131,7 +193,9 @@ export function PreconoscenzaOverview({
   onClose,
   onExportCsv,
   onSelectDay,
+  onSetWakeAlarms,
   onShareInfographic,
+  wakeAlarms = [],
 }) {
   const [filter, setFilter] = useState('tutto');
 
@@ -231,6 +295,8 @@ export function PreconoscenzaOverview({
       ) : (
         <p className="overview-empty">Nessun giorno da mostrare con questo filtro.</p>
       )}
+
+      <WakeAlarmsBlock alarms={wakeAlarms} onSetWakeAlarms={onSetWakeAlarms} />
 
       <footer className="overview-actions">
         <button className="small-button" disabled={!summary.days} onClick={onAddPeriodToCalendar} type="button">
