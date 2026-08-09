@@ -10,7 +10,8 @@ import {
   toIso,
 } from './parserPreconoscenza.js';
 import { computeStats, enrichShiftDays, getNextWorkingShift } from './analytics.js';
-import { buildBallotICS, buildICS, openCalendarICS } from './calendarExport.js';
+import { buildBallotICS, buildICS, buildWakeAlarmsICS, openCalendarICS } from './calendarExport.js';
+import { collectWakeAlarms } from './utils/wakeAlarms.js';
 import { createDemoPreconoscenza, DEMO_DEVELOPMENTS } from './demoData.js';
 import {
   buildBackup,
@@ -877,6 +878,10 @@ export default function App() {
 
   const enrichedDays = useMemo(() => (pdfLoaded ? enrichShiftDays(days, developments) : {}), [days, developments, pdfLoaded]);
 
+  /* Le sveglie di tutto il periodo, calcolate una volta sola: il Riepilogo le
+     elenca e il pulsante le esporta, e devono essere le stesse. */
+  const wakeAlarms = useMemo(() => collectWakeAlarms(enrichedDays), [enrichedDays]);
+
   /* Il giorno con cui la app si apre: oggi se c'e' in preconoscenza, altrimenti
      domani, altrimenti il primo della settimana. La card la costruisce
      cardForDay, che fa gia' tutto il resto. */
@@ -1010,6 +1015,11 @@ export default function App() {
     return {
       add: () => openCalendarICS(content, filename),
     };
+  }
+
+  function setWakeAlarms() {
+    if (!wakeAlarms.length) return;
+    openCalendarICS(buildWakeAlarmsICS(wakeAlarms), 'sveglie-turni.ics');
   }
 
   function addBallotsToCalendar() {
@@ -1566,8 +1576,10 @@ export default function App() {
                 onClose={showDaySearch}
                 onExportCsv={() => exportCsv('preconoscenza-completa.csv', allDayEntries)}
                 onSelectDay={openDayFromOverview}
+                onSetWakeAlarms={setWakeAlarms}
                 onShareInfographic={shareReadablePreconoscenza}
                 pdfInfo={pdfInfo}
+                wakeAlarms={wakeAlarms}
               />
             </div>
           ) : null}

@@ -789,7 +789,7 @@ offline **senza dire niente**, quindi ferma la build.
 
 ### Come è stato verificato
 
-I test della suite non bastavano — § 15 lo dice, ed è vero anche qui: un
+I test della suite non bastavano — § 16 lo dice, ed è vero anche qui: un
 service worker si rompe in modi che Node non vede. La verifica è stata fatta in
 Chromium con Playwright, controllando le cose che contano davvero: che la app
 si apra e si disegni **davvero offline**, che `reset-cache.html` fallisca
@@ -811,7 +811,68 @@ non ne ha né deve averne.
 
 ---
 
-## 14. Cosa resta aperto
+## 14. Le sveglie del mattino
+
+Il Riepilogo elenca ogni turno che attacca prima delle 06:00 con la sua
+sveglia — un'ora prima dell'attacco — e le esporta tutte in un colpo solo.
+`src/utils/wakeAlarms.js`, `buildWakeAlarmsICS()` in `calendarExport.js`, il
+riquadro in `PreconoscenzaOverview.jsx`. I passaggi per l'utente stanno in
+`docs/sveglia-automatica.md`.
+
+**Il vincolo che spiega tutta la forma:** su iPhone nessuna app può creare una
+sveglia dell'Orologio. Può farlo solo Comandi Rapidi. Quindi il lavoro è
+diviso: l'app decide **quali** turni e **a che ora** — la parte che richiede di
+sapere cos'è un turno, e che sta qui coperta dai test — e una scorciatoia
+dell'utente trasforma l'evento di domani in una sveglia vera. La scorciatoia
+resta ignorante di proposito: non sa niente di GTT, quindi non si rompe quando
+cambia qualcosa nei turni.
+
+### Tre decisioni da non ribaltare per distrazione
+
+1. **Il filtro è l'ora d'attacco, non la categoria dell'Accordo.** Un 100 è
+   "Ripresa unica mattino", ma anche un T2R 001-049 ha `earliestStart: '04:00'`
+   e chi lo fa deve alzarsi uguale. Nei dati demo c'è il caso reale: il turno
+   31 che attacca alle 05:54 entra nell'elenco, e con un filtro per categoria
+   sarebbe rimasto fuori — cioè senza sveglia proprio il turno che ne ha più
+   bisogno.
+2. **La soglia è una sola.** `EARLY_START_MINUTES` in `shiftTiming.js` è stata
+   esportata apposta: era già la risposta dell'app a "quando serve la
+   sveglia", per il suggerimento nella card. Due definizioni di "turno che
+   richiede la sveglia" finirebbero per non coincidere, e la differenza si
+   scoprirebbe una mattina che il telefono non suona.
+3. **L'anticipo qui è 60 minuti, nella card 75.** Non è una svista: il 75 è un
+   consiglio a schermo (`DEFAULT_WAKE_LEAD_MINUTES`), il 60 è un orario che
+   suona davvero ed è quello che è stato chiesto. Due numeri per due domande.
+
+### Il titolo è un contratto
+
+`WAKE_EVENT_PREFIX` (`Sveglia turno`) è cercato dalla scorciatoia dell'utente.
+Cambiarlo la fa smettere di trovare gli eventi **in silenzio**, e uno se ne
+accorge la mattina che non suona. C'è un test che lo blocca; se va cambiato
+davvero, va cambiato anche nella scorciatoia, e va detto all'utente.
+
+### Cosa succede a chi non costruisce la scorciatoia
+
+Gli eventi portano un `VALARM` a `TRIGGER:-PT0M`, quindi il calendario avvisa
+comunque all'ora esatta. È meglio di niente e **peggio di una sveglia**: a
+telefono silenziato non suona. L'app lo dice sotto l'elenco, a schermo, perché
+non è una cosa da scoprire sul campo — vale lo stesso principio della nota
+sul calendario (§ 12): chiamare le notifiche col loro nome.
+
+### Verificato nel browser
+
+Come per il service worker, la suite in Node non basta a dire che il pulsante
+funziona. In Chromium, sui dati demo: il riquadro compare, elenca 9 sveglie,
+ognuna è esattamente un'ora prima del suo attacco, nessun turno dalle 06:00 in
+poi entra, e il file scaricato ha un evento per riga elencata con il titolo
+giusto. Da lì è emersa anche una cosa da sapere: con lo user agent di iPhone,
+`openCalendarICS` naviga a un `data:` URL — giusto per Safari, bloccato da
+Chromium. Non è un difetto, ma va tenuto presente quando si prova quel
+pulsante in un browser desktop.
+
+---
+
+## 15. Cosa resta aperto
 
 1. **`MERCOLEDI'`** — 17 segmenti su una pagina sola (p18). Oggi vale come
    feriale generico, il che è corretto ma grossolano. Se è una linea
@@ -835,7 +896,7 @@ non ne ha né deve averne.
 
 ---
 
-## 15. Principi che conviene mantenere
+## 16. Principi che conviene mantenere
 
 Sono impliciti in tutto il codice, e spiegano scelte che altrimenti sembrano
 scomode.
@@ -862,5 +923,6 @@ scomode.
 
 ---
 
-*Ultimo aggiornamento: 9 agosto 2026, con l'arrivo del service worker (§ 13).
-Copre dal commit `7f8a70d` (26 maggio 2026) in poi.*
+*Ultimo aggiornamento: 9 agosto 2026, con il service worker (§ 13) e le
+sveglie del mattino (§ 14). Copre dal commit `7f8a70d` (26 maggio 2026) in
+poi.*

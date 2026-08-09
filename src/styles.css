@@ -5828,3 +5828,94 @@ a.inline-action--gtt {
   padding: 0;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Sveglie del mattino */
+/* L'elenco e' il controllo prima di impostare venti sveglie notturne: sta
+   dentro il Riepilogo, sopra le azioni di esportazione. */
+.wake-alarms {
+  display: grid;
+  gap: 10px;
+  margin-top: var(--s4);
+  border: 1px solid rgba(141, 216, 255, 0.24);
+  border-radius: 16px;
+  background: rgba(4, 30, 54, 0.32);
+  padding: 14px;
+}
+
+.wake-alarms__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.wake-alarms__head h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 3px;
+  color: var(--yellow);
+  font-size: 0.92rem;
+  font-weight: 850;
+}
+
+.wake-alarms__head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.wake-alarms__list {
+  display: grid;
+  gap: 2px;
+  /* Oltre una decina di righe l'elenco non va letto tutto: scorre. */
+  max-height: 232px;
+  margin: 0;
+  overflow-y: auto;
+  padding: 0;
+  list-style: none;
+}
+
+.wake-alarms__list li {
+  display: grid;
+  grid-template-columns: 58px 52px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.wake-alarms__list li:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.wake-alarms__day {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.wake-alarms__list strong {
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.wake-alarms__shift {
+  color: var(--muted);
+  font-size: 0.74rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wake-alarms__note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
