@@ -320,14 +320,22 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
       vehicleNumber: vehicleRecord.value,
     };
   });
-  const isSplit = segments.length > 1 || shift.isSplit;
+  /* Due cose diverse che prima erano una sola. "A due riprese" lo dice la
+     nomenclatura dell'Accordo e riguarda il turno; "piu' tratti" riguarda lo
+     sviluppo, e capita anche a un turno a ripresa unica che si ferma venti
+     minuti al capolinea. Solo la prima merita un'etichetta. */
+  const isSplit = Boolean(enrichment?.isSplit ?? shift.isSplit);
+  const hasMultipleLegs = segments.length > 1;
   const isEvening = Boolean(enrichment?.isEvening ?? shift.isEvening);
   const isShortRest = Boolean(enrichment?.isShortRest ?? shift.isShortRest);
+  const restMinutes = enrichment?.restMinutes ?? shift.restMinutes ?? null;
   const category = enrichment?.category || shift.category;
   const hasSegments = segments.length > 0;
-  const splitPause = segments.length > 1 ? minutesBetween(segments[0].end, segments[1].start) : null;
+  const legPause = hasMultipleLegs ? minutesBetween(segments[0].end, segments[1].start) : null;
   const dateParts = getDateParts(shift.date);
-  const canFlipDevelopment = isSplit && hasSegments;
+  /* Lo sviluppo si apre quando c'e' piu' di un tratto da leggere, che e' una
+     domanda sullo sviluppo e non sulla categoria del turno. */
+  const canFlipDevelopment = hasMultipleLegs && hasSegments;
   const showEveningBadge = isEvening && category?.badge !== 'Serale';
   const categoryIconName = getCategoryIconName(category, { ...shift, isEvening, isShortRest, isSplit });
   const categoryTitle = buildCategoryTitle(category);
@@ -396,9 +404,16 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
               <div className="shift-badge-row" aria-label="Classificazione turno">
                 {dayData?.isGerbidoLine ? <span className="shift-badge shift-badge--line">Gerbido</span> : null}
                 {dayData && !dayData.isGerbidoLine ? <span className="shift-badge shift-badge--rest">Linea non riconosciuta</span> : null}
-                {isSplit ? <span className="shift-badge shift-badge--warning">Spezzato</span> : null}
+                {isSplit ? <span className="shift-badge shift-badge--warning">2 riprese</span> : null}
                 {showEveningBadge ? <span className="shift-badge shift-badge--evening">Serale</span> : null}
-                {isShortRest ? <span className="shift-badge shift-badge--rest">Riposo breve</span> : null}
+                {/* "Riposo breve" da solo non dice niente: il numero si', ed
+                    e' quello che interessa - quanto si sta a casa fra il turno
+                    prima e questo. */}
+                {isShortRest ? (
+                  <span className="shift-badge shift-badge--rest">
+                    {restMinutes ? `${formatMinutes(restMinutes)} dal turno prima` : 'Riposo breve'}
+                  </span>
+                ) : null}
               </div>
             </div>
 
@@ -444,16 +459,12 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
               <Icon name="compass" size={14} />
               Dir. {DIRECTION_LABELS[shift.direction] || shift.direction}
             </span>
-            {shift.duration ? (
-              <span className="shift-meta-chip">
-                <Icon name="clock" size={14} />
-                Dur. {shift.duration}
-              </span>
-            ) : null}
+            {/* La durata sta gia' in evidenza nella riga degli orari, sopra:
+                scriverla due volte nella stessa card non aggiunge niente. */}
           </div>
 
           {!canFlipDevelopment ? (
-            <DevelopmentPanel hasSegments={hasSegments} isSplit={isSplit} onVehicleNumberChange={updateSegmentVehicle} segments={segments} splitPause={splitPause} />
+            <DevelopmentPanel hasMultipleLegs={hasMultipleLegs} hasSegments={hasSegments} isSplit={isSplit} legPause={legPause} onVehicleNumberChange={updateSegmentVehicle} segments={segments} />
           ) : null}
         </div>
 
@@ -471,7 +482,7 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
                 Torna al turno
               </button>
             </div>
-            <DevelopmentPanel expanded hasSegments={hasSegments} isSplit={isSplit} onVehicleNumberChange={updateSegmentVehicle} segments={segments} splitPause={splitPause} />
+            <DevelopmentPanel expanded hasMultipleLegs={hasMultipleLegs} hasSegments={hasSegments} isSplit={isSplit} legPause={legPause} onVehicleNumberChange={updateSegmentVehicle} segments={segments} />
           </div>
         ) : null}
       </div>
@@ -539,7 +550,7 @@ function ShiftTiming({ dayData, duration }) {
   );
 }
 
-function DevelopmentPanel({ expanded = false, hasSegments, isSplit, onVehicleNumberChange, segments, splitPause }) {
+function DevelopmentPanel({ expanded = false, hasMultipleLegs, hasSegments, isSplit, legPause, onVehicleNumberChange, segments }) {
   return (
     <div className={expanded ? 'shift-development shift-development--expanded' : 'shift-development'} aria-label="Sviluppo turno">
       <h4>Sviluppo turno</h4>
@@ -566,7 +577,7 @@ function DevelopmentPanel({ expanded = false, hasSegments, isSplit, onVehicleNum
             }
 
             return (
-              <div className={isSplit ? 'shift-segment is-split' : 'shift-segment'} key={`${segment.start}-${segment.end}-${index}`}>
+              <div className={hasMultipleLegs ? 'shift-segment is-split' : 'shift-segment'} key={`${segment.start}-${segment.end}-${index}`}>
                 <span className="segment-index">{index + 1}</span>
                 <strong>
                   {segment.start} - {segment.end}
@@ -610,7 +621,14 @@ function DevelopmentPanel({ expanded = false, hasSegments, isSplit, onVehicleNum
               </div>
             );
           })}
-          {splitPause !== null ? <p className="split-pause">Pausa tra le riprese: {formatMinutes(splitPause)}</p> : null}
+          {/* Fra due riprese c'e' una pausa vera, fra due tratti dello stesso
+              servizio una sosta: chiamarle con lo stesso nome faceva sembrare
+              spezzato un turno che non lo e'. */}
+          {legPause !== null ? (
+            <p className="split-pause">
+              {isSplit ? 'Pausa tra le riprese' : 'Sosta tra i tratti'}: {formatMinutes(legPause)}
+            </p>
+          ) : null}
         </>
       ) : (
         <p className="development-empty">

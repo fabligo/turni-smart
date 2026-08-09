@@ -5,18 +5,18 @@ export function StatsPanel({ stats, title = 'Statistiche periodo' }) {
   const turni = Number(byLabel.Turni || 0);
   const riposi = Number(byLabel.Riposi || 0);
   const ballottaggi = Number(byLabel.Ballottaggi || 0);
-  const spezzati = Number(byLabel.Spezzati || 0);
+  const dueRiprese = Number(byLabel['2 riprese'] || 0);
   const serali = Number(byLabel.Serali || 0);
   const riposiBrevi = Number(byLabel['Riposi brevi'] || 0);
   const totale = Math.max(turni + riposi + ballottaggi, 1);
-  const maxBar = Math.max(turni, riposi, spezzati, serali, ballottaggi, riposiBrevi, 1);
+  const maxBar = Math.max(turni, riposi, dueRiprese, serali, ballottaggi, riposiBrevi, 1);
   const workPercent = Math.round((turni / totale) * 100);
   const restPercent = Math.round((riposi / totale) * 100);
   const ballotPercent = Math.round((ballottaggi / totale) * 100);
   const bars = [
     { label: 'Turni', value: turni, icon: 'bus', color: '#0b7bd3' },
     { label: 'Riposi', value: riposi, icon: 'rest', color: '#1b7a3d' },
-    { label: 'Spezzati', value: spezzati, icon: 'route', color: '#e65100' },
+    { label: '2 riprese', value: dueRiprese, icon: 'route', color: '#e65100' },
     { label: 'Serali', value: serali, icon: 'stats', color: '#5b189a' },
     { label: 'Ballottaggi', value: ballottaggi, icon: 'calendar', color: '#c62828' },
     { label: 'Riposi brevi', value: riposiBrevi, icon: 'rest', color: '#00897b' },

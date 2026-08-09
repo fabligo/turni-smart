@@ -309,6 +309,7 @@ function buildShiftCard(day, prefix = '', enrichment = null) {
     isSplit: Boolean(enrichment?.isSplit),
     isEvening: Boolean(enrichment?.isEvening),
     isShortRest: Boolean(enrichment?.isShortRest),
+    restMinutes: enrichment?.restMinutes ?? null,
   };
 }
 
@@ -338,7 +339,7 @@ function buildStats(days, developments) {
     { label: 'Turni', value: String(stats.totalShifts) },
     { label: 'Riposi', value: String(stats.restDays) },
     { label: 'Ballottaggi', value: String(stats.ballots) },
-    { label: 'Spezzati', value: String(stats.splitShifts) },
+    { label: '2 riprese', value: String(stats.splitShifts) },
     { label: 'Serali', value: String(stats.eveningShifts) },
     { label: 'Riposi brevi', value: String(stats.shortRests) },
     { label: 'Durata media', value: stats.averageShiftDuration.label },

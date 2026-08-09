@@ -28,7 +28,7 @@ export function enrichShiftDays(days = {}, developments = {}) {
     .sort()
     .map((iso) => {
       const day = days[iso];
-      if (!day || day.t !== 'turno') return { iso, day, segments: [], isSplit: false, isEvening: false, isShortRest: false };
+      if (!day || day.t !== 'turno') return { iso, day, segments: [], isSplit: false, isEvening: false, isShortRest: false, restMinutes: null };
 
       const segments = Array.isArray(day.manualSegments) && day.manualSegments.length
         ? day.manualSegments
@@ -39,9 +39,15 @@ export function enrichShiftDays(days = {}, developments = {}) {
         day,
         segments,
         category,
-        isSplit: category.isSplit || segments.length > 1,
+        /* A dire se un turno e' a due riprese e' l'Accordo, non il numero di
+           tratti dello sviluppo. Un 300 e' a ripresa unica anche quando lo
+           sviluppo ha due tratti separati da una sosta tecnica di venti
+           minuti: contare i tratti faceva chiamare "spezzato" mezzo turno a
+           ripresa unica del deposito. */
+        isSplit: category.isSplit,
         isEvening: isEveningShift(day.n, isEveningFallbackByTime({ start: day.i, end: day.e, segments })),
         isShortRest: false,
+        restMinutes: null,
       };
     });
 
@@ -55,7 +61,12 @@ export function enrichShiftDays(days = {}, developments = {}) {
         shiftEndAbsoluteMinutes(previousWorked.day, previousWorked.segments);
       const currentStart =
         new Date(`${entry.iso}T00:00:00`).getTime() / 60000 + shiftStartMinutes(entry.day, entry.segments);
-      entry.isShortRest = currentStart - previousEnd > 0 && currentStart - previousEnd < 660;
+      /* Quanto si sta a casa fra la fine del turno prima e l'inizio di
+         questo. Il numero serve alla card: "riposo breve" da solo non dice
+         niente, "9h 20m dal turno prima" si capisce. */
+      const rest = currentStart - previousEnd;
+      entry.restMinutes = rest > 0 ? rest : null;
+      entry.isShortRest = rest > 0 && rest < 660;
     }
 
     previousWorked = entry;
