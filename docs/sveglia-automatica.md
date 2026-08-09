@@ -37,8 +37,8 @@ filtrare per titolo, che funziona ma è più fragile.
 
 Nella app: **Periodo → Sveglie del mattino**.
 
-Il riquadro elenca ogni turno che attacca prima delle 06:00, con l'ora della
-sveglia — un'ora prima dell'attacco. **Leggi l'elenco prima di premere**: è il
+Il riquadro elenca ogni turno che attacca **dalle 04:00 alle 08:30**, con l'ora
+della sveglia — un'ora prima dell'attacco. **Leggi l'elenco prima di premere**: è il
 controllo. Un giorno di troppo significa un telefono che suona alle tre in un
 riposo; uno mancante significa un turno perso.
 
@@ -87,10 +87,16 @@ l'elenco: non è una cosa da scoprire sul campo.
 
 ## I limiti, detti prima
 
-- **Prima delle 06:00.** La soglia è quella che l'app usa già per suggerire la
-  sveglia nella card del turno (`EARLY_START_MINUTES` in
-  `src/utils/shiftTiming.js`). Un turno che attacca alle 06:15 non entra
-  nell'elenco: se serve anche quello, si alza la soglia in un punto solo.
+- **Dalle 04:00 alle 08:30, estremi compresi.** La finestra è
+  `ALARM_WINDOW_FROM_MINUTES` / `ALARM_WINDOW_TO_MINUTES` in
+  `src/utils/wakeAlarms.js`, e l'ha fissata l'utente. Un turno che attacca alle
+  08:31 non entra; uno alle 08:30 in punto sì, perché fra una sveglia di troppo
+  e una mancante la seconda costa un turno. Il limite basso coincide con
+  l'attacco più presto previsto dall'Accordo, e fa anche da filtro contro le
+  ore illeggibili — che varrebbero 00:00.
+  Da non confondere con `EARLY_START_MINUTES` (06:00) in `shiftTiming.js`:
+  quello decide quando *suggerire* la sveglia nella card del turno, ed è una
+  domanda diversa.
 - **Un'ora prima.** Il suggerimento mostrato nella card del turno usa invece 75
   minuti. Sono due numeri diversi perché rispondono a due domande diverse — un
   consiglio a schermo e un orario che suona — e stanno entrambi scritti nel

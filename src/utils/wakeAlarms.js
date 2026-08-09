@@ -1,6 +1,5 @@
 import { compactTimeToMinutes, timeToMinutes } from './timeUtils.js';
 import { getLineDisplayName } from '../constants/depotGerbido.js';
-import { EARLY_START_MINUTES } from './shiftTiming.js';
 
 /* Le sveglie di tutto il periodo, in un colpo solo.
 
@@ -15,8 +14,25 @@ import { EARLY_START_MINUTES } from './shiftTiming.js';
    unica mattino", ma anche un T2R 001-049 attacca alle 04:00 (vedi
    `earliestStart` in `shiftClassification.js`) e chi lo fa deve alzarsi
    uguale. Guardare la categoria lascerebbe senza sveglia proprio il turno che
-   ne ha piu' bisogno. La soglia e' quella che l'app usa gia' altrove per
-   decidere quando suggerire la sveglia. */
+   ne ha piu' bisogno. */
+
+/* La finestra d'attacco che richiede la sveglia, fissata dall'utente:
+   dalle 04:00 alle 08:30, estremi compresi.
+
+   Il limite basso coincide con l'attacco piu' presto previsto dall'Accordo e
+   fa anche da filtro contro le ore illeggibili, che varrebbero 00:00: una
+   sveglia a mezzanotte sarebbe peggio di nessuna sveglia.
+
+   Il limite alto e' compreso perche' fra "sveglia di troppo" e "sveglia
+   mancante" il secondo costa un turno. Da non confondere con
+   `EARLY_START_MINUTES` di `shiftTiming.js`, che e' piu' stretto e risponde a
+   un'altra domanda: quando *suggerire* la sveglia nella card. */
+export const ALARM_WINDOW_FROM_MINUTES = 4 * 60;
+export const ALARM_WINDOW_TO_MINUTES = 8 * 60 + 30;
+
+/* Una sola scrittura della finestra, cosi' il testo a schermo, i documenti e
+   il filtro non possono raccontare tre cose diverse. */
+export const ALARM_WINDOW_LABEL = 'dalle 04:00 alle 08:30';
 
 /* Un'ora fra sveglia e presa servizio, come richiesto. `shiftTiming.js` ne usa
    75 per il *suggerimento* mostrato nella card: quello e' un consiglio a
@@ -55,16 +71,17 @@ function dayStart(entry) {
  */
 export function collectWakeAlarms(enrichedDays = {}, options = {}) {
   const leadMinutes = Number.isFinite(options.leadMinutes) ? options.leadMinutes : DEFAULT_ALARM_LEAD_MINUTES;
-  const beforeMinutes = Number.isFinite(options.beforeMinutes) ? options.beforeMinutes : EARLY_START_MINUTES;
+  const fromMinutes = Number.isFinite(options.fromMinutes) ? options.fromMinutes : ALARM_WINDOW_FROM_MINUTES;
+  const toMinutes = Number.isFinite(options.toMinutes) ? options.toMinutes : ALARM_WINDOW_TO_MINUTES;
 
   return Object.values(enrichedDays)
     .filter((entry) => entry?.day?.t === 'turno')
     .map((entry) => {
       const startMinutes = startMinutesOf(entry);
       const base = dayStart(entry);
-      /* `startMinutes > 0` tiene fuori i turni senza ora leggibile: una
-         sveglia a mezzanotte sarebbe peggio di nessuna sveglia. */
-      if (!base || !Number.isFinite(startMinutes) || startMinutes <= 0 || startMinutes >= beforeMinutes) return null;
+      /* Estremi compresi: un turno che attacca alle 08:30 in punto la sveglia
+         la vuole. */
+      if (!base || !Number.isFinite(startMinutes) || startMinutes < fromMinutes || startMinutes > toMinutes) return null;
 
       const start = new Date(base);
       start.setMinutes(startMinutes);

@@ -11,8 +11,8 @@ Web app per la gestione dei turni GTT, deposito Gerbido.
 - Calendario mensile: vista a griglia con tap per dettaglio
 - Ballottaggio: incolla il turno assegnato direttamente nella card
 - Condivisione: calendario, WhatsApp e copia turno
-- Sveglie: tutti i turni che attaccano prima delle 06:00, con la sveglia
-  un'ora prima, impostate in un colpo solo
+- Sveglie: tutti i turni che attaccano dalle 04:00 alle 08:30, con la
+  sveglia un'ora prima, impostate in un colpo solo
   ([`docs/sveglia-automatica.md`](docs/sveglia-automatica.md))
 - Storico: i documenti caricati restano memorizzati nel browser
 - Senza rete: aggiunta alla Home, la app si apre e funziona anche in deposito

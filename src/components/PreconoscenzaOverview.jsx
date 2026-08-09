@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Icon } from './Icon.jsx';
-import { summarizeWakeAlarms } from '../utils/wakeAlarms.js';
+import { ALARM_WINDOW_LABEL, summarizeWakeAlarms } from '../utils/wakeAlarms.js';
 import {
   OVERVIEW_FILTERS,
   TIMELINE_TICKS,
@@ -151,8 +151,8 @@ function WakeAlarmsBlock({ alarms = [], onSetWakeAlarms }) {
           </h3>
           <p>
             {summary.count
-              ? `${summary.count} ${summary.count === 1 ? 'turno attacca' : 'turni attaccano'} prima delle 06:00. Sveglia un'ora prima dell'attacco, dalle ${summary.earliest} alle ${summary.latest}.`
-              : 'Nessun turno del periodo attacca prima delle 06:00.'}
+              ? `${summary.count} ${summary.count === 1 ? 'turno attacca' : 'turni attaccano'} ${ALARM_WINDOW_LABEL}. Sveglia un'ora prima dell'attacco, dalle ${summary.earliest} alle ${summary.latest}.`
+              : `Nessun turno del periodo attacca ${ALARM_WINDOW_LABEL}.`}
           </p>
         </div>
         <button className="small-button" disabled={!summary.count} onClick={onSetWakeAlarms} type="button">

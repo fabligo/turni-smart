@@ -15,11 +15,12 @@ function turno(i, n, extra = {}) {
   return { t: 'turno', i, n, l: '5', e: '1015', ...extra };
 }
 
-test("prende i turni che attaccano prima delle 06:00 e sveglia un'ora prima", () => {
+test("prende i turni che attaccano fra le 04:00 e le 08:30, sveglia un'ora prima", () => {
   const alarms = collectWakeAlarms(
     enriched([
       ['2026-04-01', turno('0400', '101')],
       ['2026-04-02', turno('0530', '102')],
+      ['2026-04-03', turno('0815', '201')],
     ]),
   );
 
@@ -28,8 +29,31 @@ test("prende i turni che attaccano prima delle 06:00 e sveglia un'ora prima", ()
     [
       ['2026-04-01', '03:00', '04:00'],
       ['2026-04-02', '04:30', '05:30'],
+      ['2026-04-03', '07:15', '08:15'],
     ],
   );
+});
+
+/* Gli estremi sono compresi: fra una sveglia di troppo e una mancante, la
+   seconda costa un turno. */
+test('gli estremi della finestra sono compresi', () => {
+  const alarms = collectWakeAlarms(
+    enriched([
+      ['2026-04-01', turno('0400', '101')],
+      ['2026-04-02', turno('0830', '202')],
+    ]),
+  );
+  assert.deepEqual(alarms.map((alarm) => alarm.startTime), ['04:00', '08:30']);
+});
+
+test('appena fuori dalla finestra non entra', () => {
+  const alarms = collectWakeAlarms(
+    enriched([
+      ['2026-04-01', turno('0359', '101')],
+      ['2026-04-02', turno('0831', '202')],
+    ]),
+  );
+  assert.deepEqual(alarms, []);
 });
 
 /* Guardare la categoria dell'Accordo invece dell'ora lascerebbe senza sveglia
@@ -40,14 +64,26 @@ test("un 2 riprese che attacca alle 04:20 ha la sua sveglia, non solo i 100", ()
   assert.equal(alarms[0].wakeTime, '03:20');
 });
 
-test('i turni che attaccano dalle 06:00 in poi restano fuori', () => {
+test('i turni del pomeriggio e della sera restano fuori', () => {
   const alarms = collectWakeAlarms(
     enriched([
-      ['2026-04-01', turno('0600', '103')],
-      ['2026-04-02', turno('1330', '301')],
+      ['2026-04-01', turno('1130', '301')],
+      ['2026-04-02', turno('1715', '401')],
     ]),
   );
   assert.deepEqual(alarms, []);
+});
+
+/* Un turno delle 06:00 o delle 07:30 prima non entrava: la finestra ora
+   arriva alle 08:30 e li prende. */
+test('la mattina piena rientra nella finestra', () => {
+  const alarms = collectWakeAlarms(
+    enriched([
+      ['2026-04-01', turno('0600', '103')],
+      ['2026-04-02', turno('0730', '204')],
+    ]),
+  );
+  assert.deepEqual(alarms.map((alarm) => alarm.wakeTime), ['05:00', '06:30']);
 });
 
 test('riposi, ballottaggi e giorni senza turno restano fuori', () => {
@@ -71,7 +107,8 @@ test("lo sviluppo, quando c'e', decide l'ora d'attacco", () => {
   assert.equal(alarms[0].wakeTime, '03:35');
 });
 
-/* Una sveglia a mezzanotte sarebbe peggio di nessuna sveglia. */
+/* Un'ora illeggibile vale 00:00: cade sotto il limite basso della finestra, e
+   una sveglia a mezzanotte sarebbe peggio di nessuna sveglia. */
 test("un turno senza ora leggibile non genera sveglie", () => {
   const alarms = collectWakeAlarms(enriched([['2026-04-01', turno('', '101')]]));
   assert.deepEqual(alarms, []);

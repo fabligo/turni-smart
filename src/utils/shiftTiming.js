@@ -5,11 +5,13 @@ import { compactTimeToMinutes } from './timeUtils.js';
 const COUNTDOWN_HORIZON_MINUTES = 48 * 60;
 
 /* Sotto quest'ora di attacco la sveglia va suggerita: e' il turno che si
-   prepara la sera prima. Esportata perche' `utils/wakeAlarms.js` deve usare
-   la stessa soglia: due definizioni di "turno che richiede la sveglia"
-   finirebbero per non coincidere, e la differenza si scoprirebbe una mattina
-   che la sveglia non suona. */
-export const EARLY_START_MINUTES = 6 * 60;
+   prepara la sera prima.
+
+   Da non confondere con la finestra di `utils/wakeAlarms.js`, che e' piu'
+   larga (04:00-08:30). Le due rispondono a domande diverse: qui "vale la pena
+   ricordare la sveglia in questa card", li' "per quali turni il telefono deve
+   suonare davvero". La seconda l'ha fissata l'utente. */
+const EARLY_START_MINUTES = 6 * 60;
 
 /* Tempo tipico tra sveglia e presa servizio: vestirsi, viaggio, margine. */
 const DEFAULT_WAKE_LEAD_MINUTES = 75;

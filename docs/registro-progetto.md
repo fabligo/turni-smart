@@ -813,8 +813,8 @@ non ne ha né deve averne.
 
 ## 14. Le sveglie del mattino
 
-Il Riepilogo elenca ogni turno che attacca prima delle 06:00 con la sua
-sveglia — un'ora prima dell'attacco — e le esporta tutte in un colpo solo.
+Il Riepilogo elenca ogni turno che attacca **dalle 04:00 alle 08:30** con la
+sua sveglia — un'ora prima dell'attacco — e le esporta tutte in un colpo solo.
 `src/utils/wakeAlarms.js`, `buildWakeAlarmsICS()` in `calendarExport.js`, il
 riquadro in `PreconoscenzaOverview.jsx`. I passaggi per l'utente stanno in
 `docs/sveglia-automatica.md`.
@@ -835,11 +835,19 @@ cambia qualcosa nei turni.
    31 che attacca alle 05:54 entra nell'elenco, e con un filtro per categoria
    sarebbe rimasto fuori — cioè senza sveglia proprio il turno che ne ha più
    bisogno.
-2. **La soglia è una sola.** `EARLY_START_MINUTES` in `shiftTiming.js` è stata
-   esportata apposta: era già la risposta dell'app a "quando serve la
-   sveglia", per il suggerimento nella card. Due definizioni di "turno che
-   richiede la sveglia" finirebbero per non coincidere, e la differenza si
-   scoprirebbe una mattina che il telefono non suona.
+2. **La finestra è un dato dell'utente, non una deduzione.** `04:00-08:30`,
+   estremi compresi (`ALARM_WINDOW_FROM_MINUTES` / `ALARM_WINDOW_TO_MINUTES`).
+   Il limite alto è compreso perché fra una sveglia di troppo e una mancante,
+   la seconda costa un turno.
+   Nella prima stesura questa soglia era agganciata a `EARLY_START_MINUTES`
+   (06:00) di `shiftTiming.js`, con l'argomento che due definizioni di "turno
+   che richiede la sveglia" avrebbero finito per divergere. L'argomento era
+   sbagliato perché le domande sono due, non una: `EARLY_START_MINUTES` decide
+   quando *suggerire* la sveglia nella card, la finestra decide per quali
+   turni il telefono deve *suonare*. Alla prima l'app risponde da sé, alla
+   seconda risponde il committente — ed è la regola generale del progetto
+   (§ 1). Le due costanti ora sono separate e ognuna dice nel commento che
+   cos'è l'altra.
 3. **L'anticipo qui è 60 minuti, nella card 75.** Non è una svista: il 75 è un
    consiglio a schermo (`DEFAULT_WAKE_LEAD_MINUTES`), il 60 è un orario che
    suona davvero ed è quello che è stato chiesto. Due numeri per due domande.
@@ -863,9 +871,9 @@ sul calendario (§ 12): chiamare le notifiche col loro nome.
 
 Come per il service worker, la suite in Node non basta a dire che il pulsante
 funziona. In Chromium, sui dati demo: il riquadro compare, elenca 9 sveglie,
-ognuna è esattamente un'ora prima del suo attacco, nessun turno dalle 06:00 in
-poi entra, e il file scaricato ha un evento per riga elencata con il titolo
-giusto. Da lì è emersa anche una cosa da sapere: con lo user agent di iPhone,
+ognuna è esattamente un'ora prima del suo attacco, nessun turno fuori dalla
+finestra entra, e il file scaricato ha un evento per riga elencata con il
+titolo giusto. Da lì è emersa anche una cosa da sapere: con lo user agent di iPhone,
 `openCalendarICS` naviga a un `data:` URL — giusto per Safari, bloccato da
 Chromium. Non è un difetto, ma va tenuto presente quando si prova quel
 pulsante in un browser desktop.
