@@ -715,7 +715,103 @@ contiene davvero.
 
 ---
 
-## 13. Cosa resta aperto
+## 13. L'app senza rete — il service worker
+
+I turni e i PDF sono sempre stati nel telefono, in `localStorage`. Mancava il
+programma per aprirli: senza campo — in deposito, in galleria, nel sottopasso —
+la pagina non partiva. Il paradosso era questo, ed è quello che il service
+worker risolve.
+
+### Perché il primo tentativo era stato rimosso
+
+Una versione passata dell'app ne registrava già uno. Si è rotto nel modo
+classico: è rimasto a servire file vecchi anche dopo una pubblicazione nuova,
+e l'unico modo di uscirne era `public/reset-cache.html`. Quel file esiste per
+questo, e il codice in `src/main.jsx` che *disinstallava* i service worker era
+la pulizia di quel guasto.
+
+Quel difetto ha una causa nota — cache non legata alla versione, e ricambio mai
+imposto — e qui è affrontata su quattro fronti, tutti in `src/sw.js`:
+
+1. **Le cache portano la versione nel nome.** Quando cambia, la vecchia non
+   viene aggiornata: viene cancellata.
+2. **`dist/sw.js` cambia a ogni pubblicazione**, e il client lo registra con
+   `updateViaCache: 'none'`: il browser non lo serve mai dalla propria cache
+   HTTP, quindi si accorge sempre che c'è qualcosa di nuovo.
+3. **Il ricambio non avviene di nascosto.** Il service worker nuovo resta in
+   attesa, l'app mostra l'avviso «Versione nuova pronta», e la ricarica parte
+   solo al tocco. Sostituire i file sotto i piedi di chi sta guardando il turno
+   di domani manderebbe in errore il primo tocco successivo.
+4. **`reset-cache.html` non viene mai intercettata.** La via di fuga manuale
+   deve funzionare anche quando il colpevole è il service worker stesso.
+
+La marca di build in fondo alla schermata resta la verifica dall'esterno: se
+dice la data giusta, stai guardando l'ultima versione.
+
+### Due cache, due vite diverse
+
+La distinzione conta, ed è la ragione per cui non basta una cache sola:
+
+- **`turni-smart-core-<versione>`** — i file dal nome fisso: `index.html`, il
+  manifest, le icone. Il contenuto può cambiare senza che cambi il nome,
+  quindi la cache è legata alla versione e viene rifatta a ogni pubblicazione.
+- **`turni-smart-immutable`** — i file che Vite firma con l'impronta del
+  contenuto (`index-Rs3mXWnI.js`): a parità di nome sono identici per sempre.
+  **Non** è legata alla versione, apposta: così il worker di pdf.js da 2,3 MB
+  non viene riscaricato a ogni pubblicazione quando non è cambiato. Le voci
+  che non servono più vengono tolte all'attivazione.
+
+Il worker di pdf.js è inoltre l'unico file **facoltativo**: viene preso con
+`allSettled`, fuori dall'elenco bloccante. Se entrasse tra i file obbligatori,
+una rete che cade a metà di quei 2,3 MB annullerebbe tutta l'installazione. La
+shell, invece, o c'è tutta o non si installa: meglio nessun aggiornamento che
+un aggiornamento a metà.
+
+### Come viene costruito
+
+`src/sw.js` è un modello con dei segnaposto. Al momento della build, il plugin
+in `vite.config.js` ci scrive dentro l'elenco dei file di *quella* build e lo
+pubblica come `dist/sw.js`. Due dettagli che sono già costati un difetto
+ciascuno:
+
+- Il plugin è **`enforce: 'post'`**. Senza, `index.html` non c'è ancora quando
+  l'elenco viene calcolato — il plugin HTML di Vite lo crea dentro
+  `generateBundle` — e si conserverebbe tutto tranne la pagina da aprire.
+  L'offline sembrava funzionare e non funzionava.
+- La **versione è l'impronta del contenuto**, non la data di build: due build
+  identiche devono dare la stessa versione, altrimenti l'app annuncia
+  aggiornamenti che non esistono.
+
+La parte che decide "questo file è immutabile, quest'altro no" è coperta da
+`tests/serviceWorker.test.js`, compreso il caso del segnaposto dimenticato:
+produrrebbe un service worker che va in errore all'avvio e lascia l'app senza
+offline **senza dire niente**, quindi ferma la build.
+
+### Come è stato verificato
+
+I test della suite non bastavano — § 15 lo dice, ed è vero anche qui: un
+service worker si rompe in modi che Node non vede. La verifica è stata fatta in
+Chromium con Playwright, controllando le cose che contano davvero: che la app
+si apra e si disegni **davvero offline**, che `reset-cache.html` fallisca
+offline (prova che non è intercettata), che l'avviso compaia solo quando esiste
+una versione nuova, che dopo «Aggiorna» resti **una sola** cache core e quella
+immutabile sopravviva, e che al primo avvio la pagina **non** si ricarichi da
+sola.
+
+Quest'ultimo è il difetto più facile da introdurre: `controllerchange` scatta
+anche al primo `clients.claim()`, e ricaricare lì significa un riavvio a
+sorpresa ogni volta che l'app viene aperta la prima volta. Si ricarica solo se
+il cambio l'ha chiesto l'utente.
+
+### Cosa il service worker non fa
+
+Non porta le notifiche. Le sveglie del turno restano quelle del calendario
+(§ 12): una notifica web programmata richiederebbe un server, e questo progetto
+non ne ha né deve averne.
+
+---
+
+## 14. Cosa resta aperto
 
 1. **`MERCOLEDI'`** — 17 segmenti su una pagina sola (p18). Oggi vale come
    feriale generico, il che è corretto ma grossolano. Se è una linea
@@ -733,11 +829,13 @@ contiene davvero.
    arrivati già fatti e non hanno test propri. Il vincolo di `AGENTS.md` è
    prudenza, non pigrizia.
 5. **Il bundle è grosso** (~725 kB js, ~2.3 MB il worker pdf.js). Vite
-   avverte a ogni build. Mai affrontato perché mai lamentato.
+   avverte a ogni build. Mai affrontato perché mai lamentato. Il service
+   worker (§ 13) ne attenua l'effetto — la cache immutabile non lo riscarica
+   a ogni pubblicazione — ma la prima apertura resta pesante.
 
 ---
 
-## 14. Principi che conviene mantenere
+## 15. Principi che conviene mantenere
 
 Sono impliciti in tutto il codice, e spiegano scelte che altrimenti sembrano
 scomode.
@@ -764,5 +862,5 @@ scomode.
 
 ---
 
-*Ultimo aggiornamento: 8 agosto 2026, dopo la PR #40. Copre dal commit
-`7f8a70d` (26 maggio 2026) in poi.*
+*Ultimo aggiornamento: 9 agosto 2026, con l'arrivo del service worker (§ 13).
+Copre dal commit `7f8a70d` (26 maggio 2026) in poi.*

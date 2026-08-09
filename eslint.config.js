@@ -17,6 +17,13 @@ export default [
       },
       globals: {
         __BUILD_STAMP__: 'readonly',
+        /* Scritti dentro `src/sw.js` al momento della build, da
+           `scripts/service-worker-build.mjs`. */
+        __SW_VERSION__: 'readonly',
+        __SW_BASE__: 'readonly',
+        __SW_CORE_ASSETS__: 'readonly',
+        __SW_IMMUTABLE_ASSETS__: 'readonly',
+        __SW_OPTIONAL_ASSETS__: 'readonly',
         ...globals.browser,
         ...globals.node,
         ...globals.serviceworker,

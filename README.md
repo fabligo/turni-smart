@@ -12,6 +12,8 @@ Web app per la gestione dei turni GTT, deposito Gerbido.
 - Ballottaggio: incolla il turno assegnato direttamente nella card
 - Condivisione: calendario, WhatsApp e copia turno
 - Storico: i documenti caricati restano memorizzati nel browser
+- Senza rete: aggiunta alla Home, la app si apre e funziona anche in deposito
+  o in galleria. Quando esce una versione nuova lo dice, e ricarica al tocco
 
 ## Sviluppo
 

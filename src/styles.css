@@ -53,6 +53,12 @@
   --button-radius: 8px 28px 8px 8px;
   --shadow: 0 10px 26px rgba(0, 20, 42, 0.2);
   --shadow-sm: 0 3px 12px rgba(0, 51, 102, 0.12);
+
+  /* Il dock e' ancorato al fondo dello schermo. Chi galleggia sopra di lui
+     deve partire da queste misure e non da un numero copiato a mano:
+     l'avviso di aggiornamento gli finiva addosso per sette pixel. */
+  --dock-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  --dock-height: 88px;
   --s1: 4px;
   --s2: 8px;
   --s3: 12px;
@@ -3587,7 +3593,7 @@ a.inline-action--gtt {
   position: fixed;
   z-index: 20;
   right: 0;
-  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  bottom: var(--dock-bottom);
   left: 0;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -5739,4 +5745,86 @@ a.inline-action--gtt {
   margin-top: 10px;
   min-height: 44px;
   padding: 0 14px;
+}
+
+/* Avviso di versione nuova */
+/* Sta sopra il dock, non al suo posto: il dock e' il comando principale e non
+   va coperto. Compare solo quando c'e' davvero qualcosa da aggiornare. */
+.update-banner {
+  position: fixed;
+  z-index: 30;
+  right: 0;
+  bottom: calc(var(--dock-bottom) + var(--dock-height) + 8px);
+  left: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  width: min(620px, calc(100% - 16px));
+  margin: 0 auto;
+  border: 1px solid rgba(141, 216, 255, 0.28);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(11, 85, 149, 0.97), rgba(8, 59, 102, 0.97));
+  box-shadow: 0 16px 38px rgba(3, 34, 61, 0.34);
+  padding: 10px 12px;
+  backdrop-filter: blur(18px) saturate(1.4);
+  animation: update-banner-in 220ms ease-out;
+}
+
+@keyframes update-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .update-banner {
+    animation: none;
+  }
+}
+
+.update-banner__text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.update-banner__text strong {
+  color: var(--yellow);
+  font-size: 0.86rem;
+  font-weight: 850;
+}
+
+.update-banner__text span {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.update-banner__apply {
+  border: 0;
+  border-radius: 12px;
+  background: var(--yellow);
+  color: #07223b;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 850;
+  /* Bersaglio da prendere in movimento, con i guanti. */
+  min-height: 44px;
+  padding: 0 16px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.update-banner__dismiss {
+  border: 1px solid rgba(216, 230, 245, 0.3);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
 }

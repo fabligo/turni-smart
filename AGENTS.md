@@ -35,6 +35,11 @@ controllo anti-segreti e build completa. GitHub Actions esegue inoltre
 - Non usare variabili `VITE_*` per segreti: vengono incluse nel sito pubblico.
 - Non committare `.env`, chiavi SSH, token, certificati o bundle `dist`.
 - Conservare la base Vite `/turni-smart/` per GitHub Pages.
+- Non cambiare il percorso `sw.js` ne' il prefisso delle cache `turni-smart-`:
+  `public/reset-cache.html` e la rimozione delle versioni vecchie ci contano.
+- Non far ricaricare la app da sola quando arriva una versione nuova: il
+  ricambio lo comanda l'utente. Il perche' sta in `docs/registro-progetto.md`
+  sezione 13.
 
 ## Pubblicazione
 
