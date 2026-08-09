@@ -7,6 +7,7 @@ import { BALLOTTAGGI } from '../constants/shiftClassification.js';
 import { buildGttPassagesTarget, buildMoovitFromDepotUrl, getPrimaryGttChangePoint } from '../utils/gttLinks.js';
 import { describeShiftTiming } from '../utils/shiftTiming.js';
 import { subscribeToClock } from '../utils/clock.js';
+import { getReminderNote } from '../calendarExport.js';
 import { AssetIcon, Icon } from './Icon.jsx';
 
 const DIRECTION_LABELS = {
@@ -637,15 +638,6 @@ function DevelopmentPanel({ expanded = false, hasMultipleLegs, hasSegments, isSp
       )}
     </div>
   );
-}
-
-function getReminderNote(shift) {
-  if (!shift || shift.type === 'special') return "Si aprira il calendario del dispositivo per confermare l'aggiunta.";
-  const startHour = Number(String(shift.start || '').split(':')[0]);
-  const earlyShift = Number.isFinite(startHour) && startHour < 6;
-  return earlyShift
-    ? 'Promemoria inclusi: sera prima alle 20:00 e 1 ora prima del turno. Per la sveglia nativa serve conferma in Orologio.'
-    : 'Promemoria inclusi: sera prima alle 20:00 e 1 ora prima del turno.';
 }
 
 function CalendarActions({ actions, compact = false, gttTarget = null, moovitTarget = null, shareText = '', shift = null, unknownPlace = '' }) {
