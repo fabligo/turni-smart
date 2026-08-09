@@ -1,4 +1,5 @@
 import { SPECIAL_CODES } from './parserPreconoscenza.js';
+import { timeToMinutes } from './utils/timeUtils.js';
 import { getDevSegments } from './parserOrari.js';
 import { getLineDisplayName } from './constants/depotGerbido.js';
 import { getShiftCategory } from './constants/shiftClassification.js';
@@ -115,6 +116,41 @@ export function buildShiftICS(date, dayData, devSegments = []) {
       },
     ],
   });
+}
+
+function formatClockFromMinutes(total) {
+  const minutes = ((Math.round(total) % 1440) + 1440) % 1440;
+  return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+}
+
+/**
+ * Cosa succede dopo aver premuto "Aggiungi al calendario".
+ *
+ * Il file che si apre porta due sveglie del calendario: una la sera prima
+ * alle 20:00 e una un'ora prima dell'attacco. "Promemoria inclusi: sera prima
+ * alle 20:00 e 1 ora prima del turno" lo diceva in gergo - inclusi dove, e
+ * chi avvisa - mentre quello che serve sapere e' a che ora suona il telefono.
+ * L'ora la sappiamo, quindi si scrive.
+ *
+ * E vanno chiamate col loro nome: sono notifiche del calendario, non la
+ * sveglia. Chi attacca alle quattro deve saperlo, o rischia di contarci.
+ */
+export function getReminderNote(shift) {
+  if (!shift || shift.type === 'special') return "Si aprira il calendario del dispositivo per confermare l'aggiunta.";
+
+  const start = String(shift.start || '').trim();
+  const hasStart = /^\d{1,2}:\d{2}$/.test(start);
+  const startMinutes = hasStart ? timeToMinutes(start) : null;
+  const oneHourBefore = startMinutes === null ? '' : formatClockFromMinutes(startMinutes - 60);
+
+  const base = oneHourBefore
+    ? `Il telefono avvisa due volte: alle 20:00 della sera prima e alle ${oneHourBefore}, un'ora prima dell'attacco.`
+    : "Il telefono avvisa due volte: alle 20:00 della sera prima e un'ora prima dell'attacco.";
+
+  /* Sotto le sei del mattino la differenza fra una notifica e una sveglia
+     conta davvero: la notifica non suona a telefono silenziato. */
+  const earlyShift = startMinutes !== null && startMinutes < 6 * 60;
+  return earlyShift ? `${base} Sono avvisi del calendario, non una sveglia: quella impostala in Orologio.` : base;
 }
 
 export function buildICS(entries, developments = {}) {
