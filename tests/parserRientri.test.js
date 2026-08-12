@@ -172,3 +172,52 @@ test('la linea si ricava anche dai codici dell orario tipo', () => {
   assert.equal(detectRientriLine('CODICI H05Q0101 A05Q0101 W05Q0101'), '5');
   assert.equal(detectRientriLine('CODICI A58BQ0101'), '58B');
 });
+
+test('il capolinea del grafico trova la sua palina passando dalla legenda', () => {
+  // I tre casi visti sull'app, con i tempi che il grafico dichiara.
+  const casi = [
+    ['74', 'GORX', 'V. GORINI', 2, '693'],
+    ['63', 'NEGR', 'NEGARVILLE', 11, '1158'],
+    ['132', 'FERM', 'FERMI', 20, '5001'],
+  ];
+
+  casi.forEach(([line, code, nome, minuti, palina]) => {
+    const text = `
+      LINEA ${line}
+      TEMPI DI USCITA / RIENTRO ${line}
+      GERB - ${code} ${minuti} ${minuti}
+      Legenda ${code} = ${nome} - Capolinea
+      GERB = DEPOSITO GERBIDO
+      Linea ${line} U.L. 12.53 ${code} Entra 12.55
+    `;
+    const [rientro] = parseDepotReturns(text, {});
+    assert.equal(rientro.palina, palina, `${code} doveva essere la palina ${palina}`);
+    assert.ok(Number.isFinite(rientro.position.lat), `${code} senza posizione`);
+  });
+});
+
+test('un capolinea troppo lontano per il tempo dichiarato viene buttato', () => {
+  // Fermi sta a quattro chilometri dal deposito: due minuti vorrebbero dire
+  // centoventi all'ora, quindi il nome ha pescato la fermata sbagliata.
+  const text = `
+    LINEA 132
+    TEMPI DI USCITA / RIENTRO 132
+    GERB - FERM 2 2
+    Legenda FERM = FERMI - Capolinea
+    Linea 132 U.L. 13.25 FERM Entra 13.27
+  `;
+  const [rientro] = parseDepotReturns(text, {});
+  assert.equal(rientro.position, null);
+  assert.equal(rientro.palina, '');
+  // Il rientro resta: e' l'orario a essere certo, non la posizione.
+  assert.equal(rientro.start, '13:25');
+});
+
+test('senza legenda il rientro resta senza posizione, non con una sbagliata', () => {
+  const [rientro] = parseDepotReturns(
+    'LINEA 74 TEMPI DI USCITA / RIENTRO 74 GERB - GORX 2 2 Linea 74 U.L. 12.53 GORX Entra 12.55',
+    {},
+  );
+  assert.equal(rientro.position, null);
+  assert.equal(rientro.loc_s, 'GORX');
+});
