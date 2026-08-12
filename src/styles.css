@@ -3066,17 +3066,40 @@ a.inline-action--gtt {
   padding: 3px 10px;
 }
 
+/* Ogni orario porta sotto il posto a cui si riferisce: il primo e' il passaggio
+   dalla palina dove si sale, non la partenza dal capolinea della linea. */
 .depot-return-card__times {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.depot-return-card__stop {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.depot-return-card__stop strong {
   color: #ffffff;
-  font-size: 1.35rem;
+  font-size: 1.3rem;
   font-weight: 950;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
+  line-height: 1.1;
+}
+
+.depot-return-card__stop small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.25;
 }
 
 .depot-return-card__times i {
-  margin: 0 4px;
   color: var(--cyan);
+  font-size: 1.1rem;
   font-style: normal;
 }
 
