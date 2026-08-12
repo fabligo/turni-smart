@@ -14,7 +14,10 @@ export const SERVICE_TYPES = ['feriali', 'sabato', 'festivi'];
 // Un rientro utile resta una corsa sola o pochi tratti concatenati dello stesso
 // mezzo: oltre questi limiti non e' piu' un rientro immediato in deposito.
 const MAX_LEGS = 4;
-const MAX_LAYOVER_MINUTES = 20;
+// Fra un tratto e il successivo il mezzo sta fermo a capolinea, che e' l'unico
+// posto dove sta fermo: il posto cambio e' dove si danno il cambio i
+// conducenti, non dove la vettura sosta.
+const MAX_RECOVERY_MINUTES = 20;
 export const MAX_RIDE_MINUTES = 90;
 
 export function normalizePlace(value = '') {
@@ -101,16 +104,16 @@ function groupByRun(segments = []) {
   return [...runs.values()].map((run) => run.slice().sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start)));
 }
 
-// Il tratto successivo deve ripartire da dove finisce il precedente e senza
-// attese lunghe: solo cosi' il mezzo prosegue davvero verso il deposito.
+// Il tratto successivo deve ripartire da dove finisce il precedente e dopo un
+// recupero breve: solo cosi' il mezzo prosegue davvero verso il deposito.
 function findNextLeg(run, current, usedIndexes) {
   const arrival = normalizePlace(current.loc_e);
   for (let index = 0; index < run.length; index += 1) {
     if (usedIndexes.has(index)) continue;
     const candidate = run[index];
     if (normalizePlace(candidate.loc_s) !== arrival) continue;
-    const layover = durationMinutes(current.end, candidate.start);
-    if (layover < 0 || layover > MAX_LAYOVER_MINUTES) continue;
+    const recovery = durationMinutes(current.end, candidate.start);
+    if (recovery < 0 || recovery > MAX_RECOVERY_MINUTES) continue;
     return { candidate, index };
   }
   return null;

@@ -3,7 +3,6 @@ import { AssetIcon, Icon } from './Icon.jsx';
 export function OnboardingHome({
   error = '',
   loading = false,
-  onLoadDemo,
   onPrimaryUpload,
   onSuspendedShiftSubmit,
   suspendedShiftError = '',
@@ -41,16 +40,6 @@ export function OnboardingHome({
           <small>PDF mensile con i tuoi turni</small>
         </span>
         <Icon className="onboarding-upload__chevron" name="chevronRight" size={26} />
-      </button>
-
-      <button className="onboarding-demo" disabled={loading} onClick={onLoadDemo} type="button">
-        <span className="onboarding-demo__icon" aria-hidden="true">
-          <Icon name="calendar" size={24} />
-        </span>
-        <span>
-          <strong>Prova l'app con dati demo</strong>
-          <small>Carica un mese di esempio per vedere turni, calendario e statistiche. Per usarla davvero, carica la tua Preconoscenza.</small>
-        </span>
       </button>
 
       <details className="suspended-shift-disclosure">

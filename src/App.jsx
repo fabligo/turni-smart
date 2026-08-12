@@ -12,7 +12,6 @@ import {
 import { computeStats, enrichShiftDays, getNextWorkingShift } from './analytics.js';
 import { buildBallotICS, buildICS, buildWakeAlarmsICS, openCalendarICS } from './calendarExport.js';
 import { collectWakeAlarms } from './utils/wakeAlarms.js';
-import { createDemoPreconoscenza, DEMO_DEVELOPMENTS } from './demoData.js';
 import {
   buildBackup,
   clearStoredAppData,
@@ -1168,13 +1167,6 @@ export default function App() {
     setActiveSection('oggi');
   }
 
-  function loadDemo() {
-    const demo = createDemoPreconoscenza();
-    applyPreconoscenza(demo);
-    applyOrari(DEMO_DEVELOPMENTS, demo);
-    showCalendar();
-  }
-
   function updateAutoRestore(value) {
     setPreferences((current) => ({ ...current, autoRestore: value }));
   }
@@ -1329,7 +1321,6 @@ export default function App() {
             <OnboardingHome
               error={error}
               loading={loading}
-              onLoadDemo={loadDemo}
               onPrimaryUpload={() => onboardingInputRef.current?.click()}
               onSuspendedShiftSubmit={insertSuspendedShift}
               onSuspendedShiftTextChange={setSuspendedShiftText}
