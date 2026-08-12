@@ -24,6 +24,9 @@ const SEARCH_FEEDBACK_MS = 520;
 
 const UPCOMING_LIMIT = 5;
 
+// Il deposito e' sempre lo stesso: sulle schede basta il nome corto.
+const DEPOT_LABEL = 'Gerbido';
+
 const WINDOW_OPTIONS = [30, 60, 90, 120];
 
 const SERVICE_OPTIONS = [
@@ -366,19 +369,31 @@ export function DepotReturnsPanel({ developments = {} }) {
                 className="depot-return-card"
                 key={`${item.line}-${item.from}-${item.shift}-${item.departure}-${item.vehicleShift}`}
               >
-                <p className="depot-return-card__head">
+                <p className="depot-return-card__head" title={item.route}>
                   <strong>{getLineDisplayName(item.line)}</strong>
-                  da {getChangePointLabel(item.from)}
-                  {stop ? ` · palina ${stop}` : ''}
+                  {item.direct ? 'diretto' : `${item.legs.length} tratti`}
                 </p>
+                {/* I due orari sono l'uno il passaggio alla palina dove si sale
+                    e l'altro l'arrivo in deposito: senza scriverlo sotto
+                    ciascuno, il primo si legge come partenza dal capolinea. */}
                 <p className="depot-return-card__times">
-                  {item.departure} <i aria-hidden="true">→</i> {item.arrival}
+                  <span className="depot-return-card__stop">
+                    <strong>{item.departure}</strong>
+                    <small>
+                      {stop ? `palina ${stop} · ` : ''}
+                      {getChangePointLabel(item.from)}
+                    </small>
+                  </span>
+                  <i aria-hidden="true">→</i>
+                  <span className="depot-return-card__stop">
+                    <strong>{item.arrival}</strong>
+                    <small>{DEPOT_LABEL}</small>
+                  </span>
                 </p>
                 <p className="depot-return-card__meta">
                   {[
                     formatWaitShort(item.waitMinutes),
                     `viaggio ${formatSpan(item.rideMinutes)}`,
-                    item.direct ? 'diretto' : `${item.legs.length} tratti`,
                     item.vehicleShift ? `vettura ${item.vehicleShift}` : '',
                   ]
                     .filter(Boolean)
@@ -491,13 +506,13 @@ export function DepotReturnsPanel({ developments = {} }) {
               <li key={`${item.line}-${item.from}-${item.shift}-${item.departure}-${item.vehicleShift}`}>
                 <strong>
                   {getLineDisplayName(item.line)}
-                  {result.anyPlace ? ` · da ${getChangePointLabel(item.from)}` : ''}
+                  {item.direct ? '' : ` · ${item.legs.length} tratti`}
                 </strong>
                 <span>
-                  {item.departure} → {item.arrival}
+                  {item.departure} da {getChangePointLabel(item.from)}
                 </span>
                 <span>
-                  {formatWaitShort(item.waitMinutes)} · {item.direct ? 'diretto' : `${item.legs.length} tratti`}
+                  {item.arrival} al {DEPOT_LABEL}
                 </span>
               </li>
             ))}
