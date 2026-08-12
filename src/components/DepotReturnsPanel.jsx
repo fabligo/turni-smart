@@ -26,6 +26,9 @@ const SEARCH_FEEDBACK_MS = 520;
 
 const UPCOMING_LIMIT = 5;
 
+// Oltre questo si smette di aspettare il GPS e si dice che la posizione non c'e'.
+const GEO_DEADLINE_MS = 12000;
+
 // Il deposito e' sempre lo stesso: sulle schede basta il nome corto.
 const DEPOT_LABEL = 'Gerbido';
 
@@ -100,6 +103,10 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
   /* Dove si e' adesso, per misurare quanto dista ogni rientro. Si legge insieme
      alla ricerca e non la blocca: se il GPS tace i rientri escono lo stesso. */
   const [here, setHere] = useState(null);
+  /* Che fine ha fatto la lettura della posizione. Il solo risultato non basta a
+     raccontarlo: senza uno stato, un GPS che non risponde e un GPS mai chiesto
+     si vedono uguali, cioe' non si vedono. */
+  const [geoState, setGeoState] = useState('idle');
 
   // Due link diversi, uno solo alla volta: le fermate intorno, oppure il
   // percorso in mezzi fino al deposito calcolato sulla rete GTT vera.
@@ -139,9 +146,35 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
     setForm(next);
     setCriteria(next);
     setSearching(true);
+    setGeoState('reading');
+
+    /* Il GPS puo' anche non rispondere mai: sul telefono capita al chiuso e
+       quando il permesso resta in sospeso. Senza una scadenza nostra il
+       pannello direbbe "cerco dove sei" per sempre, che e' peggio di dire che
+       la posizione non c'e'. */
+    let settled = false;
+    const giveUp = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      setHere(null);
+      setGeoState('off');
+    }, GEO_DEADLINE_MS);
+
     readPosition()
-      .then(setHere)
-      .catch(() => setHere(null));
+      .then((position) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(giveUp);
+        setHere(position);
+        setGeoState('ok');
+      })
+      .catch(() => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(giveUp);
+        setHere(null);
+        setGeoState('off');
+      });
   }
 
   useEffect(() => {
@@ -263,7 +296,10 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
           Rientri deposito
         </span>
         <h2 id="depot-returns-title">Cosa mi riporta al Gerbido</h2>
-        <p>Le corse che passano dopo l&apos;orario indicato e finiscono in deposito, con il posto da cui partono.</p>
+        <p>
+          Le corse che passano dopo l&apos;orario indicato e finiscono in deposito. Con la posizione attiva sono in
+          ordine di vicinanza, con quanto dista ognuna da dove sei.
+        </p>
       </div>
 
       <form
@@ -300,8 +336,8 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
 
         <div className="depot-returns-actions">
           <button className="depot-returns-search" type="submit">
-            <Icon name="search" size={18} />
-            Trova rientri
+            <Icon name="mapPin" size={18} />
+            {geoState === 'reading' ? 'Leggo la posizione…' : 'Trova rientri da qui'}
           </button>
           {positionLink?.kind === 'stops' ? (
             <a
@@ -366,7 +402,30 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
       {geoMessage ? <p className="depot-returns-message">{geoMessage}</p> : null}
 
       {!searching && isDirty ? (
-        <p className="depot-returns-message">Criteri cambiati: premi Trova rientri per aggiornare.</p>
+        <p className="depot-returns-message">Criteri cambiati: premi Trova rientri da qui per aggiornare.</p>
+      ) : null}
+
+      {/* Cosa ha fatto il GPS, detto sempre: e' l'unica cosa che spiega perche'
+          un elenco e' ordinato per vicinanza e un altro no. Anche l'attesa va
+          detta, perche' il telefono ci mette qualche secondo e nel frattempo
+          l'elenco e' gia' li', solo non ancora in ordine di vicinanza. */}
+      {!searching && geoState === 'reading' ? (
+        <p className="depot-returns-geo depot-returns-geo--off">
+          <Icon name="mapPin" size={14} />
+          Cerco dove sei…
+        </p>
+      ) : null}
+      {!searching && geoState === 'ok' ? (
+        <p className="depot-returns-geo depot-returns-geo--on">
+          <Icon name="mapPin" size={14} />
+          Posizione trovata: i rientri sono in ordine di vicinanza, dal piu&apos; comodo da raggiungere.
+        </p>
+      ) : null}
+      {!searching && geoState === 'off' ? (
+        <p className="depot-returns-geo depot-returns-geo--off">
+          <Icon name="mapPin" size={14} />
+          Posizione non disponibile: i rientri ci sono lo stesso, ma senza distanza ne&apos; ordine di vicinanza.
+        </p>
       ) : null}
       {/* Finestra e servizio scelti stanno gia' nei selettori qui sopra: qui
           basta il conto e l'orario di partenza della ricerca. Il servizio si

@@ -2763,6 +2763,26 @@ select:focus-visible {
   line-height: 1.35;
 }
 
+/* Lo stato della posizione: acceso in giallo, spento in grigio. Va letto di
+   sfuggita, quindi conta piu' il colore della frase. */
+.depot-returns-geo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.depot-returns-geo--on {
+  color: var(--yellow);
+}
+
+.depot-returns-geo--off {
+  color: var(--muted);
+}
+
 .depot-returns-quick {
   display: flex;
   flex-wrap: wrap;
