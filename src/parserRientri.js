@@ -20,7 +20,10 @@
 
 const DEPOT = 'GERB';
 const PLACE_RE = /^[A-Z]{4}$/;
+// L'ora esce dal PDF in tre forme a seconda di come il testo viene estratto:
+// "21.51", "21:51" e, quando il separatore si perde, "2151".
 const TIME_RE = /^(\d{1,2})[.:](\d{2})$/;
+const COMPACT_TIME_RE = /^(\d{2})(\d{2})$/;
 // Fra "U.L. 21.51 OSET" e "Entra 21.58" il testo estratto puo' infilare le
 // etichette della colonna accanto: si guarda avanti quel tanto che basta.
 const ENTRY_LOOKAHEAD = 14;
@@ -32,11 +35,16 @@ function tokenize(text) {
   return String(text || '')
     .toUpperCase()
     .split(/\s+/)
-    .filter(Boolean);
+    .filter(Boolean)
+    /* "GERB-OSET" e "U.L." attaccati al valore capitano quando il PDF perde gli
+       spazi fra le celle: si riaprono qui, una volta, invece di complicare ogni
+       confronto piu' avanti. */
+    .flatMap((token) => (/^[A-Z]{4}-[A-Z]{4}$/.test(token) ? [token.slice(0, 4), '-', token.slice(5)] : [token]));
 }
 
 function toMinutes(token) {
-  const match = TIME_RE.exec(String(token || ''));
+  const raw = String(token || '');
+  const match = TIME_RE.exec(raw) || COMPACT_TIME_RE.exec(raw);
   if (!match) return null;
   const hours = Number(match[1]);
   const minutes = Number(match[2]);
@@ -181,4 +189,31 @@ export function rientriKey(line = '', gt = '') {
 
 export function isRientriKey(key = '') {
   return String(key).startsWith(`${RIENTRI_KEY_PREFIX} `);
+}
+
+/* Marcatori del grafico di servizio nel testo grezzo di una pagina. Servono a
+   distinguere due esiti che nel referto si somigliano ma vogliono cose
+   opposte: il PDF quella pagina non ce l'ha, oppure ce l'ha e il testo esce in
+   una forma che il parser non riconosce. Nel secondo caso il pezzo di testo
+   qui sotto e' quello su cui aggiustare il parser. */
+const GRAPHIC_MARKERS = [
+  ['ul', /\bU\.?\s?L\.?\s/],
+  ['entra', /\bENTRA\b/],
+  ['esce', /\bESCE\b/],
+  ['tempi', /TEMPI\s+DI\s+USCITA/],
+];
+
+const EXCERPT_LENGTH = 320;
+
+export function findGraphicHints(text = '') {
+  const source = String(text || '').toUpperCase();
+  const found = GRAPHIC_MARKERS.filter(([, pattern]) => pattern.test(source)).map(([name]) => name);
+  if (!found.length) return { excerpt: '', markers: [] };
+
+  const anchor = source.search(/TEMPI\s+DI\s+USCITA|\bU\.?\s?L\.?\s/);
+  const from = Math.max(0, anchor - 40);
+  return {
+    excerpt: source.slice(from, from + EXCERPT_LENGTH).replace(/\s+/g, ' ').trim(),
+    markers: found,
+  };
 }

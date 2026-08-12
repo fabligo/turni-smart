@@ -1,6 +1,6 @@
 import { timeToMinutes } from './utils/timeUtils.js';
 import { normalizeLineCode } from './constants/depotGerbido.js';
-import { detectRientriLine, isRientriKey, parseDepotReturns, rientriKey } from './parserRientri.js';
+import { detectRientriLine, findGraphicHints, isRientriKey, parseDepotReturns, rientriKey } from './parserRientri.js';
 
 const TIME_TOKEN_RE = /\d{2}[.:]?\d{2}/;
 const SEGMENT_RE =
@@ -415,7 +415,18 @@ export function parseOrari(pagesText, { diagnostics = null } = {}) {
       const key = rientriKey(line, resolved);
       developments[key] = developments[key] || [];
       returns.forEach((segment) => addSegment(developments, key, segment));
-      if (diagnostics) diagnostics[diagnostics.length - 1].returns = returns.length;
+    }
+    if (diagnostics) {
+      const entry = diagnostics[diagnostics.length - 1];
+      entry.returns = returns.length;
+      /* Una pagina che ha i marcatori del grafico ma non produce rientri e'
+         l'unico caso su cui si puo' intervenire: del suo testo si tiene un
+         pezzo, perche' e' li' che il parser sbaglia. */
+      const hints = findGraphicHints(pageText);
+      if (hints.markers.length) {
+        entry.graphicMarkers = hints.markers;
+        if (!returns.length) entry.graphicExcerpt = hints.excerpt;
+      }
     }
   });
 
