@@ -20,14 +20,10 @@
 
 const DEPOT = 'GERB';
 const PLACE_RE = /^[A-Z]{4}$/;
-<<<<<<< HEAD
 // L'ora esce dal PDF in tre forme a seconda di come il testo viene estratto:
 // "21.51", "21:51" e, quando il separatore si perde, "2151".
 const TIME_RE = /^(\d{1,2})[.:](\d{2})$/;
 const COMPACT_TIME_RE = /^(\d{2})(\d{2})$/;
-=======
-const TIME_RE = /^(\d{1,2})[.:](\d{2})$/;
->>>>>>> origin/main
 // Fra "U.L. 21.51 OSET" e "Entra 21.58" il testo estratto puo' infilare le
 // etichette della colonna accanto: si guarda avanti quel tanto che basta.
 const ENTRY_LOOKAHEAD = 14;
@@ -39,7 +35,6 @@ function tokenize(text) {
   return String(text || '')
     .toUpperCase()
     .split(/\s+/)
-<<<<<<< HEAD
     .filter(Boolean)
     /* "GERB-OSET" e "U.L." attaccati al valore capitano quando il PDF perde gli
        spazi fra le celle: si riaprono qui, una volta, invece di complicare ogni
@@ -50,13 +45,6 @@ function tokenize(text) {
 function toMinutes(token) {
   const raw = String(token || '');
   const match = TIME_RE.exec(raw) || COMPACT_TIME_RE.exec(raw);
-=======
-    .filter(Boolean);
-}
-
-function toMinutes(token) {
-  const match = TIME_RE.exec(String(token || ''));
->>>>>>> origin/main
   if (!match) return null;
   const hours = Number(match[1]);
   const minutes = Number(match[2]);
@@ -202,7 +190,6 @@ export function rientriKey(line = '', gt = '') {
 export function isRientriKey(key = '') {
   return String(key).startsWith(`${RIENTRI_KEY_PREFIX} `);
 }
-<<<<<<< HEAD
 
 /* Marcatori del grafico di servizio nel testo grezzo di una pagina. Servono a
    distinguere due esiti che nel referto si somigliano ma vogliono cose
@@ -230,5 +217,3 @@ export function findGraphicHints(text = '') {
     markers: found,
   };
 }
-=======
->>>>>>> origin/main
