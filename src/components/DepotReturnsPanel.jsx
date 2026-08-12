@@ -393,7 +393,9 @@ export function DepotReturnsPanel({ developments = {} }) {
                 <p className="depot-return-card__meta">
                   {[
                     formatWaitShort(item.waitMinutes),
-                    `viaggio ${formatSpan(item.rideMinutes)}`,
+                    // Su un rientro a piu' tratti dentro ci sta anche la sosta
+                    // al posto cambio: e' tempo passato sul mezzo, non viaggio.
+                    `a bordo ${formatSpan(item.rideMinutes)}`,
                     item.vehicleShift ? `vettura ${item.vehicleShift}` : '',
                   ]
                     .filter(Boolean)
