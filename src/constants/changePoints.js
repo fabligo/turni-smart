@@ -145,6 +145,19 @@ export const CHANGE_POINTS = {
     position: { lat: 45.07386, lng: 7.60412 },
     stops: { A: '853', R: '852' },
   },
+  /* Capolinea della 5, non posti cambio: compaiono fra i rientri perche' e' da
+     li' che l'ultima corsa rientra in deposito. Il grafico li chiama con un
+     nome, la palina ne porta un altro, e la palina e' la prova. */
+  OBFR: {
+    label: 'Orbassano - Strada Torino',
+    address: 'Piazza Dalla Chiesa, Orbassano',
+    stops: { A: '2927', R: '2927' },
+  },
+  ARBA: {
+    label: 'P.za Arbarello',
+    address: 'Piazza Arbarello, Torino',
+    stops: { A: '303', R: '303' },
+  },
 };
 
 export function normalizeChangePoint(code) {

@@ -1,5 +1,7 @@
 import { timeToMinutes } from './timeUtils.js';
 import { isRientriKey } from '../parserRientri.js';
+import { getChangePointPosition } from '../constants/changePoints.js';
+import { distanceMeters } from '../constants/gttPaline.js';
 
 export const DEPOT_CODE = 'GERB';
 // "Ovunque": tutte le corse dirette al deposito, da qualsiasi posto cambio.
@@ -20,6 +22,36 @@ const MAX_LEGS = 4;
 // conducenti, non dove la vettura sosta.
 const MAX_RECOVERY_MINUTES = 20;
 export const MAX_RIDE_MINUTES = 90;
+
+/* A piedi si fanno ottanta metri al minuto contando semafori e attraversamenti.
+   Serve a dire se un rientro si fa in tempo a prenderlo, non a cronometrare
+   nessuno: e' il conto che uno fa a mente guardando quanto manca. */
+const WALKING_METERS_PER_MINUTE = 80;
+
+export function walkingMinutes(meters) {
+  if (!Number.isFinite(meters)) return null;
+  return Math.max(1, Math.round(meters / WALKING_METERS_PER_MINUTE));
+}
+
+/**
+ * Aggiunge a ogni rientro quanto dista da dove si e' adesso e se lo si prende
+ * ancora. Un rientro senza posizione nota resta in elenco senza distanza: e'
+ * comunque una corsa che rientra, e nasconderla sarebbe peggio che non sapere
+ * quanto e' lontana.
+ */
+export function withDistance(matches = [], position = null) {
+  return matches.map((item) => {
+    const place = getChangePointPosition(item.from, { direction: item.direction, line: item.line });
+    const meters = position && place ? distanceMeters(position, place) : null;
+    const walk = walkingMinutes(meters);
+    return {
+      ...item,
+      meters,
+      walkMinutes: walk,
+      reachable: walk === null ? null : walk <= item.waitMinutes,
+    };
+  });
+}
 
 export function normalizePlace(value = '') {
   return String(value || '').trim().toUpperCase();
