@@ -179,16 +179,17 @@ export function DepotReturnsPanel({ developments = {} }) {
     const passages = result.passages === 1 ? 'passa 1 mezzo' : `passano ${result.passages} mezzi`;
 
     // Distinguere i due casi conta: uno dice che di qui al deposito non ci si
-    // va, l'altro che ci si va ma facendo mezzo giro di linea.
+    // va, l'altro che ci si va ma solo restando su tutta la ripresa. Negli
+    // orari una riga e' la ripresa intera di un turno, non la singola corsa:
+    // chiamarla "viaggio" faceva sembrare rotto il calcolo.
     if (result.longRides) {
       return (
         <p className="result-message">
           Dopo le {criteria.time} {passages}:{' '}
-          {result.longRides === 1
-            ? 'uno arriva al Gerbido ma dopo '
-            : `${result.longRides} arrivano al Gerbido ma dopo `}
-          {result.shortestLongRide ? formatMinutes(result.shortestLongRide) : `piu di ${MAX_RIDE_MINUTES} minuti`} di
-          viaggio, {result.longRides === 1 ? 'e un giro di linea' : 'sono giri di linea'}, non un rientro.
+          {result.longRides === 1 ? 'uno chiude in deposito ' : `${result.longRides} chiudono in deposito `}
+          {result.shortestLongRide ? formatMinutes(result.shortestLongRide) : `piu di ${MAX_RIDE_MINUTES} minuti`} dopo
+          la presa, {result.longRides === 1 ? "e' una ripresa intera" : 'sono riprese intere'}, non un passaggio verso
+          il Gerbido.
         </p>
       );
     }

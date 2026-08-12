@@ -1,4 +1,5 @@
 import { DEPOT_CODE, getServiceTypes, normalizePlace } from './depotReturns.js';
+import { isRientriKey } from '../parserRientri.js';
 
 /**
  * Un referto su cosa il parser ha capito degli Orari caricati.
@@ -93,6 +94,21 @@ export function summarizePages(diagnostics = []) {
   };
 }
 
+/* I rientri letti dal grafico di servizio, per linea. Sono l'unica fonte delle
+   ultime corse prima del deposito: se qui c'e' zero, il PDF quella pagina non
+   l'ha o il testo estratto ha una forma che il parser non riconosce, e il
+   pannello Rientri restera' vuoto per quella linea. */
+export function summarizeReturns(developments = {}) {
+  return Object.entries(developments || {})
+    .filter(([key]) => isRientriKey(key))
+    .map(([key, segments]) => ({
+      key,
+      places: [...new Set((segments || []).map((segment) => normalizePlace(segment.loc_s)))].sort(),
+      segments: (segments || []).length,
+    }))
+    .sort((a, b) => a.key.localeCompare(b.key));
+}
+
 const MAX_RUNS = 24;
 
 /** Il referto in testo semplice, fatto per essere fotografato o incollato. */
@@ -118,6 +134,13 @@ export function buildOrariReport({ developments = {}, pages = null } = {}) {
     lines.push(`"${item.gt}" [${item.service}] segm ${item.segments} · usc ${item.exits.rows} → ${item.exits.unique}`);
   });
   lines.push(`chiavi ${Object.keys(developments || {}).length}`);
+
+  lines.push('--');
+  const returns = summarizeReturns(developments);
+  if (!returns.length) lines.push('rientri: nessuno (grafico di servizio non letto)');
+  returns.forEach((item) => {
+    lines.push(`${item.key} · ultime corse ${item.segments} · da ${item.places.join(' ') || '-'}`);
+  });
 
   return lines.join('\n');
 }
