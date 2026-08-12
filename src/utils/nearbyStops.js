@@ -60,6 +60,36 @@ export function readPositionUrl(buildUrl) {
   });
 }
 
+/**
+ * La posizione, e basta. Serve a misurare quanto dista un posto cambio: e' un
+ * conto che si fa in casa, senza aprire niente e senza chiedere niente a
+ * nessuno. Se il GPS non risponde si va avanti lo stesso, i rientri restano
+ * quelli - manca solo la distanza.
+ */
+export function readPosition() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('Geolocalizzazione non disponibile su questo dispositivo.'));
+      return;
+    }
+
+    const success = (position) => resolve({ lat: position.coords.latitude, lng: position.coords.longitude });
+    const fail = (error) => reject(new Error(describeGeolocationError(error)));
+
+    navigator.geolocation.getCurrentPosition(
+      success,
+      (error) => {
+        if (error?.code === TIMEOUT) {
+          navigator.geolocation.getCurrentPosition(success, fail, RETRY);
+          return;
+        }
+        fail(error);
+      },
+      FIRST_TRY,
+    );
+  });
+}
+
 export function readNearbyStopsUrl() {
   return readPositionUrl(buildNearbyStopsUrl);
 }

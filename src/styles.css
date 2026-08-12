@@ -3050,6 +3050,13 @@ a.inline-action--gtt {
   font-style: normal;
 }
 
+/* Un rientro che parte prima di quanto ci metti ad arrivarci resta in elenco -
+   e' pur sempre una corsa che rientra - ma si vede che non e' per te. */
+.depot-return-card--far {
+  opacity: 0.6;
+  border-style: dashed;
+}
+
 .depot-return-card__meta {
   color: var(--muted);
   font-size: 0.82rem;

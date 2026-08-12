@@ -6,6 +6,7 @@ import {
   MAX_RIDE_MINUTES,
   RETURN_WINDOW_MINUTES,
   searchReturns,
+  withDistance,
 } from '../utils/depotReturns.js';
 import {
   readChangePointDirectionsUrl,
@@ -13,6 +14,7 @@ import {
   readDepotMapsDirectionsUrl,
   readMoovitWebUrl,
   readNearbyStopsUrl,
+  readPosition,
 } from '../utils/nearbyStops.js';
 import { getChangePointLabel, getChangePointStop } from '../constants/changePoints.js';
 import { formatMinutes } from '../utils/timeUtils.js';
@@ -55,6 +57,18 @@ function formatWaitShort(waitMinutes) {
   return waitMinutes <= 0 ? 'in transito' : `attesa ${formatSpan(waitMinutes)}`;
 }
 
+/**
+ * Quanto dista il posto da cui parte, e se ci si arriva prima che passi. Senza
+ * posizione non si dice niente: e' l'unica risposta onesta quando il GPS tace o
+ * quel capolinea non ha una palina da cui ricavarne il punto.
+ */
+function formatDistance(item) {
+  if (!Number.isFinite(item.meters)) return '';
+  const distanza = item.meters >= 1000 ? `${(item.meters / 1000).toFixed(1)} km` : `${item.meters} m`;
+  if (item.reachable === false) return `a ${distanza}, ${item.walkMinutes} min a piedi: non ci arrivi`;
+  return `a ${distanza} · ${item.walkMinutes} min a piedi`;
+}
+
 function formatWindow(windowMinutes) {
   if (windowMinutes < 60) return `${windowMinutes} minuti`;
   const hours = windowMinutes / 60;
@@ -83,10 +97,13 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
   // Il link si prepara prima e si apre con un tocco a parte: aprire una scheda
   // in attesa del GPS la lascia bianca su iOS.
   const [positionLink, setPositionLink] = useState(null);
+  /* Dove si e' adesso, per misurare quanto dista ogni rientro. Si legge insieme
+     alla ricerca e non la blocca: se il GPS tace i rientri escono lo stesso. */
+  const [here, setHere] = useState(null);
 
   // Due link diversi, uno solo alla volta: le fermate intorno, oppure il
   // percorso in mezzi fino al deposito calcolato sulla rete GTT vera.
-  function readPosition(reader, kind) {
+  function openWithPosition(reader, kind) {
     setGeoMessage('');
     setPositionLink(null);
     setGeoBusy(kind);
@@ -122,6 +139,9 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
     setForm(next);
     setCriteria(next);
     setSearching(true);
+    readPosition()
+      .then(setHere)
+      .catch(() => setHere(null));
   }
 
   useEffect(() => {
@@ -132,7 +152,19 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
 
   // Le linee che stanno rientrando, in ordine di arrivo: e' la risposta corta
   // alla domanda "quale linea prendo per tornare al Gerbido".
-  const returningLines = [...new Set(result.matches.map((item) => getLineDisplayName(item.line)))];
+  /* Prima chi si fa in tempo a prendere, e fra quelli chi porta in deposito
+     prima. Un rientro che parte fra sei minuti da un capolinea a tre chilometri
+     non e' un rientro: e' un orario stampato. */
+  const matches = useMemo(() => {
+    const measured = withDistance(result.matches, here);
+    if (!here) return measured;
+    return measured.slice().sort((a, b) => {
+      if (a.reachable !== b.reachable) return a.reachable ? -1 : 1;
+      return (a.meters ?? Infinity) - (b.meters ?? Infinity) || a.totalMinutes - b.totalMinutes;
+    });
+  }, [here, result.matches]);
+
+  const returningLines = [...new Set(matches.map((item) => getLineDisplayName(item.line)))];
   const nextUpcoming = result.upcoming[0];
   const otherServices = Object.entries(result.passagesByService).filter(
     ([service, count]) => service !== result.service && count > 0,
@@ -286,7 +318,7 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
             <button
               className="small-button"
               disabled={Boolean(geoBusy)}
-              onClick={() => readPosition(readNearbyStopsUrl, 'stops')}
+              onClick={() => openWithPosition(readNearbyStopsUrl, 'stops')}
               title="Trova le fermate intorno a dove sei adesso, per vedere quali linee ci passano"
               type="button"
             >
@@ -308,7 +340,7 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
             <button
               className="small-button"
               disabled={Boolean(geoBusy)}
-              onClick={() => readPosition(readDepotDirectionsUrl, 'depot')}
+              onClick={() => openWithPosition(readDepotDirectionsUrl, 'depot')}
               title="Linee, orari e cambi per arrivare al deposito da dove sei adesso, nell'app Moovit"
               type="button"
             >
@@ -341,8 +373,8 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
           dice solo quando l'ha dedotto l'app al posto di chi cerca. */}
       {!searching ? (
         <p className="depot-returns-summary">
-          {result.matches.length
-            ? `${result.matches.length} ${result.matches.length === 1 ? 'rientro' : 'rientri'}`
+          {matches.length
+            ? `${matches.length} ${matches.length === 1 ? 'rientro' : 'rientri'}`
             : 'Nessun rientro'}{' '}
           dalle {criteria.time}
           {criteria.service ? '' : ` · servizio ${SERVICE_LABELS[result.service] || result.service}`}
@@ -360,12 +392,12 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
       ) : null}
 
       <div className="depot-returns-results" aria-live="polite">
-        {searching ? null : result.matches.length ? (
-          result.matches.map((item) => {
+        {searching ? null : matches.length ? (
+          matches.map((item) => {
             const stop = getChangePointStop(item.from, { line: item.line });
             return (
               <article
-                className="depot-return-card"
+                className={`depot-return-card${item.reachable === false ? ' depot-return-card--far' : ''}`}
                 key={`${item.line}-${item.from}-${item.shift}-${item.departure}-${item.vehicleShift}`}
               >
                 <p className="depot-return-card__head" title={item.route}>
@@ -391,6 +423,7 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
                 </p>
                 <p className="depot-return-card__meta">
                   {[
+                    formatDistance(item),
                     formatWaitShort(item.waitMinutes),
                     // Su un rientro a piu' tratti dentro ci sta anche il
                     // recupero a capolinea fra un tratto e l'altro: e' tempo
@@ -415,7 +448,7 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
                   <button
                     className="depot-returns-maps-link"
                     disabled={Boolean(geoBusy)}
-                    onClick={() => readPosition(() => readChangePointDirectionsUrl(item.from), `to-${item.from}`)}
+                    onClick={() => openWithPosition(() => readChangePointDirectionsUrl(item.from), `to-${item.from}`)}
                     type="button"
                   >
                     {geoBusy === `to-${item.from}` ? 'Leggo la posizione…' : 'ci arrivo in tempo?'}
@@ -429,7 +462,7 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
         )}
       </div>
 
-      {!searching && !result.matches.length ? (
+      {!searching && !matches.length ? (
         <div className="depot-returns-fallback">
           <p>
             Nessun mezzo di servizio ti riporta in deposito adesso. Moovit parte da dove sei, prende la fermata piu
@@ -449,7 +482,7 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
             <button
               className="depot-returns-search"
               disabled={Boolean(geoBusy)}
-              onClick={() => readPosition(readDepotDirectionsUrl, 'depot')}
+              onClick={() => openWithPosition(readDepotDirectionsUrl, 'depot')}
               type="button"
             >
               <Icon name="route" size={18} />
@@ -471,7 +504,7 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
             <button
               className="depot-returns-maps-link"
               disabled={Boolean(geoBusy)}
-              onClick={() => readPosition(readDepotMapsDirectionsUrl, 'maps')}
+              onClick={() => openWithPosition(readDepotMapsDirectionsUrl, 'maps')}
               type="button"
             >
               {geoBusy === 'maps' ? 'Leggo la posizione…' : 'oppure con Google Maps'}
@@ -491,7 +524,7 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
             <button
               className="depot-returns-maps-link"
               disabled={Boolean(geoBusy)}
-              onClick={() => readPosition(readMoovitWebUrl, 'moovitWeb')}
+              onClick={() => openWithPosition(readMoovitWebUrl, 'moovitWeb')}
               type="button"
             >
               {geoBusy === 'moovitWeb' ? 'Leggo la posizione…' : 'oppure Moovit nel browser'}
@@ -502,7 +535,7 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
 
       {!searching && result.upcoming.length ? (
         <div className="depot-returns-upcoming">
-          <h3>{result.matches.length ? 'Rientri successivi' : 'Prossimi rientri'}</h3>
+          <h3>{matches.length ? 'Rientri successivi' : 'Prossimi rientri'}</h3>
           <ul>
             {result.upcoming.slice(0, UPCOMING_LIMIT).map((item) => (
               <li key={`${item.line}-${item.from}-${item.shift}-${item.departure}-${item.vehicleShift}`}>

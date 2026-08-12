@@ -7,6 +7,8 @@ import {
   RETURN_WINDOW_MINUTES,
   getServiceTypes,
   searchReturns,
+  walkingMinutes,
+  withDistance,
 } from '../src/utils/depotReturns.js';
 
 // Lunedi 4 maggio 2026, ore 14:00: giorno feriale.
@@ -361,4 +363,73 @@ test('il grafico letto si distingue da un PDF che non ce l ha', () => {
   };
   assert.equal(searchReturns(withGraphic, ANY_PLACE, { now: NOW }).graphicLoaded, true);
   assert.equal(searchReturns({}, ANY_PLACE, { now: NOW }).graphicLoaded, false);
+});
+
+test('la distanza dice se un rientro si fa in tempo a prenderlo', () => {
+  const developments = {
+    'RIENTRI 5 LUN-VEN': [
+      // Cattaneo, palina 308: vicino a chi sta allo stadio, e con mezz'ora davanti.
+      segment({ ln: '5', start: '14:30', loc_s: 'CATT', end: '14:39', loc_e: 'GERB' }),
+      // Dalla Chiesa a Orbassano: dieci chilometri, e parte fra cinque minuti.
+      segment({ ln: '5', start: '14:05', loc_s: 'OBFR', end: '14:25', loc_e: 'GERB' }),
+    ],
+  };
+
+  const matches = searchReturns(developments, ANY_PLACE, { now: NOW, windowMinutes: 60 }).matches;
+  // Stadio Olimpico: un punto qualunque di Torino sud.
+  const misurati = withDistance(matches, { lat: 45.0419, lng: 7.6501 });
+
+  const cattaneo = misurati.find((item) => item.from === 'CATT');
+  assert.ok(cattaneo.meters > 1500 && cattaneo.meters < 2500, `Cattaneo a ${cattaneo.meters} m`);
+  // Due chilometri sono venticinque minuti a piedi, e ce ne sono trenta: si fa.
+  assert.equal(cattaneo.walkMinutes, 25);
+  assert.equal(cattaneo.reachable, true);
+
+  const orbassano = misurati.find((item) => item.from === 'OBFR');
+  assert.ok(orbassano.meters > 8000, `Dalla Chiesa a ${orbassano.meters} m`);
+  assert.equal(orbassano.reachable, false, 'dieci chilometri in cinque minuti no');
+});
+
+test('lo stesso posto cambio cambia risposta secondo quanto manca', () => {
+  const qui = { lat: 45.0419, lng: 7.6501 };
+  // Nove minuti da Cattaneo al Gerbido, come dice la tabella degli Orari.
+  const build = (start, end) => ({
+    'RIENTRI 5 LUN-VEN': [segment({ ln: '5', start, loc_s: 'CATT', end, loc_e: 'GERB' })],
+  });
+
+  // Cattaneo dista due chilometri: con sette minuti davanti non ci si arriva.
+  const [stretto] = withDistance(searchReturns(build('14:07', '14:16'), ANY_PLACE, { now: NOW }).matches, qui);
+  assert.equal(stretto.reachable, false);
+
+  // Con un'ora davanti si', ed e' lo stesso posto e la stessa distanza.
+  const [largo] = withDistance(searchReturns(build('15:00', '15:09'), ANY_PLACE, { now: NOW, windowMinutes: 120 }).matches, qui);
+  assert.equal(largo.meters, stretto.meters);
+  assert.equal(largo.reachable, true);
+});
+
+test('senza posizione i rientri restano, ma senza distanza', () => {
+  const developments = {
+    'RIENTRI 5 LUN-VEN': [segment({ ln: '5', start: '14:10', loc_s: 'CATT', end: '14:19', loc_e: 'GERB' })],
+  };
+  const matches = searchReturns(developments, ANY_PLACE, { now: NOW }).matches;
+
+  const [senza] = withDistance(matches, null);
+  assert.equal(senza.meters, null);
+  assert.equal(senza.reachable, null);
+  assert.equal(senza.departure, '14:10');
+
+  // Un capolinea senza palina non ha posizione: resta in elenco lo stesso.
+  const ignoto = withDistance(
+    searchReturns({ 'RIENTRI 5 LUN-VEN': [segment({ ln: '5', start: '14:10', loc_s: 'GORX', end: '14:19', loc_e: 'GERB' })] }, ANY_PLACE, { now: NOW }).matches,
+    { lat: 45.0419, lng: 7.6501 },
+  );
+  assert.equal(ignoto[0].meters, null);
+  assert.equal(ignoto[0].reachable, null);
+});
+
+test('a piedi si contano ottanta metri al minuto, mai zero', () => {
+  assert.equal(walkingMinutes(800), 10);
+  assert.equal(walkingMinutes(20), 1);
+  assert.equal(walkingMinutes(0), 1);
+  assert.equal(walkingMinutes(null), null);
 });

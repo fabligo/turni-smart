@@ -31,6 +31,12 @@ export const PALINE = {
   968: { lat: 45.07294, lng: 7.57962, name: 'GRAMSCI NORD' },
   853: { lat: 45.07386, lng: 7.60412, name: 'MACEDONIA' },
   852: { lat: 45.07398, lng: 7.604, name: 'MACEDONIA' },
+  /* I due capolinea della 5. Il grafico li chiama P.za Arbarello e Orbassano -
+     Strada Torino, GTT li chiama Siccardi e Dalla Chiesa: sono gli stessi
+     posti, e i numeri di palina lo dimostrano meglio dei nomi. Il GTFS conferma
+     che sono proprio i capolinea della linea 5. */
+  303: { lat: 45.07296, lng: 7.67568, name: 'SICCARDI CAP' },
+  2927: { lat: 45.0078, lng: 7.54506, name: 'DALLA CHIESA CAP' },
 };
 
 export function getPalinaPosition(palina) {
