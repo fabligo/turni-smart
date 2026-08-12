@@ -1,6 +1,10 @@
 import { timeToMinutes } from './utils/timeUtils.js';
 import { normalizeLineCode } from './constants/depotGerbido.js';
+<<<<<<< HEAD
 import { detectRientriLine, findGraphicHints, isRientriKey, parseDepotReturns, rientriKey } from './parserRientri.js';
+=======
+import { detectRientriLine, isRientriKey, parseDepotReturns, rientriKey } from './parserRientri.js';
+>>>>>>> origin/main
 
 const TIME_TOKEN_RE = /\d{2}[.:]?\d{2}/;
 const SEGMENT_RE =
@@ -415,6 +419,7 @@ export function parseOrari(pagesText, { diagnostics = null } = {}) {
       const key = rientriKey(line, resolved);
       developments[key] = developments[key] || [];
       returns.forEach((segment) => addSegment(developments, key, segment));
+<<<<<<< HEAD
     }
     if (diagnostics) {
       const entry = diagnostics[diagnostics.length - 1];
@@ -427,6 +432,9 @@ export function parseOrari(pagesText, { diagnostics = null } = {}) {
         entry.graphicMarkers = hints.markers;
         if (!returns.length) entry.graphicExcerpt = hints.excerpt;
       }
+=======
+      if (diagnostics) diagnostics[diagnostics.length - 1].returns = returns.length;
+>>>>>>> origin/main
     }
   });
 
