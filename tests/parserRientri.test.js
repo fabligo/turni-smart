@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   detectRientriLine,
+  findGraphicHints,
   isRientriKey,
   parseDepotReturns,
   parseDepotTransferTimes,
@@ -111,4 +112,28 @@ test('la chiave dei rientri non e quella di un turno', () => {
   assert.equal(rientriKey('5', 'LUN - VEN'), 'RIENTRI 5 LUN - VEN');
   assert.ok(isRientriKey(rientriKey('5', 'LUN - VEN')));
   assert.equal(isRientriKey('05 302'), false);
+});
+
+test('legge le forme che il PDF produce quando perde separatori e spazi', () => {
+  // Ora senza separatore e capolinea attaccati: "2151" e "GERB-OSET".
+  const compact = `
+    TEMPI DI USCITA / RIENTRO 5
+    GERB-OSET 7 7
+    GERB-CATT 9 9
+    Linea 5 UL 2151 OSET Entra 2158
+    Linea 5 U.L 2102 CATT Entra 2111
+  `;
+  const returns = parseDepotReturns(compact, {});
+  assert.deepEqual(
+    returns.map((item) => `${item.loc_s} ${item.start}→${item.end}`),
+    ['OSET 21:51→21:58', 'CATT 21:02→21:11'],
+  );
+  assert.deepEqual(parseDepotTransferTimes(compact).OSET, { out: 7, in: 7 });
+});
+
+test('il referto distingue la pagina assente dalla pagina non riconosciuta', () => {
+  assert.deepEqual(findGraphicHints('05 302 5 / 2 16.33 CATT R 21.58 GERB'), { excerpt: '', markers: [] });
+  const hints = findGraphicHints('LINEA 5 TEMPI DI USCITA / RIENTRO 5 UL 2151 OSET ENTRA 2158');
+  assert.deepEqual(hints.markers, ['ul', 'entra', 'tempi']);
+  assert.match(hints.excerpt, /TEMPI DI USCITA/);
 });

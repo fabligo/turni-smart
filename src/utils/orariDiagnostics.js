@@ -110,6 +110,7 @@ export function summarizeReturns(developments = {}) {
 }
 
 const MAX_RUNS = 24;
+const MAX_EXCERPTS = 3;
 
 /** Il referto in testo semplice, fatto per essere fotografato o incollato. */
 export function buildOrariReport({ developments = {}, pages = null } = {}) {
@@ -141,6 +142,22 @@ export function buildOrariReport({ developments = {}, pages = null } = {}) {
   returns.forEach((item) => {
     lines.push(`${item.key} · ultime corse ${item.segments} · da ${item.places.join(' ') || '-'}`);
   });
+
+  /* Quando i rientri sono zero la domanda e' una sola: il PDF quella pagina ce
+     l'ha? Le pagine con i marcatori del grafico rispondono di si', e il loro
+     testo dice in che forma esce, che e' l'unico dato su cui correggere il
+     parser senza avere il PDF sotto mano. */
+  const marked = (pages || []).filter((page) => page.graphicMarkers?.length);
+  if (!returns.length) {
+    if (!marked.length) {
+      lines.push('nessuna pagina col grafico: carica il PDF Orari completo');
+    } else {
+      marked.slice(0, MAX_EXCERPTS).forEach((page) => {
+        lines.push(`p${page.page} marcatori ${page.graphicMarkers.join(',')}`);
+        if (page.graphicExcerpt) lines.push(`  ${page.graphicExcerpt}`);
+      });
+    }
+  }
 
   return lines.join('\n');
 }
