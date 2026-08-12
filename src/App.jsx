@@ -19,6 +19,7 @@ import {
   getStorageReport,
   loadOrariByKey,
   loadOrariParserVersion,
+  loadOrariPlaces,
   loadPreferences,
   loadPreconoscenzaByKey,
   orariKey,
@@ -555,6 +556,8 @@ export default function App() {
   const [orariInfo, setOrariInfo] = useState(null);
   // Con quale versione del parser e' stata letta la lettura in uso.
   const [orariParserVersion, setOrariParserVersion] = useState(RIENTRI_PARSER_VERSION);
+  // La legenda del PDF: dei codici di quattro lettere dice il posto vero.
+  const [orariPlaces, setOrariPlaces] = useState({});
   const [orariLoaded, setOrariLoaded] = useState(false);
   const diagnosticsOn = useMemo(() => readOrariDiagnosticsFlag(), []);
   /* Il referto per pagina esiste solo se il PDF viene riletto con la botola
@@ -659,6 +662,7 @@ export default function App() {
            servizio non ha rientri, e non e' colpa del PDF: va detto qui, dove
            si sa da dove arriva il dato. */
         setOrariParserVersion(loadOrariParserVersion(savedKey));
+        setOrariPlaces(loadOrariPlaces(savedKey));
         applyOrari(savedOrari, result, { save: false });
       }
     }
@@ -667,6 +671,7 @@ export default function App() {
   function applyOrari(parsedDevelopments, sourceInfo = pdfInfo, options = {}) {
     const summary = summarizeDevelopments(parsedDevelopments);
     if (options.save !== false) setOrariParserVersion(RIENTRI_PARSER_VERSION);
+    if (options.places) setOrariPlaces(options.places);
     setDevelopments(parsedDevelopments);
     setOrariInfo({
       fileName: sourceInfo?.fileName || 'Orari Linee',
@@ -675,7 +680,7 @@ export default function App() {
     });
     setOrariLoaded(true);
     if (options.save !== false) {
-      if (!saveOrari(parsedDevelopments, sourceInfo)) markStorageFailure('Orari Linee');
+      if (!saveOrari(parsedDevelopments, sourceInfo, options.places)) markStorageFailure('Orari Linee');
       refreshHistory();
     }
   }
@@ -734,14 +739,15 @@ export default function App() {
       }
 
       const pageDiagnostics = diagnosticsOn ? [] : null;
-      const parsedDevelopments = parseOrari(pages, { diagnostics: pageDiagnostics });
+      const parsedPlaces = {};
+      const parsedDevelopments = parseOrari(pages, { diagnostics: pageDiagnostics, places: parsedPlaces });
       if (pageDiagnostics) setOrariPageDiagnostics(pageDiagnostics);
       const summary = summarizeDevelopments(parsedDevelopments);
       if (!summary.totalTurns) {
         throw new Error('Nessun turno trovato nel PDF Orari Deposito.');
       }
 
-      applyOrari(parsedDevelopments, { ...pdfInfo, fileName: file.name });
+      applyOrari(parsedDevelopments, { ...pdfInfo, fileName: file.name }, { places: parsedPlaces });
       setUploadPhase('Orari Linee caricati');
     } catch (caughtError) {
       setDevelopments({});
@@ -770,7 +776,8 @@ export default function App() {
         throw new Error('Questo sembra la Preconoscenza, non gli Orari Deposito.');
       }
 
-      const parsedDevelopments = parseOrari(pages);
+      const parsedPlaces = {};
+      const parsedDevelopments = parseOrari(pages, { places: parsedPlaces });
       const summary = summarizeDevelopments(parsedDevelopments);
       if (!summary.totalTurns) {
         throw new Error('Nessun turno trovato nel PDF Orari Deposito.');
@@ -782,7 +789,7 @@ export default function App() {
         dIn: new Date(viewYear, viewMonth, 1),
         dTe: new Date(viewYear, viewMonth + 1, 0),
       };
-      applyOrari(parsedDevelopments, sourceInfo);
+      applyOrari(parsedDevelopments, sourceInfo, { places: parsedPlaces });
       setUploadPhase('Orari Linee archiviati');
     } catch (caughtError) {
       setOrariError(caughtError.message || 'Errore durante la lettura degli Orari Deposito.');
@@ -1128,6 +1135,7 @@ export default function App() {
         // Anche una lettura ripescata dallo storico puo' essere precedente al
         // parser dei rientri: la sua versione e' quella con cui fu salvata.
         setOrariParserVersion(loadOrariParserVersion(archivedOrari.key));
+        setOrariPlaces(loadOrariPlaces(archivedOrari.key));
         applyOrari(storedOrari, {
           fileName: archivedOrari.label || 'Orari Linee',
           dIn: new Date(normalizedYear, normalizedMonth, 1),
@@ -1614,7 +1622,11 @@ export default function App() {
                   </div>
                   {linesTab === 'lines' ? <LineConsultation developments={developments} /> : null}
                   {linesTab === 'returns' ? (
-                    <DepotReturnsPanel developments={developments} staleParse={orariParserVersion < RIENTRI_PARSER_VERSION} />
+                    <DepotReturnsPanel
+                      developments={developments}
+                      places={orariPlaces}
+                      staleParse={orariParserVersion < RIENTRI_PARSER_VERSION}
+                    />
                   ) : null}
                   {linesTab === 'departures' ? <DepotDeparturesPanel developments={developments} /> : null}
                 </>

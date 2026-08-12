@@ -216,7 +216,7 @@ export function searchReturns(developments = {}, selectedPlace, options = {}) {
        ogni filtro sulla durata. */
     if (!isRientriKey(key)) return;
     result.graphicLoaded = true;
-    const { line: keyLine, shift } = getShiftParts(key);
+    const { shift } = getShiftParts(key);
 
     groupByRun(segments).forEach((run) => {
       run.forEach((segment, index) => {
@@ -257,7 +257,10 @@ export function searchReturns(developments = {}, selectedPlace, options = {}) {
           return;
         }
 
-        const line = segment.lineaNorm || segment.ln || keyLine;
+        /* La linea la porta il segmento. La chiave non e' un ripiego: per i
+           rientri comincia con RIENTRI, e usarla faceva comparire "RIENTRI" al
+           posto del numero di linea quando la pagina non diceva quale fosse. */
+        const line = segment.lineaNorm || segment.ln || '';
         const vehicleShift = segment.vett || segment.turnoVettura || '';
         const identity = [line, normalizePlace(segment.loc_s), segment.start, arrival.end, vehicleShift, chain.length].join('|');
         if (seen.has(identity)) return;
@@ -271,7 +274,7 @@ export function searchReturns(developments = {}, selectedPlace, options = {}) {
           legs: chain.map((leg) => ({
             end: leg.end,
             from: normalizePlace(leg.loc_s),
-            line: leg.lineaNorm || leg.ln || keyLine,
+            line: leg.lineaNorm || leg.ln || '',
             start: leg.start,
             to: normalizePlace(leg.loc_e),
           })),

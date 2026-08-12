@@ -29,13 +29,6 @@ const DEPOT_LABEL = 'Gerbido';
 
 const WINDOW_OPTIONS = [30, 60, 90, 120];
 
-const SERVICE_OPTIONS = [
-  { value: '', label: 'Servizio di oggi' },
-  { value: 'feriali', label: 'Feriale (lun-ven)' },
-  { value: 'sabato', label: 'Sabato' },
-  { value: 'festivi', label: 'Festivo' },
-];
-
 const SERVICE_LABELS = {
   feriali: 'feriale',
   sabato: 'sabato',
@@ -68,7 +61,14 @@ function formatWindow(windowMinutes) {
   return hours === 1 ? '1 ora' : `${hours} ore`;
 }
 
-export function DepotReturnsPanel({ developments = {}, staleParse = false }) {
+export function DepotReturnsPanel({ developments = {}, places = {}, staleParse = false }) {
+  /* I codici di quattro lettere sono roba interna al documento: GORX e NEGR
+     non li ha mai sentiti nessuno. La legenda degli Orari li traduce nel posto
+     vero, e quando manca resta la tabella dei posti cambio raccolta a mano. */
+  function placeLabel(code) {
+    return places?.[String(code || '').toUpperCase()]?.label || getChangePointLabel(code);
+  }
+
   const [form, setForm] = useState(() => ({
     service: '',
     time: clockFromNow(0),
@@ -230,11 +230,8 @@ export function DepotReturnsPanel({ developments = {}, staleParse = false }) {
           <Icon name="dockReturns" size={22} />
           Rientri deposito
         </span>
-        <h2 id="depot-returns-title">Come rientro al Gerbido</h2>
-        <p>
-          Le corse di servizio che rientrano al Gerbido dopo l&apos;orario indicato, da qualsiasi posto cambio, con la
-          palina da cui partono.
-        </p>
+        <h2 id="depot-returns-title">Cosa mi riporta al Gerbido</h2>
+        <p>Le corse che passano dopo l&apos;orario indicato e finiscono in deposito, con il posto da cui partono.</p>
       </div>
 
       <form
@@ -263,16 +260,6 @@ export function DepotReturnsPanel({ developments = {}, staleParse = false }) {
               {WINDOW_OPTIONS.map((minutes) => (
                 <option key={minutes} value={minutes}>
                   {formatWindow(minutes)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>Servizio</span>
-            <select onChange={(event) => updateForm({ service: event.target.value })} value={form.service}>
-              {SERVICE_OPTIONS.map((option) => (
-                <option key={option.value || 'auto'} value={option.value}>
-                  {option.label}
                 </option>
               ))}
             </select>
@@ -331,17 +318,6 @@ export function DepotReturnsPanel({ developments = {}, staleParse = false }) {
           )}
         </div>
 
-        <div className="depot-returns-quick">
-          <button onClick={() => runSearch({ time: clockFromNow(0) })} type="button">
-            Adesso
-          </button>
-          <button onClick={() => runSearch({ time: clockFromNow(15) })} type="button">
-            Tra 15 min
-          </button>
-          <button onClick={() => runSearch({ time: clockFromNow(30) })} type="button">
-            Tra 30 min
-          </button>
-        </div>
       </form>
 
       {searching ? (
@@ -404,7 +380,7 @@ export function DepotReturnsPanel({ developments = {}, staleParse = false }) {
                     <strong>{item.departure}</strong>
                     <small>
                       {stop ? `palina ${stop} · ` : ''}
-                      {getChangePointLabel(item.from)}
+                      {placeLabel(item.from)}
                     </small>
                   </span>
                   <i aria-hidden="true">→</i>
@@ -433,7 +409,7 @@ export function DepotReturnsPanel({ developments = {}, staleParse = false }) {
                     rel="noopener noreferrer"
                     target="_blank"
                   >
-                    Apri il percorso fino a {getChangePointLabel(item.from)}
+                    Apri il percorso fino a {placeLabel(item.from)}
                   </a>
                 ) : (
                   <button
@@ -535,7 +511,7 @@ export function DepotReturnsPanel({ developments = {}, staleParse = false }) {
                   {item.direct ? '' : ` · ${item.legs.length} tratti`}
                 </strong>
                 <span>
-                  {item.departure} da {getChangePointLabel(item.from)}
+                  {item.departure} da {placeLabel(item.from)}
                 </span>
                 <span>
                   {item.arrival} al {DEPOT_LABEL}

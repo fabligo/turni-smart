@@ -152,11 +152,11 @@ export function savePreconoscenza(info) {
   return true;
 }
 
-export function saveOrari(developments, info) {
+export function saveOrari(developments, info, places = {}) {
   const month = monthFromPreconoscenza(info);
   if (!month || !developments || !Object.keys(developments).length) return false;
   const key = orariKey(month.year, month.month);
-  const ok = writeJson(key, { developments, parser: RIENTRI_PARSER_VERSION });
+  const ok = writeJson(key, { developments, parser: RIENTRI_PARSER_VERSION, places: places || {} });
   if (!ok) return false;
   writeJson(LAST_ORARI_KEY, key);
   updateIndex({
@@ -182,9 +182,13 @@ export function loadPreconoscenzaByKey(key) {
    la busta, e quella e' la loro versione zero. */
 function unwrapOrari(raw) {
   if (raw && typeof raw === 'object' && raw.developments && typeof raw.developments === 'object') {
-    return { developments: raw.developments, parser: Number(raw.parser) || 0 };
+    return {
+      developments: raw.developments,
+      parser: Number(raw.parser) || 0,
+      places: raw.places && typeof raw.places === 'object' ? raw.places : {},
+    };
   }
-  return { developments: raw && typeof raw === 'object' ? raw : {}, parser: 0 };
+  return { developments: raw && typeof raw === 'object' ? raw : {}, parser: 0, places: {} };
 }
 
 export function loadOrariByKey(key) {
@@ -198,6 +202,11 @@ export function loadOrariByKey(key) {
  */
 export function loadOrariParserVersion(key) {
   return unwrapOrari(readJson(key, {})).parser;
+}
+
+/** La legenda dei codici di posto letta insieme agli Orari. */
+export function loadOrariPlaces(key) {
+  return unwrapOrari(readJson(key, {})).places;
 }
 
 export function loadLastPreconoscenza() {

@@ -80,10 +80,14 @@ export function detectRientriLine(text = '') {
     /USCITA\s*\/?\s*RIENTRO\s+(\d{1,3}[A-Z]?)\b/,
     /ANDATA\s*\/?\s*RITORNO\s+(\d{1,3}[A-Z]?)\b/,
     /\bLINEA\s+(\d{1,3}[A-Z]?)\b/,
+    /* I codici dell'orario tipo portano dentro la linea: A05Q0101 e' la 5.
+       E' l'unico appiglio quando l'intestazione grande non ha la parola
+       "linea" e le due tabelle in fondo non vengono estratte. */
+    /\b[AHW](\d{2,3}[A-Z]?)Q\d/,
   ];
   for (const pattern of patterns) {
     const match = source.match(pattern);
-    if (match) return match[1];
+    if (match) return match[1].replace(/^0+(?=\d)/, '');
   }
   return '';
 }
@@ -224,4 +228,52 @@ export function findGraphicHints(text = '') {
     excerpt: source.slice(from, from + EXCERPT_LENGTH).replace(/\s+/g, ' ').trim(),
     markers: found,
   };
+}
+
+/* La legenda della pagina, che dei codici a quattro lettere dice il posto vero:
+ *
+ *   OBFR = ORBASSANO - STRADA TORINO - Capolinea andata 5
+ *   CATT = P.ZA CATTANEO - Posto cambio
+ *   OSET = C. ORBASSANO / C. SETTEMBRINI
+ *
+ * Senza questa l'app mostra "GORX" e "NEGR", che chi guida non ha motivo di
+ * riconoscere. Con questa mostra il nome che c'e' scritto sul documento, e non
+ * uno inventato da noi.
+ */
+const LEGEND_ENTRY_RE = /\b([A-Z]{4})\s*=\s*([^=]{2,80}?)(?=\s+[A-Z]{4}\s*=|$)/g;
+// Oltre questa lunghezza non e' piu' una voce di legenda ma il testo che segue.
+const MAX_LEGEND_NAME = 60;
+
+/* Il PDF scrive tutto maiuscolo. Su una scheda "P.ZA CATTANEO" urla e si legge
+   peggio di "P.za Cattaneo": le parole restano quelle, cambia solo la forma. */
+function titleCase(value = '') {
+  // Dopo il punto no: "P.ZA" e' "P.za", non "P.Za".
+  return String(value).toLowerCase().replace(/(^|[\s/-])([a-zà-ù])/g, (_, before, letter) => before + letter.toUpperCase());
+}
+
+function tidyLegendName(value = '') {
+  return String(value)
+    .replace(/\s+/g, ' ')
+    .replace(/[\s\-–,;.]+$/, '')
+    .trim();
+}
+
+export function parseLegend(text = '') {
+  const source = String(text || '').toUpperCase().replace(/\s+/g, ' ');
+  const legend = {};
+
+  for (const match of source.matchAll(LEGEND_ENTRY_RE)) {
+    const code = match[1];
+    const name = tidyLegendName(match[2]);
+    if (!name || name.length > MAX_LEGEND_NAME) continue;
+    /* La legenda dice anche a cosa serve il posto: il posto cambio e' dove si
+       da' il cambio, il capolinea dove la vettura inverte. Sono parole loro,
+       non nostre, e servono a non chiamare le due cose allo stesso modo. */
+    const role = /POSTO\s+CAMBIO/.test(name) ? 'cambio' : /CAPOLINEA/.test(name) ? 'capolinea' : '';
+    const label = tidyLegendName(name.replace(/-?\s*(POSTO\s+CAMBIO|CAPOLINEA(\s+\w+)*(\s+\d+[A-Z]?)?)\s*$/, ''));
+    if (!label) continue;
+    legend[code] = { label: titleCase(label), role };
+  }
+
+  return legend;
 }

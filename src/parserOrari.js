@@ -1,6 +1,13 @@
 import { timeToMinutes } from './utils/timeUtils.js';
 import { normalizeLineCode } from './constants/depotGerbido.js';
-import { detectRientriLine, findGraphicHints, isRientriKey, parseDepotReturns, rientriKey } from './parserRientri.js';
+import {
+  detectRientriLine,
+  findGraphicHints,
+  isRientriKey,
+  parseDepotReturns,
+  parseLegend,
+  rientriKey,
+} from './parserRientri.js';
 
 const TIME_TOKEN_RE = /\d{2}[.:]?\d{2}/;
 const SEGMENT_RE =
@@ -384,7 +391,7 @@ export function parseOrariPageLines(text, gt, ver, developments, tableState = nu
  *   le viene infine assegnato. Serve solo a leggere cosa e' successo: non
  *   cambia niente di quello che il parser produce.
  */
-export function parseOrari(pagesText, { diagnostics = null } = {}) {
+export function parseOrari(pagesText, { diagnostics = null, places = null } = {}) {
   const pages = Array.isArray(pagesText) ? pagesText : [pagesText];
   const developments = {};
   let lastGt = '';
@@ -416,6 +423,10 @@ export function parseOrari(pagesText, { diagnostics = null } = {}) {
       developments[key] = developments[key] || [];
       returns.forEach((segment) => addSegment(developments, key, segment));
     }
+    /* La legenda della pagina traduce i codici di quattro lettere nel posto
+       vero. Le pagine ne portano pezzi diversi, quindi si accumulano. */
+    if (places) Object.assign(places, parseLegend(pageText));
+
     if (diagnostics) {
       const entry = diagnostics[diagnostics.length - 1];
       entry.returns = returns.length;

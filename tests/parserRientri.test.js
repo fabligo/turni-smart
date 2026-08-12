@@ -6,6 +6,7 @@ import {
   isRientriKey,
   parseDepotReturns,
   parseDepotTransferTimes,
+  parseLegend,
   rientriKey,
 } from '../src/parserRientri.js';
 
@@ -136,4 +137,38 @@ test('il referto distingue la pagina assente dalla pagina non riconosciuta', () 
   const hints = findGraphicHints('LINEA 5 TEMPI DI USCITA / RIENTRO 5 UL 2151 OSET ENTRA 2158');
   assert.deepEqual(hints.markers, ['ul', 'entra', 'tempi']);
   assert.match(hints.excerpt, /TEMPI DI USCITA/);
+});
+
+test('la legenda del PDF traduce i codici nel posto vero', () => {
+  const legenda = `
+    Legenda
+    OBFR = ORBASSANO - STRADA TORINO - Capolinea andata 5
+    BNCE = BEINASCO - CENTRO
+    OSET = C. ORBASSANO / C. SETTEMBRINI
+    CATT = P.ZA CATTANEO - Posto cambio
+    ORBX = L.GO ORBASSANO
+    ARBA = P.ZA ARBARELLO - Capolinea ritorno 5
+    GERB = DEPOSITO GERBIDO
+  `;
+  const legend = parseLegend(legenda);
+
+  assert.equal(legend.CATT.label, 'P.za Cattaneo');
+  assert.equal(legend.OSET.label, 'C. Orbassano / C. Settembrini');
+  assert.equal(legend.OBFR.label, 'Orbassano - Strada Torino');
+  assert.equal(legend.ORBX.label, 'L.go Orbassano');
+  // Il documento dice anche a cosa serve il posto: sono parole sue.
+  assert.equal(legend.CATT.role, 'cambio');
+  assert.equal(legend.OBFR.role, 'capolinea');
+  assert.equal(legend.BNCE.role, '');
+});
+
+test('la legenda regge anche senza spazi intorno all uguale', () => {
+  assert.equal(parseLegend('Legenda: GERB=DEPOSITO GERBIDO').GERB.label, 'Deposito Gerbido');
+  assert.deepEqual(parseLegend('05 302 5 / 2 16.33 CATT R 21.58 GERB'), {});
+});
+
+test('la linea si ricava anche dai codici dell orario tipo', () => {
+  // Sul grafico l'intestazione non porta la parola "linea": restano i codici.
+  assert.equal(detectRientriLine('CODICI H05Q0101 A05Q0101 W05Q0101'), '5');
+  assert.equal(detectRientriLine('CODICI A58BQ0101'), '58B');
 });
