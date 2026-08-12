@@ -18,7 +18,12 @@
 // la differenza e' il tempo che la tabella dichiara per quel posto. Cosi' un
 // PDF estratto con le colonne mescolate non produce accoppiamenti a caso.
 
+import { findTerminus } from './constants/gttTermini.js';
+import { distanceMeters } from './constants/gttPaline.js';
+
 const DEPOT = 'GERB';
+// Il deposito e' la palina 693, GORINI CAP: e' li' che entrano le vetture.
+const DEPOT_POSITION = { lat: 45.03941, lng: 7.59166 };
 const PLACE_RE = /^[A-Z]{4}$/;
 // L'ora esce dal PDF in tre forme a seconda di come il testo viene estratto:
 // "21.51", "21:51" e, quando il separatore si perde, "2151".
@@ -123,9 +128,26 @@ export function parseDepotTransferTimes(text = '') {
  * segmenti nella stessa forma di quelli degli Orari, cosi' la ricerca dei
  * rientri li tratta come qualsiasi altra corsa.
  */
-export function parseDepotReturns(text = '', { gt = '', ver = '', line = '' } = {}) {
+/* Un autobus in citta' non supera i sessanta all'ora. Serve a controllare un
+   capolinea trovato per nome: se la distanza in linea d'aria dal deposito e il
+   tempo di rientro dichiarato dalla tabella richiedono piu' di cosi', il nome
+   ha pescato una fermata troppo lontana e la posizione si butta.
+   Il limite e' solo verso l'alto: il capolinea della 74 e' Gorini, cioe' il
+   deposito stesso, e i suoi due minuti su zero metri sono il tempo di entrare,
+   non una velocita' impossibile. */
+const MAX_KMH = 60;
+
+function plausiblePosition(position, minutes) {
+  if (!position || !Number.isFinite(minutes) || minutes <= 0) return position || null;
+  const meters = distanceMeters(DEPOT_POSITION, position);
+  if (meters === null) return position;
+  return meters / 1000 / (minutes / 60) <= MAX_KMH ? position : null;
+}
+
+export function parseDepotReturns(text = '', { gt = '', ver = '', legend = null, line = '' } = {}) {
   const tokens = tokenize(text);
   const transfers = parseDepotTransferTimes(text);
+  const places = legend || parseLegend(text);
   const lineCode = line || detectRientriLine(text);
   const returns = [];
   const seen = new Set();
@@ -163,9 +185,20 @@ export function parseDepotReturns(text = '', { gt = '', ver = '', line = '' } = 
     if (seen.has(identity)) continue;
     seen.add(identity);
 
+    /* Dove sta il capolinea da cui si sale. Il codice da solo non lo dice: lo
+       dice il nome che la legenda gli da', cercato fra i capolinea di quella
+       linea, e poi controllato contro il tempo di rientro dichiarato. */
+    const terminus = findTerminus(lineCode, places[place]?.label || '');
+    const position = plausiblePosition(
+      terminus ? { lat: terminus.lat, lng: terminus.lng } : null,
+      transfers[place]?.in ?? null,
+    );
+
     returns.push({
       ln: lineCode,
       lineaNorm: lineCode,
+      palina: terminus && position ? terminus.code : '',
+      position,
       vett: '',
       turnoVettura: '',
       start,

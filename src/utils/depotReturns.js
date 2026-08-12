@@ -41,7 +41,10 @@ export function walkingMinutes(meters) {
  */
 export function withDistance(matches = [], position = null) {
   return matches.map((item) => {
-    const place = getChangePointPosition(item.from, { direction: item.direction, line: item.line });
+    /* Prima la posizione che il grafico ha gia' risolto per quel capolinea, poi
+       la palina del posto cambio. La prima vale per la linea di quel PDF, la
+       seconda e' la tabella raccolta sul campo: nessuna delle due e' indovinata. */
+    const place = item.position || getChangePointPosition(item.from, { direction: item.direction, line: item.line });
     const meters = position && place ? distanceMeters(position, place) : null;
     const walk = walkingMinutes(meters);
     return {
@@ -311,6 +314,9 @@ export function searchReturns(developments = {}, selectedPlace, options = {}) {
             to: normalizePlace(leg.loc_e),
           })),
           line,
+          // La posizione del capolinea, risolta a monte dal grafico: qui non si
+          // cerca niente, si porta avanti cio' che il parser ha gia' provato.
+          position: segment.position || null,
           rideMinutes,
           route: [normalizePlace(segment.loc_s), ...chain.map((leg) => normalizePlace(leg.loc_e))].join(' → '),
           service,

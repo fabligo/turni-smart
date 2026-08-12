@@ -416,8 +416,14 @@ export function parseOrari(pagesText, { diagnostics = null, places = null } = {}
     /* Il grafico di servizio e' un'altra pagina con un'altra forma: da li'
        vengono le ultime corse prima del deposito, che la tabella dei turni non
        ha. Stanno sotto una chiave che nessun turno puo' avere. */
+    /* La legenda della pagina traduce i codici di quattro lettere nel posto
+       vero, e serve sia a mostrarli sia a trovarne la posizione. Le pagine ne
+       portano pezzi diversi, quindi si accumulano. */
+    const legend = parseLegend(pageText);
+    if (places) Object.assign(places, legend);
+
     const line = detectRientriLine(pageText);
-    const returns = parseDepotReturns(pageText, { gt: resolved, line, ver });
+    const returns = parseDepotReturns(pageText, { gt: resolved, legend, line, ver });
     if (returns.length) {
       const key = rientriKey(line, resolved);
       developments[key] = developments[key] || [];
@@ -425,8 +431,6 @@ export function parseOrari(pagesText, { diagnostics = null, places = null } = {}
     }
     /* La legenda della pagina traduce i codici di quattro lettere nel posto
        vero. Le pagine ne portano pezzi diversi, quindi si accumulano. */
-    if (places) Object.assign(places, parseLegend(pageText));
-
     if (diagnostics) {
       const entry = diagnostics[diagnostics.length - 1];
       entry.returns = returns.length;
