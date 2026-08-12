@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CHANGE_POINTS, getChangePointLabel, getChangePointStop } from '../src/constants/changePoints.js';
+import {
+  CHANGE_POINTS,
+  getChangePointLabel,
+  getChangePointPosition,
+  getChangePointStop,
+} from '../src/constants/changePoints.js';
+import { distanceMeters, PALINE } from '../src/constants/gttPaline.js';
 import {
   buildChangePointDirectionsUrl,
   buildDepotDirectionsUrl,
@@ -66,7 +72,9 @@ test('le fermate vicine richiedono coordinate valide', () => {
   assert.equal(buildNearbyStopsUrl(), '');
 });
 
-test('nessun posto cambio porta coordinate non verificate', () => {
+test('nessun posto cambio porta coordinate scritte a occhio', () => {
+  // La posizione arriva dal numero di palina, che e' una chiave esatta nel
+  // GTFS di GTT. Nella tabella dei posti cambio non ci sono coordinate a mano.
   Object.values(CHANGE_POINTS).forEach((meta) => {
     assert.equal(meta.coordinates, undefined);
   });
@@ -128,4 +136,36 @@ test('il percorso fino al posto cambio usa il suo indirizzo', () => {
   // Senza indirizzo non si inventa una destinazione.
   assert.equal(buildChangePointDirectionsUrl({ lat: 45.06, lng: 7.65 }, 'ZZZZ'), '');
   assert.equal(buildChangePointDirectionsUrl({}, 'CAIO'), '');
+});
+
+test('le coordinate dei posti cambio vengono dalla palina, non da noi', () => {
+  // La palina 308 e' Cattaneo lato ritorno: la posizione e' quella che GTT
+  // pubblica per quel numero, non un punto messo a occhio sulla mappa.
+  assert.deepEqual(getChangePointPosition('CATT', { direction: 'R' }), { lat: 45.03618, lng: 7.62581 });
+  assert.deepEqual(getChangePointPosition('CATT', { direction: 'A' }), { lat: 45.03614, lng: 7.62627 });
+  // Sulla 62 le direzioni di Orbassano sono invertite, e le coordinate seguono.
+  assert.deepEqual(getChangePointPosition('ORSA', { direction: 'A', line: '62' }), getChangePointPosition('ORSA', { direction: 'R' }));
+  // Un capolinea del grafico non ha palina: senza quella non si inventa un punto.
+  assert.equal(getChangePointPosition('GORX'), null);
+  assert.equal(getChangePointPosition(''), null);
+});
+
+test('ogni palina nota porta un nome che conferma la ricerca', () => {
+  Object.entries(PALINE).forEach(([palina, meta]) => {
+    assert.ok(Number.isFinite(meta.lat) && Number.isFinite(meta.lng), `palina ${palina} senza coordinate`);
+    assert.ok(meta.name && meta.name.length > 2, `palina ${palina} senza nome GTT`);
+    // Torino e la sua cintura: fuori da qui la ricerca ha preso la fermata sbagliata.
+    assert.ok(meta.lat > 44.9 && meta.lat < 45.2, `palina ${palina} fuori Torino`);
+    assert.ok(meta.lng > 7.4 && meta.lng < 7.8, `palina ${palina} fuori Torino`);
+  });
+});
+
+test('la distanza in linea d aria regge i casi vuoti', () => {
+  const cattaneo = getChangePointPosition('CATT', { direction: 'R' });
+  const settembrini = getChangePointPosition('OSET', { direction: 'R' });
+  const metri = distanceMeters(cattaneo, settembrini);
+  // Cattaneo e Settembrini sono sullo stesso corso, poco piu' di un chilometro.
+  assert.ok(metri > 800 && metri < 1600, `distanza inattesa: ${metri} m`);
+  assert.equal(distanceMeters(cattaneo, null), null);
+  assert.equal(distanceMeters({ lat: 'boh', lng: 7 }, cattaneo), null);
 });

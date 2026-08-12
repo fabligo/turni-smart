@@ -1,3 +1,5 @@
+import { getPalinaPosition } from './gttPaline.js';
+
 // I codici dei posti cambio arrivano dagli orari GTT e le paline sono raccolte
 // sul campo da chi guida queste linee. Nomi e indirizzi vengono dalle pagine
 // degli arrivi di gtt.to.it, una per palina: sono quelli che GTT stampa sulla
@@ -159,15 +161,19 @@ export function getChangePointAddress(code) {
 }
 
 /**
- * Le coordinate del posto cambio, quando ci sono. Moovit vuole un punto, non
- * un indirizzo: senza queste il percorso si puo' solo chiedere per nome, e a
- * risolverlo e' la ricerca di Moovit invece della nostra mappa.
+ * Le coordinate del posto cambio. Non sono scritte a mano da nessuna parte: si
+ * cerca la sua palina nel GTFS di GTT, dove il numero di palina e' una chiave
+ * esatta. Un posto cambio sbagliato manda un autista alla fermata sbagliata
+ * alle quattro del mattino, e nessuno se ne accorge finche' non e' tardi:
+ * quando la palina non e' nota la posizione resta nulla, e chi chiama deve
+ * saperlo fare senza.
  *
- * Vanno riempite solo con valori verificati sul posto o presi dalla palina:
- * un posto cambio sbagliato manda un autista alla fermata sbagliata alle
- * quattro del mattino, e nessuno se ne accorge finche' non e' tardi.
+ * Resta accettato un `position` scritto nella tabella, per un posto cambio che
+ * una palina non ce l'abbia.
  */
-export function getChangePointPosition(code) {
+export function getChangePointPosition(code, { direction = '', line = '' } = {}) {
+  const fromPalina = getPalinaPosition(getChangePointStop(code, { direction, line }));
+  if (fromPalina) return fromPalina;
   const position = CHANGE_POINTS[normalizeChangePoint(code)]?.position;
   if (!Number.isFinite(position?.lat) || !Number.isFinite(position?.lng)) return null;
   return position;
