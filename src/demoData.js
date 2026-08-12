@@ -54,13 +54,16 @@ export const DEMO_DEVELOPMENTS = {
   ],
   // Riprese di altri turni che riportano la vettura in deposito: servono alla
   // demo dei rientri, altrimenti nessun posto cambio ne produrrebbe uno.
+  // I tempi di rientro sono quelli veri: da Cattaneo al Gerbido si arriva in un
+  // quarto d'ora scarso, non in mezz'ora. Un rientro finto lungo fa sembrare
+  // rotto il calcolo.
   '05 45': [
-    { start: '10:53', loc_s: 'CATT', dir: '-', end: '11:41', loc_e: 'GERB', vett: '31', gt: 'LUN - VEN', run_id: 1 },
+    { start: '10:53', loc_s: 'CATT', dir: '-', end: '11:08', loc_e: 'GERB', vett: '31', gt: 'LUN - VEN', run_id: 1 },
   ],
   '05 101': [{ start: '04:00', loc_s: 'GERB', dir: '-', end: '10:15', loc_e: 'GERB', vett: '1', gt: 'LUN - VEN', run_id: 1 }],
   '05 210': [
-    { start: '12:02', loc_s: 'ORSA', dir: 'A', end: '12:29', loc_e: 'CATT', vett: '25', gt: 'LUN - VEN', run_id: 1 },
-    { start: '12:34', loc_s: 'CATT', dir: '-', end: '13:05', loc_e: 'GERB', vett: '25', gt: 'LUN - VEN', run_id: 1 },
+    { start: '12:02', loc_s: 'ORSA', dir: 'A', end: '12:14', loc_e: 'CATT', vett: '25', gt: 'LUN - VEN', run_id: 1 },
+    { start: '12:19', loc_s: 'CATT', dir: '-', end: '12:34', loc_e: 'GERB', vett: '25', gt: 'LUN - VEN', run_id: 1 },
   ],
   '05 203': [
     { start: '08:35', loc_s: 'CATT', dir: 'R', end: '10:21', loc_e: 'CATT', vett: '25', gt: 'LUN - VEN', run_id: 1 },
