@@ -46,16 +46,17 @@ function clockFromNow(offsetMinutes = 0) {
 }
 
 /**
- * L'attesa e' sempre contata dall'orario di passaggio cercato, non dall'ora
- * corrente: "tra 49 minuti" si puo' dire solo se i due coincidono, altrimenti
- * l'attesa va ancorata all'orario cercato o si legge come un conto alla
- * rovescia da adesso, che sarebbe falso.
+ * Gli orari di partenza e arrivo sono sempre scritti per esteso: qui serve solo
+ * quanto si aspetta, che e' la cosa che quegli orari non dicono. E' un'attesa
+ * contata dall'orario cercato, non da adesso, quindi va detta come attesa e non
+ * come conto alla rovescia.
  */
-function formatWait(waitMinutes, { anchor = '', anchorIsNow = false } = {}) {
-  if (waitMinutes <= 0) return anchorIsNow ? 'in transito ora' : `in transito alle ${anchor}`;
-  // Sui rientri lontani "154 minuti" non dice niente: meglio ore e minuti.
-  const amount = waitMinutes >= 60 ? formatMinutes(waitMinutes) : `${waitMinutes} ${waitMinutes === 1 ? 'minuto' : 'minuti'}`;
-  return anchorIsNow ? `tra ${amount}` : `${amount} dopo le ${anchor}`;
+function formatSpan(minutes) {
+  return minutes >= 60 ? formatMinutes(minutes) : `${minutes} min`;
+}
+
+function formatWaitShort(waitMinutes) {
+  return waitMinutes <= 0 ? 'in transito' : `attesa ${formatSpan(waitMinutes)}`;
 }
 
 function formatWindow(windowMinutes) {
@@ -126,8 +127,6 @@ export function DepotReturnsPanel({ developments = {} }) {
     return () => clearTimeout(timer);
   }, [criteria, searching]);
 
-  // "Adesso" vale solo se l'orario cercato e' ancora il minuto corrente.
-  const waitAnchor = { anchor: criteria.time, anchorIsNow: criteria.time === clockFromNow(0) };
   // Le linee che stanno rientrando, in ordine di arrivo: e' la risposta corta
   // alla domanda "quale linea prendo per tornare al Gerbido".
   const returningLines = [...new Set(result.matches.map((item) => getLineDisplayName(item.line)))];
@@ -207,9 +206,8 @@ export function DepotReturnsPanel({ developments = {} }) {
         </span>
         <h2 id="depot-returns-title">Come rientro al Gerbido</h2>
         <p>
-          Tutte le corse di servizio che rientrano al Gerbido dopo l&apos;orario indicato, da qualsiasi posto cambio, con
-          la palina da cui partono. Cosa passa qui vicino elenca le fermate intorno a te; Come arrivo al Gerbido apre su
-          Moovit linee, orari e cambi dalla tua posizione fino al deposito.
+          Le corse di servizio che rientrano al Gerbido dopo l&apos;orario indicato, da qualsiasi posto cambio, con la
+          palina da cui partono.
         </p>
       </div>
 
@@ -336,17 +334,21 @@ export function DepotReturnsPanel({ developments = {} }) {
       {!searching && isDirty ? (
         <p className="depot-returns-message">Criteri cambiati: premi Trova rientri per aggiornare.</p>
       ) : null}
+      {/* Finestra e servizio scelti stanno gia' nei selettori qui sopra: qui
+          basta il conto e l'orario di partenza della ricerca. Il servizio si
+          dice solo quando l'ha dedotto l'app al posto di chi cerca. */}
       {!searching ? (
         <p className="depot-returns-summary">
           {result.matches.length
-            ? `${result.matches.length} ${result.matches.length === 1 ? 'rientro' : 'rientri'} verso il Gerbido`
-            : 'Nessun rientro verso il Gerbido'}{' '}
-          · dalle {criteria.time} · entro {formatWindow(criteria.windowMinutes)} · servizio{' '}
-          {SERVICE_LABELS[result.service] || result.service}
+            ? `${result.matches.length} ${result.matches.length === 1 ? 'rientro' : 'rientri'}`
+            : 'Nessun rientro'}{' '}
+          dalle {criteria.time}
+          {criteria.service ? '' : ` · servizio ${SERVICE_LABELS[result.service] || result.service}`}
         </p>
       ) : null}
 
-      {!searching && returningLines.length ? (
+      {/* Con una sola linea le pillole ripeterebbero la scheda qui sotto. */}
+      {!searching && returningLines.length > 1 ? (
         <p className="depot-returns-lines">
           <span>Linee in rientro</span>
           {returningLines.map((line) => (
@@ -357,54 +359,54 @@ export function DepotReturnsPanel({ developments = {} }) {
 
       <div className="depot-returns-results" aria-live="polite">
         {searching ? null : result.matches.length ? (
-          result.matches.map((item) => (
+          result.matches.map((item) => {
+            const stop = getChangePointStop(item.from, { line: item.line });
+            return (
               <article
                 className="depot-return-card"
                 key={`${item.line}-${item.from}-${item.shift}-${item.departure}-${item.vehicleShift}`}
               >
-                <div>
-                  <strong>Linea {getLineDisplayName(item.line)}</strong>
-                  <span>
-                    parte da {getChangePointLabel(item.from)}
-                    {getChangePointStop(item.from, { line: item.line }) ? ` · palina ${getChangePointStop(item.from, { line: item.line })}` : ''}
-                    {` · ${item.direct ? 'diretto in deposito' : `${item.legs.length} tratti`}`}
-                  </span>
-                </div>
-                <div>
-                  <strong>
-                    {item.departure} → {item.arrival}
-                  </strong>
-                  <span>{item.route}</span>
-                </div>
-                <div>
-                  <strong>Al Gerbido {formatWait(item.totalMinutes, waitAnchor)}</strong>
-                  <span>
-                    parte {formatWait(item.waitMinutes, waitAnchor)} · {item.rideMinutes} min di viaggio
-                    {item.vehicleShift ? ` · vettura ${item.vehicleShift}` : ''}
-                  </span>
-                  {positionLink?.kind === `to-${item.from}` ? (
-                    <a
-                      className="depot-returns-maps-link"
-                      href={positionLink.url}
-                      onClick={() => setPositionLink(null)}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      Apri il percorso fino a {getChangePointLabel(item.from)}
-                    </a>
-                  ) : (
-                    <button
-                      className="depot-returns-maps-link"
-                      disabled={Boolean(geoBusy)}
-                      onClick={() => readPosition(() => readChangePointDirectionsUrl(item.from), `to-${item.from}`)}
-                      type="button"
-                    >
-                      {geoBusy === `to-${item.from}` ? 'Leggo la posizione…' : 'ci arrivo in tempo?'}
-                    </button>
-                  )}
-                </div>
-            </article>
-          ))
+                <p className="depot-return-card__head">
+                  <strong>{getLineDisplayName(item.line)}</strong>
+                  da {getChangePointLabel(item.from)}
+                  {stop ? ` · palina ${stop}` : ''}
+                </p>
+                <p className="depot-return-card__times">
+                  {item.departure} <i aria-hidden="true">→</i> {item.arrival}
+                </p>
+                <p className="depot-return-card__meta">
+                  {[
+                    formatWaitShort(item.waitMinutes),
+                    `viaggio ${formatSpan(item.rideMinutes)}`,
+                    item.direct ? 'diretto' : `${item.legs.length} tratti`,
+                    item.vehicleShift ? `vettura ${item.vehicleShift}` : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+                {positionLink?.kind === `to-${item.from}` ? (
+                  <a
+                    className="depot-returns-maps-link"
+                    href={positionLink.url}
+                    onClick={() => setPositionLink(null)}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    Apri il percorso fino a {getChangePointLabel(item.from)}
+                  </a>
+                ) : (
+                  <button
+                    className="depot-returns-maps-link"
+                    disabled={Boolean(geoBusy)}
+                    onClick={() => readPosition(() => readChangePointDirectionsUrl(item.from), `to-${item.from}`)}
+                    type="button"
+                  >
+                    {geoBusy === `to-${item.from}` ? 'Leggo la posizione…' : 'ci arrivo in tempo?'}
+                  </button>
+                )}
+              </article>
+            );
+          })
         ) : (
           renderEmptyState()
         )}
@@ -488,14 +490,14 @@ export function DepotReturnsPanel({ developments = {} }) {
             {result.upcoming.slice(0, UPCOMING_LIMIT).map((item) => (
               <li key={`${item.line}-${item.from}-${item.shift}-${item.departure}-${item.vehicleShift}`}>
                 <strong>
-                  Linea {getLineDisplayName(item.line)}
-                  {result.anyPlace ? ` · da ${item.from}` : ''}
+                  {getLineDisplayName(item.line)}
+                  {result.anyPlace ? ` · da ${getChangePointLabel(item.from)}` : ''}
                 </strong>
                 <span>
                   {item.departure} → {item.arrival}
                 </span>
                 <span>
-                  al Gerbido {formatWait(item.totalMinutes, waitAnchor)} · {item.direct ? 'diretto' : `${item.legs.length} tratti`}
+                  {formatWaitShort(item.waitMinutes)} · {item.direct ? 'diretto' : `${item.legs.length} tratti`}
                 </span>
               </li>
             ))}

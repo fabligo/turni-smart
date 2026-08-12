@@ -3030,28 +3030,57 @@ a.inline-action--gtt {
   font-variant-numeric: tabular-nums;
 }
 
+/* Tre righe e basta: chi e da dove, quando parte e quando arriva, il contorno.
+   Ogni dato compare una volta sola. */
 .depot-return-card {
   display: grid;
-  grid-template-columns: minmax(110px, 0.85fr) minmax(150px, 1fr) minmax(130px, 0.75fr);
-  gap: var(--s3);
-  align-items: center;
+  gap: 4px;
   border: 1px solid rgba(47, 134, 207, 0.28);
   border-radius: 10px 30px 10px 10px;
   background: rgba(5, 45, 76, 0.78);
   padding: var(--s3);
 }
 
-.depot-return-card div {
-  display: grid;
-  gap: 3px;
+.depot-return-card p {
+  margin: 0;
 }
 
-.depot-return-card strong {
+.depot-return-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.depot-return-card__head strong {
+  min-width: 38px;
+  border-radius: 999px;
+  background: var(--yellow);
+  color: #04243f;
+  font-size: 0.9rem;
+  font-weight: 950;
+  text-align: center;
+  padding: 3px 10px;
+}
+
+.depot-return-card__times {
   color: #ffffff;
-  font-size: 1rem;
+  font-size: 1.35rem;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
 }
 
-.depot-return-card span {
+.depot-return-card__times i {
+  margin: 0 4px;
+  color: var(--cyan);
+  font-style: normal;
+}
+
+.depot-return-card__meta {
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 800;
