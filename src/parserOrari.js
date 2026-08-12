@@ -1,5 +1,6 @@
 import { timeToMinutes } from './utils/timeUtils.js';
 import { normalizeLineCode } from './constants/depotGerbido.js';
+import { detectRientriLine, isRientriKey, parseDepotReturns, rientriKey } from './parserRientri.js';
 
 const TIME_TOKEN_RE = /\d{2}[.:]?\d{2}/;
 const SEGMENT_RE =
@@ -404,6 +405,18 @@ export function parseOrari(pagesText, { diagnostics = null } = {}) {
     const serviceKey = `${resolved}|${ver || ''}`;
     tableStateByService[serviceKey] = tableStateByService[serviceKey] || { currentCode: '', currentRun: 0 };
     parseOrariPageLines(pageText, resolved, ver, developments, tableStateByService[serviceKey]);
+
+    /* Il grafico di servizio e' un'altra pagina con un'altra forma: da li'
+       vengono le ultime corse prima del deposito, che la tabella dei turni non
+       ha. Stanno sotto una chiave che nessun turno puo' avere. */
+    const line = detectRientriLine(pageText);
+    const returns = parseDepotReturns(pageText, { gt: resolved, line, ver });
+    if (returns.length) {
+      const key = rientriKey(line, resolved);
+      developments[key] = developments[key] || [];
+      returns.forEach((segment) => addSegment(developments, key, segment));
+      if (diagnostics) diagnostics[diagnostics.length - 1].returns = returns.length;
+    }
   });
 
   return developments;
@@ -810,7 +823,9 @@ export function getDevSegments(developments, line, shiftNumber, date, preShift =
 }
 
 export function summarizeDevelopments(developments) {
-  const keys = Object.keys(developments || {});
+  // I rientri letti dal grafico di servizio stanno nella stessa mappa ma non
+  // sono turni: contarli gonfiava il numero mostrato dopo il caricamento.
+  const keys = Object.keys(developments || {}).filter((key) => !isRientriKey(key));
   return {
     totalTurns: keys.length,
     splitTurns: keys.filter((key) => {
