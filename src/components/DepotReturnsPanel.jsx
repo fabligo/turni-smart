@@ -68,7 +68,7 @@ function formatWindow(windowMinutes) {
   return hours === 1 ? '1 ora' : `${hours} ore`;
 }
 
-export function DepotReturnsPanel({ developments = {} }) {
+export function DepotReturnsPanel({ developments = {}, staleParse = false }) {
   const [form, setForm] = useState(() => ({
     service: '',
     time: clockFromNow(0),
@@ -141,8 +141,18 @@ export function DepotReturnsPanel({ developments = {} }) {
   function renderEmptyState() {
     // I rientri stanno solo sul grafico di servizio. Senza quella pagina non
     // c'e' niente da cercare, e va detto: la pagina dei turni ha le riprese
-    // intere, che rientri non sono.
+    // intere, che rientri non sono. Ma prima di dare la colpa al PDF va escluso
+    // il caso piu' comune, cioe' che gli Orari in uso siano stati letti da una
+    // versione dell'app che il grafico non lo leggeva ancora.
     if (!result.graphicLoaded) {
+      if (staleParse) {
+        return (
+          <p className="result-message">
+            Gli orari in uso sono stati letti da una versione precedente dell&apos;app, che non ricavava i rientri.
+            Ricarica il PDF degli orari e i rientri compaiono.
+          </p>
+        );
+      }
       return (
         <p className="result-message">
           Negli orari caricati manca il grafico di servizio, la pagina con le ultime corse e gli ingressi in deposito.

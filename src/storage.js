@@ -1,3 +1,4 @@
+import { RIENTRI_PARSER_VERSION } from './parserRientri.js';
 const LEGACY_PRECO_PREFIX = 'ts_preco_v3_';
 const LEGACY_ORARI_PREFIX = 'ts_orari_v20_';
 const INDEX_KEY = 'ts_index';
@@ -155,7 +156,7 @@ export function saveOrari(developments, info) {
   const month = monthFromPreconoscenza(info);
   if (!month || !developments || !Object.keys(developments).length) return false;
   const key = orariKey(month.year, month.month);
-  const ok = writeJson(key, developments);
+  const ok = writeJson(key, { developments, parser: RIENTRI_PARSER_VERSION });
   if (!ok) return false;
   writeJson(LAST_ORARI_KEY, key);
   updateIndex({
@@ -176,8 +177,27 @@ export function loadPreconoscenzaByKey(key) {
   return deserializePreconoscenza(readJson(key));
 }
 
+/* Il salvataggio degli Orari e' passato dalla mappa nuda a una busta che porta
+   anche la versione del parser. Le letture vecchie restano leggibili: non hanno
+   la busta, e quella e' la loro versione zero. */
+function unwrapOrari(raw) {
+  if (raw && typeof raw === 'object' && raw.developments && typeof raw.developments === 'object') {
+    return { developments: raw.developments, parser: Number(raw.parser) || 0 };
+  }
+  return { developments: raw && typeof raw === 'object' ? raw : {}, parser: 0 };
+}
+
 export function loadOrariByKey(key) {
-  return readJson(key, {});
+  return unwrapOrari(readJson(key, {})).developments;
+}
+
+/**
+ * Con quale versione del parser e' stata letta la lettura salvata. Serve a
+ * dire "ricarica il PDF" invece di "il PDF non ha quella pagina" quando i
+ * rientri mancano solo perche' la lettura e' precedente.
+ */
+export function loadOrariParserVersion(key) {
+  return unwrapOrari(readJson(key, {})).parser;
 }
 
 export function loadLastPreconoscenza() {
@@ -188,6 +208,11 @@ export function loadLastPreconoscenza() {
 export function loadLastOrari() {
   const key = readJson(LAST_ORARI_KEY);
   return key ? loadOrariByKey(key) : {};
+}
+
+export function loadLastOrariParserVersion() {
+  const key = readJson(LAST_ORARI_KEY);
+  return key ? loadOrariParserVersion(key) : RIENTRI_PARSER_VERSION;
 }
 
 export function deleteHistoryEntry(key) {

@@ -183,6 +183,14 @@ export function parseDepotReturns(text = '', { gt = '', ver = '', line = '' } = 
 // un'altra pagina, e la scheda di un turno non li pesca per sbaglio.
 export const RIENTRI_KEY_PREFIX = 'RIENTRI';
 
+/* Quale versione del parser ha prodotto una lettura. Gli Orari restano salvati
+   fra un avvio e l'altro, quindi una lettura fatta prima che il grafico di
+   servizio venisse letto sopravvive all'aggiornamento e non ha rientri: senza
+   questo numero l'app non puo' distinguerla da un PDF che il grafico non ce
+   l'ha, e finisce per dare la colpa al PDF. Va alzato quando cambia cio' che il
+   parser ricava dalla stessa pagina. */
+export const RIENTRI_PARSER_VERSION = 1;
+
 export function rientriKey(line = '', gt = '') {
   return [RIENTRI_KEY_PREFIX, line || '?', gt].filter(Boolean).join(' ');
 }
