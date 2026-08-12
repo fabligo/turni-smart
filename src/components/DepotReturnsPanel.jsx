@@ -139,6 +139,18 @@ export function DepotReturnsPanel({ developments = {} }) {
   );
 
   function renderEmptyState() {
+    // I rientri stanno solo sul grafico di servizio. Senza quella pagina non
+    // c'e' niente da cercare, e va detto: la pagina dei turni ha le riprese
+    // intere, che rientri non sono.
+    if (!result.graphicLoaded) {
+      return (
+        <p className="result-message">
+          Negli orari caricati manca il grafico di servizio, la pagina con le ultime corse e gli ingressi in deposito.
+          Senza quella i rientri non si possono calcolare: usa Come arrivo al Gerbido qui sotto.
+        </p>
+      );
+    }
+
     if (!result.placeKnown) {
       return (
         <p className="result-message">

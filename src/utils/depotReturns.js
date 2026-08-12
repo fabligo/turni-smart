@@ -1,4 +1,5 @@
 import { timeToMinutes } from './timeUtils.js';
+import { isRientriKey } from '../parserRientri.js';
 
 export const DEPOT_CODE = 'GERB';
 // "Ovunque": tutte le corse dirette al deposito, da qualsiasi posto cambio.
@@ -178,6 +179,10 @@ export function searchReturns(developments = {}, selectedPlace, options = {}) {
 
   const result = {
     isDepot: place === DEPOT_CODE,
+    // Se il grafico di servizio non e' stato letto non c'e' niente su cui
+    // cercare: dirlo e' l'unica risposta onesta, perche' le riprese della
+    // pagina dei turni non sono passaggi e non vanno usate al suo posto.
+    graphicLoaded: false,
     matches: [],
     // Passaggi dal posto cambio nell'orizzonte, anche se non portano in deposito.
     passages: 0,
@@ -204,6 +209,13 @@ export function searchReturns(developments = {}, selectedPlace, options = {}) {
 
   Object.entries(developments).forEach(([key, segments]) => {
     if (!Array.isArray(segments)) return;
+    /* Solo il grafico di servizio. Una riga della pagina dei turni e' la
+       ripresa intera - "11.34 CATT / 12.55 GERB" sulla 74 sono un'ora e venti
+       di linea che finisce mettendo dentro la vettura - e presentarla come un
+       passaggio diretto e' falso anche quando dura poco abbastanza da passare
+       ogni filtro sulla durata. */
+    if (!isRientriKey(key)) return;
+    result.graphicLoaded = true;
     const { line: keyLine, shift } = getShiftParts(key);
 
     groupByRun(segments).forEach((run) => {

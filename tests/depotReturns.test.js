@@ -23,7 +23,7 @@ function segment(overrides = {}) {
 
 test('trova il rientro diretto che termina in deposito', () => {
   const developments = {
-    '071 12': [
+    'RIENTRI 71 LUN-VEN': [
       segment({ ln: '71', vett: '5', start: '14:10', loc_s: 'PITA', end: '14:35', loc_e: 'GERB' }),
     ],
   };
@@ -38,7 +38,7 @@ test('trova il rientro diretto che termina in deposito', () => {
 
 test('trova il mezzo che passa dal posto cambio e raggiunge il deposito dopo piu tratti', () => {
   const developments = {
-    '071 12': [
+    'RIENTRI 71 LUN-VEN': [
       segment({ ln: '71', vett: '5', start: '14:05', loc_s: 'PITA', end: '14:25', loc_e: 'CATT' }),
       segment({ ln: '71', vett: '5', start: '14:27', loc_s: 'CATT', end: '14:50', loc_e: 'GERB' }),
     ],
@@ -54,7 +54,7 @@ test('trova il mezzo che passa dal posto cambio e raggiunge il deposito dopo piu
 
 test('scarta il mezzo che non arriva mai in deposito', () => {
   const developments = {
-    '071 12': [
+    'RIENTRI 71 LUN-VEN': [
       segment({ ln: '71', vett: '5', start: '14:05', loc_s: 'PITA', end: '14:25', loc_e: 'CATT' }),
       segment({ ln: '71', vett: '5', start: '14:30', loc_s: 'CATT', end: '14:55', loc_e: 'ORSN' }),
     ],
@@ -65,7 +65,7 @@ test('scarta il mezzo che non arriva mai in deposito', () => {
 
 test('esclude le corse fuori dalla finestra di 30 minuti', () => {
   const developments = {
-    '071 12': [
+    'RIENTRI 71 LUN-VEN': [
       segment({ ln: '71', vett: '5', start: '13:50', loc_s: 'PITA', end: '14:20', loc_e: 'GERB' }),
       segment({ ln: '071', vett: '6', start: '14:45', loc_s: 'PITA', end: '15:10', loc_e: 'GERB' }),
     ],
@@ -77,7 +77,7 @@ test('esclude le corse fuori dalla finestra di 30 minuti', () => {
 
 test('interrompe la catena quando l attesa tra due tratti e troppo lunga', () => {
   const developments = {
-    '071 12': [
+    'RIENTRI 71 LUN-VEN': [
       segment({ ln: '71', vett: '5', start: '14:05', loc_s: 'PITA', end: '14:25', loc_e: 'CATT' }),
       segment({ ln: '71', vett: '5', start: '15:10', loc_s: 'CATT', end: '15:35', loc_e: 'GERB' }),
     ],
@@ -88,7 +88,7 @@ test('interrompe la catena quando l attesa tra due tratti e troppo lunga', () =>
 
 test('non concatena tratti di riprese diverse dello stesso turno', () => {
   const developments = {
-    '071 12': [
+    'RIENTRI 71 LUN-VEN': [
       segment({ ln: '71', vett: '5', start: '14:05', loc_s: 'PITA', end: '14:25', loc_e: 'CATT', run_id: 1 }),
       segment({ ln: '71', vett: '9', start: '14:30', loc_s: 'CATT', end: '14:55', loc_e: 'GERB', run_id: 2 }),
     ],
@@ -99,7 +99,7 @@ test('non concatena tratti di riprese diverse dello stesso turno', () => {
 
 test('tiene solo le corse del tipo di servizio del giorno', () => {
   const developments = {
-    '071 12': [
+    'RIENTRI 71 LUN-VEN': [
       segment({ ln: '71', vett: '5', start: '14:10', loc_s: 'PITA', end: '14:35', loc_e: 'GERB', gt: 'FEST' }),
     ],
   };
@@ -109,8 +109,8 @@ test('tiene solo le corse del tipo di servizio del giorno', () => {
 
 test('ordina i rientri dal piu imminente', () => {
   const developments = {
-    '071 12': [segment({ ln: '71', vett: '5', start: '14:25', loc_s: 'PITA', end: '14:50', loc_e: 'GERB' })],
-    '063 04': [segment({ ln: '63', vett: '2', start: '14:05', loc_s: 'PITA', end: '14:40', loc_e: 'GERB' })],
+    'RIENTRI 71 LUN-VEN': [segment({ ln: '71', vett: '5', start: '14:25', loc_s: 'PITA', end: '14:50', loc_e: 'GERB' })],
+    'RIENTRI 63 LUN-VEN': [segment({ ln: '63', vett: '2', start: '14:05', loc_s: 'PITA', end: '14:40', loc_e: 'GERB' })],
   };
 
   const matches = buildReturnMatches(developments, 'PITA', { now: NOW });
@@ -119,7 +119,7 @@ test('ordina i rientri dal piu imminente', () => {
 
 test('sposta la finestra in avanti con l offset richiesto', () => {
   const developments = {
-    '071 12': [segment({ ln: '71', vett: '5', start: '14:50', loc_s: 'PITA', end: '15:15', loc_e: 'GERB' })],
+    'RIENTRI 71 LUN-VEN': [segment({ ln: '71', vett: '5', start: '14:50', loc_s: 'PITA', end: '15:15', loc_e: 'GERB' })],
   };
 
   assert.deepEqual(buildReturnMatches(developments, 'PITA', { now: NOW }), []);
@@ -131,7 +131,7 @@ test('sposta la finestra in avanti con l offset richiesto', () => {
 test('gestisce le corse a cavallo della mezzanotte', () => {
   const lateNight = new Date(2026, 4, 4, 23, 50, 0);
   const developments = {
-    '071 12': [segment({ ln: '71', vett: '5', start: '00:05', loc_s: 'PITA', end: '00:30', loc_e: 'GERB' })],
+    'RIENTRI 71 LUN-VEN': [segment({ ln: '71', vett: '5', start: '00:05', loc_s: 'PITA', end: '00:30', loc_e: 'GERB' })],
   };
 
   const [match] = buildReturnMatches(developments, 'PITA', { now: lateNight });
@@ -141,7 +141,7 @@ test('gestisce le corse a cavallo della mezzanotte', () => {
 
 test('cerca i rientri a un orario di passaggio impostato a mano', () => {
   const developments = {
-    '071 12': [
+    'RIENTRI 71 LUN-VEN': [
       segment({ ln: '71', vett: '5', start: '18:40', loc_s: 'PITA', end: '19:05', loc_e: 'GERB' }),
       segment({ ln: '063', vett: '2', start: '14:10', loc_s: 'PITA', end: '14:35', loc_e: 'GERB' }),
     ],
@@ -155,7 +155,7 @@ test('cerca i rientri a un orario di passaggio impostato a mano', () => {
 
 test('l orario impostato ha la precedenza sull offset', () => {
   const developments = {
-    '071 12': [segment({ ln: '71', vett: '5', start: '09:10', loc_s: 'PITA', end: '09:35', loc_e: 'GERB' })],
+    'RIENTRI 71 LUN-VEN': [segment({ ln: '71', vett: '5', start: '09:10', loc_s: 'PITA', end: '09:35', loc_e: 'GERB' })],
   };
 
   const [match] = buildReturnMatches(developments, 'PITA', { now: NOW, offsetMinutes: 30, time: '09:00' });
@@ -170,7 +170,7 @@ test('un orario non valido non blocca la ricerca e torna al comportamento a offs
   assert.equal(parseClockMinutes('mezzogiorno'), null);
 
   const developments = {
-    '071 12': [segment({ ln: '71', vett: '5', start: '14:10', loc_s: 'PITA', end: '14:35', loc_e: 'GERB' })],
+    'RIENTRI 71 LUN-VEN': [segment({ ln: '71', vett: '5', start: '14:10', loc_s: 'PITA', end: '14:35', loc_e: 'GERB' })],
   };
 
   const [match] = buildReturnMatches(developments, 'PITA', { now: NOW, time: 'boh' });
@@ -179,7 +179,7 @@ test('un orario non valido non blocca la ricerca e torna al comportamento a offs
 
 test('non propone rientri se il posto cambio e gia il deposito', () => {
   const developments = {
-    '071 12': [segment({ ln: '71', vett: '5', start: '14:10', loc_s: 'GERB', end: '14:35', loc_e: 'GERB' })],
+    'RIENTRI 71 LUN-VEN': [segment({ ln: '71', vett: '5', start: '14:10', loc_s: 'GERB', end: '14:35', loc_e: 'GERB' })],
   };
 
   assert.deepEqual(buildReturnMatches(developments, 'GERB', { now: NOW }), []);
@@ -188,7 +188,7 @@ test('non propone rientri se il posto cambio e gia il deposito', () => {
 
 test('allarga la finestra di ricerca su richiesta', () => {
   const developments = {
-    '071 12': [segment({ ln: '71', vett: '5', start: '15:20', loc_s: 'PITA', end: '15:45', loc_e: 'GERB' })],
+    'RIENTRI 71 LUN-VEN': [segment({ ln: '71', vett: '5', start: '15:20', loc_s: 'PITA', end: '15:45', loc_e: 'GERB' })],
   };
 
   assert.deepEqual(buildReturnMatches(developments, 'PITA', { now: NOW }), []);
@@ -199,7 +199,7 @@ test('allarga la finestra di ricerca su richiesta', () => {
 
 test('segnala il primo rientro utile oltre la finestra scelta', () => {
   const developments = {
-    '071 12': [segment({ ln: '71', vett: '5', start: '15:20', loc_s: 'PITA', end: '15:45', loc_e: 'GERB' })],
+    'RIENTRI 71 LUN-VEN': [segment({ ln: '71', vett: '5', start: '15:20', loc_s: 'PITA', end: '15:45', loc_e: 'GERB' })],
   };
 
   const result = searchReturns(developments, 'PITA', { now: NOW });
@@ -211,7 +211,7 @@ test('segnala il primo rientro utile oltre la finestra scelta', () => {
 
 test('distingue un posto cambio assente dagli orari da uno senza rientri', () => {
   const developments = {
-    '071 12': [segment({ ln: '71', vett: '5', start: '14:10', loc_s: 'PITA', end: '14:35', loc_e: 'CATT' })],
+    'RIENTRI 71 LUN-VEN': [segment({ ln: '71', vett: '5', start: '14:10', loc_s: 'PITA', end: '14:35', loc_e: 'CATT' })],
   };
 
   const unknown = searchReturns(developments, 'LING', { now: NOW });
@@ -226,7 +226,7 @@ test('distingue un posto cambio assente dagli orari da uno senza rientri', () =>
 
 test('riconosce quando gli orari coprono solo un altro tipo di servizio', () => {
   const developments = {
-    '071 12': [
+    'RIENTRI 71 LUN-VEN': [
       segment({ ln: '71', vett: '5', start: '14:10', loc_s: 'PITA', end: '14:35', loc_e: 'GERB', gt: 'SABATO' }),
     ],
   };
@@ -243,10 +243,12 @@ test('riconosce quando gli orari coprono solo un altro tipo di servizio', () => 
 
 test('distingue chi non vede il deposito da chi ci arriva dopo un giro lungo', () => {
   const developments = {
-    // Passa dal posto cambio e finisce altrove: il deposito non lo vede.
-    '071 12': [segment({ ln: '71', vett: '5', start: '14:10', loc_s: 'PITA', end: '14:35', loc_e: 'CATT' })],
-    // Passa dal posto cambio e in deposito ci arriva, ma dopo tre ore di giro.
-    '071 13': [segment({ ln: '71', vett: '6', start: '14:15', loc_s: 'PITA', end: '17:20', loc_e: 'GERB' })],
+    'RIENTRI 71 LUN-VEN': [
+      // Passa dal posto cambio e finisce altrove: il deposito non lo vede.
+      segment({ ln: '71', vett: '5', start: '14:10', loc_s: 'PITA', end: '14:35', loc_e: 'CATT' }),
+      // Passa dal posto cambio e in deposito ci arriva, ma dopo tre ore di giro.
+      segment({ ln: '71', vett: '6', start: '14:15', loc_s: 'PITA', end: '17:20', loc_e: 'GERB' }),
+    ],
   };
 
   const result = searchReturns(developments, 'PITA', { now: NOW });
@@ -259,10 +261,10 @@ test('distingue chi non vede il deposito da chi ci arriva dopo un giro lungo', (
 
 test('cerca le corse verso il deposito da qualsiasi posto cambio', () => {
   const developments = {
-    '071 12': [segment({ ln: '71', vett: '5', start: '14:10', loc_s: 'PITA', end: '14:35', loc_e: 'GERB' })],
-    '063 04': [segment({ ln: '63', vett: '2', start: '14:05', loc_s: 'CATT', end: '14:40', loc_e: 'GERB' })],
+    'RIENTRI 71 LUN-VEN': [segment({ ln: '71', vett: '5', start: '14:10', loc_s: 'PITA', end: '14:35', loc_e: 'GERB' })],
+    'RIENTRI 63 LUN-VEN': [segment({ ln: '63', vett: '2', start: '14:05', loc_s: 'CATT', end: '14:40', loc_e: 'GERB' })],
     // Parte dal deposito: non e' un rientro.
-    '017 08': [segment({ ln: '17', vett: '9', start: '14:07', loc_s: 'GERB', end: '14:30', loc_e: 'ORSA' })],
+    'RIENTRI 17 LUN-VEN': [segment({ ln: '17', vett: '9', start: '14:07', loc_s: 'GERB', end: '14:30', loc_e: 'ORSA' })],
   };
 
   const result = searchReturns(developments, ANY_PLACE, { now: NOW });
@@ -274,8 +276,10 @@ test('cerca le corse verso il deposito da qualsiasi posto cambio', () => {
 
 test('la ricerca ovunque non confonde partenze uguali da posti diversi', () => {
   const developments = {
-    '071 12': [segment({ ln: '71', vett: '5', start: '14:10', loc_s: 'PITA', end: '14:35', loc_e: 'GERB' })],
-    '071 13': [segment({ ln: '71', vett: '5', start: '14:10', loc_s: 'CATT', end: '14:35', loc_e: 'GERB' })],
+    'RIENTRI 71 LUN-VEN': [
+      segment({ ln: '71', vett: '5', start: '14:10', loc_s: 'PITA', end: '14:35', loc_e: 'GERB' }),
+      segment({ ln: '71', vett: '5', start: '14:10', loc_s: 'CATT', end: '14:35', loc_e: 'GERB' }),
+    ],
   };
 
   assert.equal(searchReturns(developments, ANY_PLACE, { now: NOW }).matches.length, 2);
@@ -284,9 +288,9 @@ test('la ricerca ovunque non confonde partenze uguali da posti diversi', () => {
 test('mette per primo chi arriva in deposito prima, non chi parte prima', () => {
   const developments = {
     // Parte subito ma gira: in deposito alle 15:20.
-    '071 12': [segment({ ln: '71', vett: '5', start: '14:05', loc_s: 'PITA', end: '15:20', loc_e: 'GERB' })],
+    'RIENTRI 71 LUN-VEN': [segment({ ln: '71', vett: '5', start: '14:05', loc_s: 'PITA', end: '15:20', loc_e: 'GERB' })],
     // Parte dopo ma diretto: in deposito alle 14:50.
-    '063 04': [segment({ ln: '63', vett: '2', start: '14:25', loc_s: 'PITA', end: '14:50', loc_e: 'GERB' })],
+    'RIENTRI 63 LUN-VEN': [segment({ ln: '63', vett: '2', start: '14:25', loc_s: 'PITA', end: '14:50', loc_e: 'GERB' })],
   };
 
   const matches = buildReturnMatches(developments, 'PITA', { now: NOW });
@@ -299,7 +303,7 @@ test('mette per primo chi arriva in deposito prima, non chi parte prima', () => 
    Con un tipo solo finiva nel sabato e in settimana spariva. */
 test('un orario LUN - SAB vale sia in settimana sia di sabato', () => {
   const sviluppi = {
-    '05 101': [
+    'RIENTRI 5 LUN-VEN': [
       { start: '10:00', loc_s: 'CATT', dir: 'R', end: '10:40', loc_e: 'GERB', vett: '1', gt: 'LUN - SAB', run_id: 1 },
     ],
   };
@@ -334,4 +338,27 @@ test('le intestazioni del PDF vero finiscono nei giorni giusti', () => {
 test('un orario che non dice niente vale come feriale', () => {
   assert.deepEqual(getServiceTypes('TUTTI'), ['feriali'], "e' quello che il parser usa quando non sa");
   assert.deepEqual(getServiceTypes(''), ['feriali']);
+});
+
+test('una ripresa della pagina dei turni non e mai un rientro', () => {
+  // E' il caso vero della 74: "11:34 CATT -> 12:55 GERB" e' un'ora e venti di
+  // linea che finisce mettendo dentro la vettura, non un passaggio da Cattaneo
+  // al deposito. Dura poco abbastanza da passare qualsiasi filtro sulla durata,
+  // quindi l'unica difesa e' non guardare affatto quella pagina.
+  const developments = {
+    '074 12': [segment({ ln: '74', vett: '4', start: '14:10', loc_s: 'CATT', end: '15:31', loc_e: 'GERB' })],
+  };
+
+  const result = searchReturns(developments, ANY_PLACE, { now: NOW });
+  assert.deepEqual(result.matches, []);
+  assert.equal(result.graphicLoaded, false);
+  assert.equal(result.passages, 0);
+});
+
+test('il grafico letto si distingue da un PDF che non ce l ha', () => {
+  const withGraphic = {
+    'RIENTRI 5 LUN-VEN': [segment({ ln: '5', start: '14:10', loc_s: 'CATT', end: '14:19', loc_e: 'GERB' })],
+  };
+  assert.equal(searchReturns(withGraphic, ANY_PLACE, { now: NOW }).graphicLoaded, true);
+  assert.equal(searchReturns({}, ANY_PLACE, { now: NOW }).graphicLoaded, false);
 });
