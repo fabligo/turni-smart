@@ -18,6 +18,7 @@ import {
   getHistory,
   getStorageReport,
   loadOrariByKey,
+  loadOrariParserVersion,
   loadPreferences,
   loadPreconoscenzaByKey,
   orariKey,
@@ -29,6 +30,7 @@ import {
 import { buildCsv, buildPreconoscenzaInfographicBlob, downloadBlobFile, downloadTextFile } from './exportUtils.js';
 import { getDevSegments, normalizeShiftKey, parseOrari, summarizeDevelopments } from './parserOrari.js';
 import { buildOrariReport } from './utils/orariDiagnostics.js';
+import { RIENTRI_PARSER_VERSION } from './parserRientri.js';
 import { parseNaturalDate, toIsoDate } from './utils/dateUtils.js';
 import { isGerbidoLine as checkGerbidoLine } from './constants/depotGerbido.js';
 import { DEFAULT_REST_CODE, getOfficialRestEntries } from './constants/restCodes2026.js';
@@ -551,6 +553,8 @@ export default function App() {
   const [days, setDays] = useState({});
   const [developments, setDevelopments] = useState({});
   const [orariInfo, setOrariInfo] = useState(null);
+  // Con quale versione del parser e' stata letta la lettura in uso.
+  const [orariParserVersion, setOrariParserVersion] = useState(RIENTRI_PARSER_VERSION);
   const [orariLoaded, setOrariLoaded] = useState(false);
   const diagnosticsOn = useMemo(() => readOrariDiagnosticsFlag(), []);
   /* Il referto per pagina esiste solo se il PDF viene riletto con la botola
@@ -648,13 +652,21 @@ export default function App() {
       refreshHistory();
     }
     if (options.loadOrari !== false && result.dIn) {
-      const savedOrari = loadOrariByKey(orariKey(result.dIn.getFullYear(), result.dIn.getMonth() + 1));
-      if (savedOrari && Object.keys(savedOrari).length) applyOrari(savedOrari, result, { save: false });
+      const savedKey = orariKey(result.dIn.getFullYear(), result.dIn.getMonth() + 1);
+      const savedOrari = loadOrariByKey(savedKey);
+      if (savedOrari && Object.keys(savedOrari).length) {
+        /* Una lettura salvata prima che l'app sapesse leggere il grafico di
+           servizio non ha rientri, e non e' colpa del PDF: va detto qui, dove
+           si sa da dove arriva il dato. */
+        setOrariParserVersion(loadOrariParserVersion(savedKey));
+        applyOrari(savedOrari, result, { save: false });
+      }
     }
   }
 
   function applyOrari(parsedDevelopments, sourceInfo = pdfInfo, options = {}) {
     const summary = summarizeDevelopments(parsedDevelopments);
+    if (options.save !== false) setOrariParserVersion(RIENTRI_PARSER_VERSION);
     setDevelopments(parsedDevelopments);
     setOrariInfo({
       fileName: sourceInfo?.fileName || 'Orari Linee',
@@ -1113,6 +1125,9 @@ export default function App() {
     if (archivedOrari) {
       const storedOrari = loadOrariByKey(archivedOrari.key);
       if (storedOrari && Object.keys(storedOrari).length) {
+        // Anche una lettura ripescata dallo storico puo' essere precedente al
+        // parser dei rientri: la sua versione e' quella con cui fu salvata.
+        setOrariParserVersion(loadOrariParserVersion(archivedOrari.key));
         applyOrari(storedOrari, {
           fileName: archivedOrari.label || 'Orari Linee',
           dIn: new Date(normalizedYear, normalizedMonth, 1),
@@ -1598,7 +1613,9 @@ export default function App() {
                     ))}
                   </div>
                   {linesTab === 'lines' ? <LineConsultation developments={developments} /> : null}
-                  {linesTab === 'returns' ? <DepotReturnsPanel developments={developments} /> : null}
+                  {linesTab === 'returns' ? (
+                    <DepotReturnsPanel developments={developments} staleParse={orariParserVersion < RIENTRI_PARSER_VERSION} />
+                  ) : null}
                   {linesTab === 'departures' ? <DepotDeparturesPanel developments={developments} /> : null}
                 </>
               ) : (
