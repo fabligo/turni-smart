@@ -5,9 +5,11 @@ import { getLineDisplayName } from '../constants/depotGerbido.js';
 import { getChangePointAddress, normalizeChangePoint } from '../constants/changePoints.js';
 import { BALLOTTAGGI } from '../constants/shiftClassification.js';
 import { buildGttPassagesTarget, buildMoovitFromDepotUrl, getPrimaryGttChangePoint } from '../utils/gttLinks.js';
+import { buildBusRadarTarget } from '../utils/busRadar.js';
 import { describeShiftTiming } from '../utils/shiftTiming.js';
 import { subscribeToClock } from '../utils/clock.js';
 import { getReminderNote } from '../calendarExport.js';
+import { BusRadarModal, VehicleShiftButton } from './BusRadarPanel.jsx';
 import { AssetIcon, Icon } from './Icon.jsx';
 
 const DIRECTION_LABELS = {
@@ -167,6 +169,35 @@ function formatVehicleShift(value = '') {
 function getVehicleShiftLabel(segment = {}) {
   const value = formatVehicleShift(segment.turnoVettura || segment.vett || '');
   return value ? `Turno vettura ${value}` : '';
+}
+
+/**
+ * Dove sta adesso, su BusRadar, la vettura che fa questo tratto. La linea del
+ * tratto viene prima di quella del turno: uno sviluppo puo' passare da una
+ * linea all'altra, e chi guarda il tratto vuole la linea di quel tratto.
+ */
+function getSegmentBusRadarTarget(segment = {}, fallbackLine = '') {
+  return buildBusRadarTarget({
+    direction: segment.dir,
+    line: segment.lineaNorm || segment.ln || segment.linea || fallbackLine,
+    place: segment.loc_s,
+    vehicleNumber: segment.vehicleNumber,
+    vehicleShift: segment.turnoVettura || segment.vett || '',
+  });
+}
+
+function getSegmentMapTitle(segment = {}, target = null) {
+  if (target?.hasVehicle) {
+    return `${target.fleetNumbers.length > 1 ? 'Vetture' : 'Vettura'} ${target.fleetNumbers.join(', ')}`;
+  }
+  return `Linea ${target?.line || segment.ln || ''}${getVehicleShiftLabel(segment) ? ` · ${getVehicleShiftLabel(segment)}` : ''}`;
+}
+
+function getSegmentMapSubtitle(segment = {}) {
+  const direction = DIRECTION_LABELS[segment.dir] || segment.dir || '';
+  return [`${segment.start} - ${segment.end}`, [segment.loc_s, direction, segment.loc_e].filter(Boolean).join(' ')]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 function getCategoryIconName(category, shift) {
@@ -465,7 +496,7 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
           </div>
 
           {!canFlipDevelopment ? (
-            <DevelopmentPanel hasMultipleLegs={hasMultipleLegs} hasSegments={hasSegments} isSplit={isSplit} legPause={legPause} onVehicleNumberChange={updateSegmentVehicle} segments={segments} />
+            <DevelopmentPanel hasMultipleLegs={hasMultipleLegs} hasSegments={hasSegments} isSplit={isSplit} legPause={legPause} line={dayData?.lineaNorm || shift.line} onVehicleNumberChange={updateSegmentVehicle} segments={segments} />
           ) : null}
         </div>
 
@@ -483,7 +514,7 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
                 Torna al turno
               </button>
             </div>
-            <DevelopmentPanel expanded hasMultipleLegs={hasMultipleLegs} hasSegments={hasSegments} isSplit={isSplit} legPause={legPause} onVehicleNumberChange={updateSegmentVehicle} segments={segments} />
+            <DevelopmentPanel expanded hasMultipleLegs={hasMultipleLegs} hasSegments={hasSegments} isSplit={isSplit} legPause={legPause} line={dayData?.lineaNorm || shift.line} onVehicleNumberChange={updateSegmentVehicle} segments={segments} />
           </div>
         ) : null}
       </div>
@@ -551,7 +582,14 @@ function ShiftTiming({ dayData, duration }) {
   );
 }
 
-function DevelopmentPanel({ expanded = false, hasMultipleLegs, hasSegments, isSplit, legPause, onVehicleNumberChange, segments }) {
+function DevelopmentPanel({ expanded = false, hasMultipleLegs, hasSegments, isSplit, legPause, line = '', onVehicleNumberChange, segments }) {
+  /* Quale tratto sta guardando la mappa. L'indice e non il tratto: il numero
+     di vettura si puo' scrivere mentre il riquadro e' aperto, e la mappa deve
+     seguirlo invece di restare ferma su una copia vecchia. */
+  const [mapSegmentIndex, setMapSegmentIndex] = useState(null);
+  const mapSegment = mapSegmentIndex == null ? null : segments[mapSegmentIndex];
+  const mapTarget = mapSegment ? getSegmentBusRadarTarget(mapSegment, line) : null;
+
   return (
     <div className={expanded ? 'shift-development shift-development--expanded' : 'shift-development'} aria-label="Sviluppo turno">
       <h4>Sviluppo turno</h4>
@@ -586,7 +624,12 @@ function DevelopmentPanel({ expanded = false, hasMultipleLegs, hasSegments, isSp
                 <span>
                   {segment.loc_s} {DIRECTION_LABELS[segment.dir] || segment.dir || '-'} {segment.loc_e}
                 </span>
-                {getVehicleShiftLabel(segment) ? <small className="segment-vehicle">{getVehicleShiftLabel(segment)}</small> : null}
+                <VehicleShiftButton
+                  className="segment-vehicle"
+                  label={getVehicleShiftLabel(segment)}
+                  onOpen={() => setMapSegmentIndex(index)}
+                  target={getSegmentBusRadarTarget(segment, line)}
+                />
                 <div className="segment-vehicle-number">
                   <div className="segment-vehicle-number__header">
                     <span>Vetture</span>
@@ -636,6 +679,14 @@ function DevelopmentPanel({ expanded = false, hasMultipleLegs, hasSegments, isSp
           Sviluppo non disponibile. Carica il PDF Orari Deposito da <strong>Altro › Documenti</strong> per vedere le riprese di questo turno.
         </p>
       )}
+      {mapTarget ? (
+        <BusRadarModal
+          onClose={() => setMapSegmentIndex(null)}
+          subtitle={getSegmentMapSubtitle(mapSegment)}
+          target={mapTarget}
+          title={getSegmentMapTitle(mapSegment, mapTarget)}
+        />
+      ) : null}
     </div>
   );
 }
