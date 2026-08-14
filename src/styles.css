@@ -3598,7 +3598,8 @@ a.inline-action--gtt {
   font-weight: 850;
 }
 
-.line-development-step em {
+.line-development-step em,
+.line-development-vehicle {
   border: 1px solid rgba(53, 182, 255, 0.35);
   border-radius: 999px;
   padding: 6px 9px;
@@ -3607,6 +3608,178 @@ a.inline-action--gtt {
   font-style: normal;
   font-weight: 900;
   white-space: nowrap;
+}
+
+/* Il chip del turno vettura apre la mappa di BusRadar. Da fermo deve restare
+   leggibile come l'etichetta che era: e' un dato del turno, e chi non cerca la
+   mappa non deve trovarsi un bottone che grida. */
+.line-development-vehicle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  background: rgba(11, 123, 211, 0.16);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* Il chip sta in una colonna stretta accanto al percorso: l'icona che segnala
+   la mappa deve stare dentro il posto che c'era, non rubarne al testo. */
+.segment-vehicle--map {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 34px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.line-development-vehicle:hover,
+.segment-vehicle--map:hover {
+  border-color: rgba(53, 182, 255, 0.7);
+  color: #ffffff;
+}
+
+.line-development-vehicle svg,
+.segment-vehicle--map svg {
+  flex: none;
+  opacity: 0.8;
+}
+
+/* BusRadar dentro Turni Smart */
+/* La mappa non e' nostra: e' l'altra applicazione, caricata in un frame. Il
+   riquadro prende quasi tutto lo schermo perche' una mappa piccola non risponde
+   alla domanda - dov'e' adesso il mio mezzo - per cui e' stata aperta. */
+.busradar-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  background: rgba(3, 12, 22, 0.78);
+}
+
+.busradar-modal__panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  gap: 10px;
+  width: min(760px, 100%);
+  height: min(860px, calc(100dvh - 24px));
+  border: 1px solid rgba(141, 216, 255, 0.24);
+  border-radius: 14px;
+  background: #0b2136;
+  padding: 14px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+}
+
+.busradar-modal__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.busradar-modal__header span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--yellow);
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.busradar-modal__header h4 {
+  margin: 3px 0 0;
+  color: #ffffff;
+  font-size: 1.06rem;
+  font-weight: 950;
+}
+
+.busradar-modal__header small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.busradar-modal__header > button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  min-height: 40px;
+  flex: none;
+  border: 1px solid rgba(141, 216, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #d9ecff;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.busradar-modal__map {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(141, 216, 255, 0.18);
+  border-radius: 12px;
+  background: #05192b;
+}
+
+.busradar-modal__frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.busradar-modal__loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 850;
+}
+
+.busradar-modal__note {
+  margin: 0;
+  color: #d9ecff;
+  font-size: 0.79rem;
+  font-weight: 780;
+  line-height: 1.45;
+}
+
+.busradar-modal__actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.busradar-modal__actions > * {
+  justify-content: center;
+  text-align: center;
+}
+
+@media (max-width: 520px) {
+  .busradar-modal {
+    padding: 0;
+  }
+
+  .busradar-modal__panel {
+    width: 100%;
+    height: 100dvh;
+    border: 0;
+    border-radius: 0;
+    padding: 12px calc(12px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom))
+      calc(12px + env(safe-area-inset-left));
+  }
 }
 
 /* Utility dock */

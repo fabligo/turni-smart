@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { getLineDisplayName } from '../constants/depotGerbido.js';
 import { timeToMinutes } from '../utils/timeUtils.js';
+import { buildBusRadarTarget, normalizeVehicleShift } from '../utils/busRadar.js';
+import { BusRadarModal, VehicleShiftButton } from './BusRadarPanel.jsx';
 import { AssetIcon, Icon } from './Icon.jsx';
 
 const DIRECTION_LABELS = {
@@ -64,6 +66,21 @@ function getServiceKey(segment = {}) {
   const gt = String(segment.gt || service).trim().toUpperCase();
   const version = String(segment.ver || '').trim().toUpperCase();
   return `${service}|${gt}|${version}`;
+}
+
+/**
+ * Qui il turno vettura si legge senza sapere di che giorno si parla: e' la
+ * consultazione dell'orario, non il turno di domani. Nessuna matricola, quindi,
+ * e la mappa mostra la linea intorno al posto cambio da cui parte il tratto.
+ * Il riquadro lo dice a parole, invece di lasciarlo capire.
+ */
+function getConsultationBusRadarTarget(segment = {}, fallbackLine = '') {
+  return buildBusRadarTarget({
+    direction: segment.dir,
+    line: segment.lineaNorm || segment.ln || fallbackLine,
+    place: segment.loc_s,
+    vehicleShift: segment.turnoVettura || segment.vett || '',
+  });
 }
 
 function getSegmentIdentity(segment = {}) {
@@ -154,6 +171,7 @@ export function LineConsultation({ developments = {} }) {
   const [selectedLine, setSelectedLine] = useState('');
   const [selectedShiftKey, setSelectedShiftKey] = useState('');
   const [selectedService, setSelectedService] = useState('all');
+  const [mapSegment, setMapSegment] = useState(null);
 
   if (!lines.length) return null;
 
@@ -277,13 +295,28 @@ export function LineConsultation({ developments = {} }) {
                     <span>{segment.start} - {segment.end}</span>
                     <p>{formatRoute(segment)}</p>
                   </div>
-                  <em>Vett. {segment.turnoVettura || segment.vett || '-'}</em>
+                  <VehicleShiftButton
+                    className="line-development-vehicle"
+                    label={`Vett. ${normalizeVehicleShift(segment.turnoVettura || segment.vett || '') || '-'}`}
+                    onOpen={() => setMapSegment(segment)}
+                    target={getConsultationBusRadarTarget(segment, activeLine.line)}
+                  />
                 </div>
               ))}
             </div>
           </article>
         ) : null}
       </div>
+      {mapSegment ? (
+        <BusRadarModal
+          onClose={() => setMapSegment(null)}
+          subtitle={`${mapSegment.start} - ${mapSegment.end} · ${formatRoute(mapSegment)}`}
+          target={getConsultationBusRadarTarget(mapSegment, activeLine?.line)}
+          title={`Linea ${getLineDisplayName(mapSegment.lineaNorm || mapSegment.ln || activeLine?.line || '')} · Turno vettura ${
+            normalizeVehicleShift(mapSegment.turnoVettura || mapSegment.vett || '') || '-'
+          }`}
+        />
+      ) : null}
     </section>
   );
 }

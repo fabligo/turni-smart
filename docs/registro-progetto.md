@@ -880,6 +880,58 @@ pulsante in un browser desktop.
 
 ---
 
+## 14.1 BusRadar dentro Turni Smart
+
+`src/utils/busRadar.js`, `src/components/BusRadarPanel.jsx`. Dal chip del turno
+vettura — nello sviluppo turno e nella consultazione linee — si apre un riquadro
+con **BusRadar** (`trailpress.github.io/BusRadar/`, l'altra applicazione
+dell'utente) caricato in un `iframe`. Nessun feed viene letto da qui: Turni
+Smart costruisce solo l'indirizzo, la mappa e i dati restano di BusRadar. Il
+vincolo di `AGENTS.md` sulle API esterne resta rispettato — non c'è nessuna
+chiamata, nessuna chiave e nessun dato di rete in questo repository.
+
+### Il fatto che decide tutto il resto
+
+**Il turno vettura non sta nel feed realtime di GTT.** Il GTFS-RT porta la
+matricola del mezzo e la linea; nel feed GTT il `tripId` arriva perfino vuoto
+(verificato in BusRadar, 2026-08-10, 294 mezzi). Quale vettura stia facendo il
+turno vettura 6 oggi non lo sa nessuna macchina: lo sa chi è in deposito, ed è
+esattamente il motivo per cui lo sviluppo turno ha la casella delle quattro
+cifre.
+
+Da qui i due casi, e il secondo non è un ripiego riuscito male del primo:
+
+| | cosa manda | cosa si vede |
+|--|--|--|
+| matricola scritta | `vettura=1234` | quel mezzo, punto esatto |
+| matricola non scritta | `linea=71` + `lat`/`lon` del posto cambio | i mezzi della linea, **non "il tuo"** |
+
+La differenza va **detta a parole sotto la mappa** (`describeBusRadarTarget`),
+perché sulla mappa i due casi si somigliano e chi guarda concluderebbe da solo
+che il mezzo evidenziato è il suo. C'è un test che lo verifica: se quella frase
+sparisce, sparisce l'avvertenza.
+
+Con la matricola in mano il centro non viene mandato: lo decide BusRadar
+seguendo il mezzo, che nel frattempo si è mosso. Il posto cambio serve solo a
+inquadrare il caso senza matricola.
+
+### Il contratto di indirizzo
+
+`embed=turni-smart` (solo nel riquadro, non nel bottone «Apri in BusRadar»),
+`linea`, `vettura` (lista separata da virgole), `lat`/`lon`.
+Lo zoom non si manda: quando la mappa vola su un punto BusRadar lo decide lei,
+e un parametro che nessuno legge sarebbe un contratto falso.
+
+**Questi parametri vanno implementati anche in BusRadar**: al momento della
+scrittura BusRadar non legge nessun parametro se non quelli di diagnostica del
+feed in `realtimeFeed.ts`. Finché non li legge, il riquadro mostra BusRadar
+nella sua vista generale — utile, ma non centrato. Il lavoro sta in
+`frontend/src/App.tsx` (che ha già `openVehicle`, `lineFilter` e `mapFocus`: i
+parametri devono solo alimentarli, aspettando che il feed arrivi) e nella
+`BottomNav`, da nascondere in `embed`.
+
+---
+
 ## 15. Cosa resta aperto
 
 1. **`MERCOLEDI'`** — 17 segmenti su una pagina sola (p18). Oggi vale come
@@ -897,7 +949,10 @@ pulsante in un browser desktop.
    (`getDevSegments`, `findExactShiftPath`, `pickBestWindowChain`) sono
    arrivati già fatti e non hanno test propri. Il vincolo di `AGENTS.md` è
    prudenza, non pigrizia.
-5. **Il bundle è grosso** (~725 kB js, ~2.3 MB il worker pdf.js). Vite
+5. **BusRadar non legge ancora i parametri che gli mandiamo** (§ 14.1). Il
+   riquadro funziona e mostra la mappa, ma finché la modifica non arriva
+   nell'altro repository non si apre già centrato sul mezzo.
+6. **Il bundle è grosso** (~725 kB js, ~2.3 MB il worker pdf.js). Vite
    avverte a ogni build. Mai affrontato perché mai lamentato. Il service
    worker (§ 13) ne attenua l'effetto — la cache immutabile non lo riscarica
    a ogni pubblicazione — ma la prima apertura resta pesante.
