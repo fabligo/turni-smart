@@ -918,7 +918,9 @@ inquadrare il caso senza matricola.
 ### Il contratto di indirizzo
 
 `embed=turni-smart` (solo nel riquadro, non nel bottone «Apri in BusRadar»),
-`linea`, `vettura` (lista separata da virgole), `lat`/`lon`/`zoom`.
+`linea`, `vettura` (lista separata da virgole), `lat`/`lon`.
+Lo zoom non si manda: quando la mappa vola su un punto BusRadar lo decide lei,
+e un parametro che nessuno legge sarebbe un contratto falso.
 
 **Questi parametri vanno implementati anche in BusRadar**: al momento della
 scrittura BusRadar non legge nessun parametro se non quelli di diagnostica del

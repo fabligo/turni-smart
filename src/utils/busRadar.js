@@ -14,13 +14,6 @@ import { getLineDisplayName, normalizeLineCode } from '../constants/depotGerbido
 const BUS_RADAR_BASE_URL = 'https://trailpress.github.io/BusRadar/';
 
 /**
- * Quanto stringere la mappa quando l'unico punto che abbiamo e' il posto cambio
- * del tratto: abbastanza da riconoscere l'incrocio, abbastanza largo da vedere
- * i mezzi che stanno arrivando.
- */
-const CHANGE_POINT_ZOOM = 15;
-
-/**
  * Il numero di vettura che l'autista scrive nello sviluppo e' la matricola che
  * il mezzo porta scritta addosso, da una a quattro cifre. E' la stessa chiave
  * che BusRadar chiama `fleetNumber` e mostra come "Vettura 1234": nel feed
@@ -116,7 +109,7 @@ export function buildBusRadarTarget({
        nel frattempo si e' mosso. */
     ...(fleetNumbers.length || !position
       ? {}
-      : { lat: position.lat.toFixed(6), lon: position.lng.toFixed(6), zoom: CHANGE_POINT_ZOOM }),
+      : { lat: position.lat.toFixed(6), lon: position.lng.toFixed(6) }),
   };
 
   return {
