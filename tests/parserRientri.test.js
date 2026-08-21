@@ -3,11 +3,15 @@ import assert from 'node:assert/strict';
 import {
   detectRientriLine,
   findGraphicHints,
+  isGraphicKey,
   isRientriKey,
+  isUsciteKey,
+  parseDepotExits,
   parseDepotReturns,
   parseDepotTransferTimes,
   parseLegend,
   rientriKey,
+  usciteKey,
 } from '../src/parserRientri.js';
 
 // I numeri sono quelli del grafico di servizio della linea 5, versione Q01 del
@@ -115,6 +119,96 @@ test('la chiave dei rientri non e quella di un turno', () => {
   assert.equal(isRientriKey('05 302'), false);
 });
 
+test('nemmeno la chiave delle uscite e quella di un turno', () => {
+  assert.equal(usciteKey('5', 'LUN - VEN'), 'USCITE 5 LUN - VEN');
+  assert.ok(isUsciteKey(usciteKey('5', 'LUN - VEN')));
+  assert.equal(isUsciteKey('05 302'), false);
+  // Le due chiavi non si confondono fra loro, o le uscite finirebbero fra i
+  // rientri e viceversa.
+  assert.equal(isUsciteKey(rientriKey('5', 'LUN - VEN')), false);
+  assert.equal(isRientriKey(usciteKey('5', 'LUN - VEN')), false);
+  // E insieme sono "tutto quello che non e' uno sviluppo turno".
+  assert.ok(isGraphicKey(rientriKey('5', '')) && isGraphicKey(usciteKey('5', '')));
+  assert.equal(isGraphicKey('05 302'), false);
+});
+
+test('ogni vettura produce anche l uscita dal deposito e il suo ingresso in linea', () => {
+  const exits = parseDepotExits(BY_COLUMN, { gt: 'LUN - VEN', ver: 'Q01' });
+  assert.equal(exits.length, 3);
+
+  const first = exits[0];
+  assert.equal(first.loc_s, 'GERB');
+  assert.equal(first.start, '04:13');
+  assert.equal(first.end, '04:22');
+  assert.equal(first.loc_e, 'CATT');
+  assert.equal(first.lineaNorm, '5');
+  assert.equal(first.gt, 'LUN - VEN');
+
+  // Nove minuti per Cattaneo e sette per Settembrini: sono i minuti della
+  // tabella, non le ore di una ripresa.
+  assert.deepEqual(
+    exits.map((item) => `${item.loc_e} ${item.start}→${item.end}`),
+    ['CATT 04:13→04:22', 'OSET 04:17→04:24', 'CATT 04:48→04:57'],
+  );
+});
+
+/* Il grafico dice dove la vettura entra in linea, non da che parte prosegue:
+   una direzione qui sarebbe inventata, e la palina che ne verrebbe fuori
+   manderebbe qualcuno dal lato sbagliato della strada. */
+test('l uscita non porta una direzione che il grafico non dichiara', () => {
+  const [exit] = parseDepotExits(BY_COLUMN, {});
+  assert.equal(exit.dir, '');
+});
+
+test('senza I.L. credibile non si inventa un uscita', () => {
+  // Un I.L. lontanissimo non e' l'ingresso in linea di questa uscita.
+  assert.deepEqual(parseDepotExits(`${TRANSFER_TABLE} 8 Esce 04.13 I.L. 06.40 CATT`, {}), []);
+  // E il deposito non e' il posto dove una vettura entra in linea.
+  assert.deepEqual(parseDepotExits(`${TRANSFER_TABLE} 8 Esce 04.13 I.L. 04.22 GERB`, {}), []);
+  assert.deepEqual(parseDepotExits('pagina senza grafico', {}), []);
+  // La pagina dei turni non deve produrre uscite: e' tutto il punto.
+  assert.deepEqual(parseDepotExits('05 101 5 / 1 04.48 GERB - 10.15 CATT', {}), []);
+});
+
+/* Lo stesso rimedio dei rientri: quando la tabella dichiara il tempo, e' quello
+   a dire quale I.L. appartiene a quale Esce. */
+test('le colonne mescolate non fanno accoppiare Esce e I.L. sbagliati', () => {
+  const mescolato = `${TRANSFER_TABLE}
+    2 Esce 04.48 ARBA GER I.L. 04.53 OSET I.L. 04.57 CATT
+  `;
+  const [exit] = parseDepotExits(mescolato, {});
+  // 04.53 sarebbe plausibile, ma da Settembrini la tabella dichiara sette
+  // minuti e non cinque: i nove di Cattaneo combaciano, e vince quello.
+  assert.equal(exit.loc_e, 'CATT');
+  assert.equal(exit.end, '04:57');
+});
+
+test('l uscita dopo mezzanotte non diventa un salto all indietro', () => {
+  const [exit] = parseDepotExits(`${TRANSFER_TABLE} 4 Esce 23.58 I.L. 00.07 CATT`, {});
+  assert.equal(exit.start, '23:58');
+  assert.equal(exit.end, '00:07');
+});
+
+test('le uscite si leggono anche quando il PDF perde separatori e spazi', () => {
+  const compact = `
+    TEMPI DI USCITA / RIENTRO 5
+    GERB-CATT 9 9
+    Esce 0448 IL 0457 CATT
+  `;
+  const [exit] = parseDepotExits(compact, {});
+  assert.equal(`${exit.start}→${exit.end} ${exit.loc_e}`, '04:48→04:57 CATT');
+});
+
+/* Il numero prima di "Esce" e' la vettura in una forma del testo e la coda
+   della tabella dei tempi in un'altra - "GERB - ARBA 25" seguito da "8 Esce" -
+   e le due non si distinguono. Meglio nessun numero che quello di un altro
+   mezzo: nel piazzale ci si va a colpo sicuro o non ci si va. */
+test('l uscita non porta un numero di vettura indistinguibile da un tempo', () => {
+  assert.equal(parseDepotExits(BY_COLUMN, {})[0].vett, '');
+  const dallaTabella = parseDepotExits(`${TRANSFER_TABLE} Esce 04.48 I.L. 04.57 CATT`, {});
+  assert.equal(dallaTabella[0].vett, '', 'il 25 di "GERB - ARBA 25" non e una vettura');
+});
+
 test('legge le forme che il PDF produce quando perde separatori e spazi', () => {
   // Ora senza separatore e capolinea attaccati: "2151" e "GERB-OSET".
   const compact = `
@@ -137,6 +231,10 @@ test('il referto distingue la pagina assente dalla pagina non riconosciuta', () 
   const hints = findGraphicHints('LINEA 5 TEMPI DI USCITA / RIENTRO 5 UL 2151 OSET ENTRA 2158');
   assert.deepEqual(hints.markers, ['ul', 'entra', 'tempi']);
   assert.match(hints.excerpt, /TEMPI DI USCITA/);
+  // L'I.L. conta come marcatore solo quando ha la sua ora dietro: "il" da solo
+  // e' una parola come un'altra, e un marcatore falso vale meno di niente.
+  assert.deepEqual(findGraphicHints('8 ESCE 04.13 I.L. 04.22 CATT').markers, ['esce', 'il']);
+  assert.deepEqual(findGraphicHints('IL DEPOSITO DEL GERBIDO').markers, []);
 });
 
 test('la legenda del PDF traduce i codici nel posto vero', () => {

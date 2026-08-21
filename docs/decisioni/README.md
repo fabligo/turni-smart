@@ -20,3 +20,4 @@ e' costato giorni.
 | [0007](0007-il-ricambio-lo-comanda-lutente.md) | L'app non si ricarica da sola |
 | [0008](0008-il-titolo-sveglia-e-un-contratto.md) | Il titolo delle sveglie e' un contratto |
 | [0009](0009-il-lavoro-arriva-dalle-issue.md) | Il lavoro arriva dalle issue, e una sessione ne fa una |
+| [0010](0010-uscite-dal-grafico-di-servizio.md) | Anche le uscite vengono dal grafico di servizio |

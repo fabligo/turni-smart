@@ -1,22 +1,32 @@
-// La pagina "grafico di servizio" degli Orari e' l'unica che dice come si torna
-// davvero in deposito. La pagina dei turni da' la ripresa intera - "16.33 CATT
-// R 21.58 GERB" sono cinque ore e mezza di linea, non un passaggio - mentre qui
-// ogni vettura chiude con due dati soli:
+// La pagina "grafico di servizio" degli Orari e' l'unica che dice come si esce
+// dal deposito e come ci si torna davvero. La pagina dei turni da' la ripresa
+// intera - "16.33 CATT R 21.58 GERB" sono cinque ore e mezza di linea, non un
+// passaggio - mentre qui ogni vettura chiude con due dati soli:
 //
 //   Linea  U.L. 21.51 OSET
 //   5      Entra 21.58
 //
 // U.L. e' l'ultima corsa di linea, Entra l'ingresso in deposito: fra i due c'e'
-// il tragitto vero, sette minuti. E in fondo alla pagina la tabella che lo
-// conferma per ogni capolinea:
+// il tragitto vero, sette minuti.
+//
+// La stessa pagina dice allo stesso modo come si esce, e sono i due dati su cui
+// si regge la funzione Uscite:
+//
+//   8   Esce 04.13   I.L. 04.22 CATT
+//
+// Esce e' l'ora in cui la vettura lascia il Gerbido, I.L. dove e quando entra in
+// linea: nove minuti per Cattaneo, non le cinque ore della ripresa.
+//
+// E in fondo alla pagina la tabella che conferma entrambi, per ogni capolinea:
 //
 //   TEMPI DI USCITA / RIENTRO 5
 //   GERB - OSET  7 7
 //   GERB - CATT  9 9
 //
-// I due dati si controllano a vicenda: un U.L. si accoppia al suo Entra solo se
-// la differenza e' il tempo che la tabella dichiara per quel posto. Cosi' un
-// PDF estratto con le colonne mescolate non produce accoppiamenti a caso.
+// I dati si controllano a vicenda: un U.L. si accoppia al suo Entra - e un Esce
+// al suo I.L. - solo se la differenza e' il tempo che la tabella dichiara per
+// quel posto. Cosi' un PDF estratto con le colonne mescolate non produce
+// accoppiamenti a caso.
 
 import { findTerminus } from './constants/gttTermini.js';
 import { distanceMeters } from './constants/gttPaline.js';
@@ -32,6 +42,9 @@ const COMPACT_TIME_RE = /^(\d{2})(\d{2})$/;
 // Fra "U.L. 21.51 OSET" e "Entra 21.58" il testo estratto puo' infilare le
 // etichette della colonna accanto: si guarda avanti quel tanto che basta.
 const ENTRY_LOOKAHEAD = 14;
+// Fra "Esce 04.13" e "I.L. 04.22 CATT" il testo estratto infila i codici della
+// colonna accanto - "ARBA GER" - allo stesso modo e con lo stesso rimedio.
+const LINE_START_LOOKAHEAD = 14;
 // Senza tabella dei tempi resta il buon senso: dal capolinea al deposito non ci
 // si mette tre quarti d'ora.
 const MAX_TRANSFER_MINUTES = 45;
@@ -215,6 +228,82 @@ export function parseDepotReturns(text = '', { gt = '', ver = '', legend = null,
   return returns;
 }
 
+/**
+ * Le uscite dal deposito, una per vettura, lette dalla stessa pagina.
+ *
+ * Sono lo specchio dei rientri: "Esce" e' l'ora in cui la vettura lascia il
+ * Gerbido, "I.L." dove e quando entra in linea. Fra i due c'e' il
+ * trasferimento, che dura quanto dichiara la tabella - nove minuti per
+ * Cattaneo - e non e' la ripresa di cinque ore che sta sulla pagina dei turni.
+ *
+ * Torna segmenti nella stessa forma degli altri, con il deposito come partenza.
+ */
+export function parseDepotExits(text = '', { gt = '', ver = '', line = '' } = {}) {
+  const tokens = tokenize(text);
+  const transfers = parseDepotTransferTimes(text);
+  const lineCode = line || detectRientriLine(text);
+  const exits = [];
+  const seen = new Set();
+
+  for (let index = 0; index < tokens.length - 3; index += 1) {
+    if (tokens[index] !== 'ESCE') continue;
+    const departure = toMinutes(tokens[index + 1]);
+    if (departure === null) continue;
+
+    let chosen = null;
+
+    for (let ahead = index + 2; ahead < Math.min(tokens.length - 2, index + 2 + LINE_START_LOOKAHEAD); ahead += 1) {
+      if (!isAnchor(tokens[ahead], 'I')) continue;
+      const entry = toMinutes(tokens[ahead + 1]);
+      const place = tokens[ahead + 2];
+      if (entry === null || !PLACE_RE.test(place) || place === DEPOT) continue;
+      const gap = transferMinutes(departure, entry);
+      if (gap <= 0 || gap > MAX_TRANSFER_MINUTES) continue;
+      // Come per l'Entra: il tempo dichiarato dalla tabella e' la prova. Se
+      // combacia si chiude qui, altrimenti si tiene il primo plausibile e si
+      // continua a cercare quello giusto.
+      if (transfers[place]?.out === gap) {
+        chosen = { place, token: tokens[ahead + 1] };
+        break;
+      }
+      if (!chosen) chosen = { place, token: tokens[ahead + 1] };
+    }
+
+    if (!chosen) continue;
+
+    const start = formatTime(tokens[index + 1]);
+    const end = formatTime(chosen.token);
+    const identity = `${lineCode}|${chosen.place}|${start}|${end}`;
+    if (seen.has(identity)) continue;
+    seen.add(identity);
+
+    exits.push({
+      ln: lineCode,
+      lineaNorm: lineCode,
+      /* Il numero di vettura sembra stare subito prima di "Esce", e nel testo
+         estratto per colonne davvero c'e'. Ma in quella stessa posizione
+         finisce la coda della tabella dei tempi - "GERB - ARBA 25" seguito da
+         "8 Esce" - e le due cose sono indistinguibili: un 25 letto come vettura
+         manda qualcuno al mezzo sbagliato nel piazzale. Resta vuoto finche' il
+         grafico non lo dira' in un posto che non si confonde con altro. */
+      vett: '',
+      turnoVettura: '',
+      start,
+      loc_s: DEPOT,
+      /* Il grafico dice dove la vettura entra in linea, non da che parte
+         prosegue: la direzione resta vuota invece di essere dedotta. */
+      dir: '',
+      end,
+      loc_e: chosen.place,
+      gt,
+      ver,
+      run_id: exits.length + 1,
+    });
+  }
+
+  return exits;
+}
+
 // I rientri stanno nella stessa mappa degli sviluppi turno, sotto una chiave
 // che nessun turno puo' avere: la ricerca li legge senza sapere che vengono da
 // un'altra pagina, e la scheda di un turno non li pesca per sbaglio.
@@ -222,11 +311,12 @@ export const RIENTRI_KEY_PREFIX = 'RIENTRI';
 
 /* Quale versione del parser ha prodotto una lettura. Gli Orari restano salvati
    fra un avvio e l'altro, quindi una lettura fatta prima che il grafico di
-   servizio venisse letto sopravvive all'aggiornamento e non ha rientri: senza
-   questo numero l'app non puo' distinguerla da un PDF che il grafico non ce
-   l'ha, e finisce per dare la colpa al PDF. Va alzato quando cambia cio' che il
-   parser ricava dalla stessa pagina. */
-export const RIENTRI_PARSER_VERSION = 1;
+   servizio venisse letto sopravvive all'aggiornamento e non ha ne' rientri ne'
+   uscite: senza questo numero l'app non puo' distinguerla da un PDF che il
+   grafico non ce l'ha, e finisce per dare la colpa al PDF. Va alzato quando
+   cambia cio' che il parser ricava dalla stessa pagina - la 2 e' quella che ha
+   aggiunto le uscite. */
+export const RIENTRI_PARSER_VERSION = 2;
 
 export function rientriKey(line = '', gt = '') {
   return [RIENTRI_KEY_PREFIX, line || '?', gt].filter(Boolean).join(' ');
@@ -234,6 +324,24 @@ export function rientriKey(line = '', gt = '') {
 
 export function isRientriKey(key = '') {
   return String(key).startsWith(`${RIENTRI_KEY_PREFIX} `);
+}
+
+// Le uscite seguono la stessa regola dei rientri e per la stessa ragione: la
+// pagina dei turni non deve poterle produrre, e la scheda di un turno non deve
+// pescarle credendole uno sviluppo.
+export const USCITE_KEY_PREFIX = 'USCITE';
+
+export function usciteKey(line = '', gt = '') {
+  return [USCITE_KEY_PREFIX, line || '?', gt].filter(Boolean).join(' ');
+}
+
+export function isUsciteKey(key = '') {
+  return String(key).startsWith(`${USCITE_KEY_PREFIX} `);
+}
+
+// Le due pagine speciali insieme: quello che non e' uno sviluppo turno.
+export function isGraphicKey(key = '') {
+  return isRientriKey(key) || isUsciteKey(key);
 }
 
 /* Marcatori del grafico di servizio nel testo grezzo di una pagina. Servono a
@@ -245,6 +353,9 @@ const GRAPHIC_MARKERS = [
   ['ul', /\bU\.?\s?L\.?\s/],
   ['entra', /\bENTRA\b/],
   ['esce', /\bESCE\b/],
+  /* L'I.L. si cerca seguito dalla sua ora: "IL" da solo e' una parola come
+     un'altra, e nel referto un marcatore falso vale meno di niente. */
+  ['il', /\bI\.?\s?L\.?\s+\d{1,2}[.:]?\d{2}\b/],
   ['tempi', /TEMPI\s+DI\s+USCITA/],
 ];
 

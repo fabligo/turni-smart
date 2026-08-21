@@ -3,10 +3,12 @@ import { normalizeLineCode } from './constants/depotGerbido.js';
 import {
   detectRientriLine,
   findGraphicHints,
-  isRientriKey,
+  isGraphicKey,
+  parseDepotExits,
   parseDepotReturns,
   parseLegend,
   rientriKey,
+  usciteKey,
 } from './parserRientri.js';
 
 const TIME_TOKEN_RE = /\d{2}[.:]?\d{2}/;
@@ -414,8 +416,9 @@ export function parseOrari(pagesText, { diagnostics = null, places = null } = {}
     parseOrariPageLines(pageText, resolved, ver, developments, tableStateByService[serviceKey]);
 
     /* Il grafico di servizio e' un'altra pagina con un'altra forma: da li'
-       vengono le ultime corse prima del deposito, che la tabella dei turni non
-       ha. Stanno sotto una chiave che nessun turno puo' avere. */
+       vengono le ultime corse prima del deposito e i trasferimenti con cui le
+       vetture ne escono, che la tabella dei turni non ha. Stanno sotto chiavi
+       che nessun turno puo' avere. */
     /* La legenda della pagina traduce i codici di quattro lettere nel posto
        vero, e serve sia a mostrarli sia a trovarne la posizione. Le pagine ne
        portano pezzi diversi, quindi si accumulano. */
@@ -429,18 +432,25 @@ export function parseOrari(pagesText, { diagnostics = null, places = null } = {}
       developments[key] = developments[key] || [];
       returns.forEach((segment) => addSegment(developments, key, segment));
     }
-    /* La legenda della pagina traduce i codici di quattro lettere nel posto
-       vero. Le pagine ne portano pezzi diversi, quindi si accumulano. */
+
+    const exits = parseDepotExits(pageText, { gt: resolved, line, ver });
+    if (exits.length) {
+      const key = usciteKey(line, resolved);
+      developments[key] = developments[key] || [];
+      exits.forEach((segment) => addSegment(developments, key, segment));
+    }
+
     if (diagnostics) {
       const entry = diagnostics[diagnostics.length - 1];
       entry.returns = returns.length;
-      /* Una pagina che ha i marcatori del grafico ma non produce rientri e'
-         l'unico caso su cui si puo' intervenire: del suo testo si tiene un
-         pezzo, perche' e' li' che il parser sbaglia. */
+      entry.exits = exits.length;
+      /* Una pagina che ha i marcatori del grafico ma non produce rientri o
+         uscite e' l'unico caso su cui si puo' intervenire: del suo testo si
+         tiene un pezzo, perche' e' li' che il parser sbaglia. */
       const hints = findGraphicHints(pageText);
       if (hints.markers.length) {
         entry.graphicMarkers = hints.markers;
-        if (!returns.length) entry.graphicExcerpt = hints.excerpt;
+        if (!returns.length || !exits.length) entry.graphicExcerpt = hints.excerpt;
       }
     }
   });
@@ -849,9 +859,9 @@ export function getDevSegments(developments, line, shiftNumber, date, preShift =
 }
 
 export function summarizeDevelopments(developments) {
-  // I rientri letti dal grafico di servizio stanno nella stessa mappa ma non
-  // sono turni: contarli gonfiava il numero mostrato dopo il caricamento.
-  const keys = Object.keys(developments || {}).filter((key) => !isRientriKey(key));
+  // Rientri e uscite letti dal grafico di servizio stanno nella stessa mappa ma
+  // non sono turni: contarli gonfiava il numero mostrato dopo il caricamento.
+  const keys = Object.keys(developments || {}).filter((key) => !isGraphicKey(key));
   return {
     totalTurns: keys.length,
     splitTurns: keys.filter((key) => {

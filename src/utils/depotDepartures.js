@@ -1,9 +1,9 @@
 import { timeToMinutes } from './timeUtils.js';
+import { isUsciteKey } from '../parserRientri.js';
 import {
   DEPOT_CODE,
   SERVICE_TYPES,
   getServiceTypes,
-  getShiftParts,
   getTodayServiceType,
   minutesFromNow,
   normalizePlace,
@@ -34,47 +34,28 @@ function durationMinutes(start, end) {
   return endMinutes - startMinutes;
 }
 
-function groupByRun(segments = []) {
-  const runs = new Map();
-  segments.forEach((segment) => {
-    const key = segment.run_id === undefined ? '_' : String(segment.run_id);
-    if (!runs.has(key)) runs.set(key, []);
-    runs.get(key).push(segment);
-  });
-  return [...runs.values()].map((run) => run.slice().sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start)));
-}
-
-/**
- * La direzione che la linea prende uscendo dal deposito.
- *
- * Il tratto che parte dal deposito spesso non ce l'ha - negli sviluppi e'
- * segnato "-" - perche' e' il trasferimento, non ancora la corsa. La direzione
- * che serve e' allora quella del primo tratto orientato della stessa corsa: e'
- * lo stesso mezzo che prosegue, quindi e' davvero la direzione che prendera'.
- */
-export function findRunDirection(run = [], startIndex = 0) {
-  for (let index = startIndex; index < run.length; index += 1) {
-    const direction = normalizeDirection(run[index].dir);
-    if (direction) return direction;
-  }
-  return '';
-}
-
 /**
  * Le uscite dal deposito intorno a un orario.
  *
  * Serve a raggiungere un posto cambio: si sceglie l'ora in cui si e' al
- * Gerbido e si vede cosa parte in quel momento, su che linea, dove va a
- * finire quel tratto e in che direzione prosegue.
+ * Gerbido e si vede cosa parte in quel momento, su che linea e dove entra in
+ * linea quel mezzo.
  *
- * Il filtro utile e' il posto cambio, non la direzione: chi deve andare a
- * Cattaneo vuole vedere i mezzi che vanno a Cattaneo, e "andata o ritorno" da
- * solo non risponde a quella domanda. La direzione resta comunque su ogni
- * uscita, perche' e' quella a dire da che parte il mezzo prosegue poi.
+ * Le uscite le da' **solo** il grafico di servizio, dove ogni vettura ha il suo
+ * "Esce" e il suo "I.L.": sono il trasferimento vero, che dura i minuti che la
+ * tabella TEMPI DI USCITA / RIENTRO dichiara. Una riga della pagina dei turni
+ * comincia in deposito allo stesso modo ma finisce dove il conducente stacca,
+ * ore dopo: e' la ripresa, e presentarla come un'uscita diceva "esce alle 04:48
+ * e arriva a Cattaneo alle 10:15". E' lo stesso difetto dei rientri, con la
+ * stessa cura (-> docs/decisioni/0001 e 0010).
  *
- * Di ogni uscita si dice solo quello che il dato dice: ora di partenza dal
- * deposito, linea, turno, direzione e dove arriva il tratto. Se quel tratto sia
- * un trasferimento o gia' servizio, gli sviluppi non lo distinguono.
+ * Il filtro utile e' il posto cambio: chi deve andare a Cattaneo vuole vedere i
+ * mezzi che vanno a Cattaneo.
+ *
+ * Di ogni uscita si dice solo quello che il dato dice: ora in cui lascia il
+ * deposito, linea, dove e quando entra in linea. Da che parte il mezzo prosegua
+ * poi, e con quale vettura, il grafico non lo scrive in un posto che non si
+ * confonda con altro: i due campi restano, vuoti, invece di essere indovinati.
  *
  * Come per i rientri, i contatori raccontano perche' una ricerca resta vuota:
  * senza quelli "nessuna uscita" e indistinguibile da una funzione rotta.
@@ -100,6 +81,10 @@ export function searchDepartures(developments = {}, options = {}) {
   const result = {
     byLine: [],
     countByService: {},
+    /* Come per i rientri: se il grafico di servizio non e' stato letto non c'e'
+       niente su cui cercare, e dirlo e' l'unica risposta onesta. Le riprese
+       della pagina dei turni non sono uscite e non vanno usate al suo posto. */
+    graphicLoaded: false,
     matches: [],
     /* Uscite dentro la finestra ma dirette altrove: e' la ragione piu'
        frequente di un elenco corto quando si sceglie un posto cambio. */
@@ -125,77 +110,70 @@ export function searchDepartures(developments = {}, options = {}) {
 
   Object.entries(developments).forEach(([key, segments]) => {
     if (!Array.isArray(segments)) return;
-    const { line: keyLine, shift } = getShiftParts(key);
+    // Solo il grafico di servizio: vedi sopra, e decisioni/0010.
+    if (!isUsciteKey(key)) return;
+    result.graphicLoaded = true;
 
-    groupByRun(segments).forEach((run) => {
-      run.forEach((segment, index) => {
-        if (normalizePlace(segment.loc_s) !== DEPOT_CODE) return;
+    segments.forEach((segment) => {
+      /* Il parser del grafico non produce altro, ma un'uscita che non parte
+         dal deposito - o che ci torna senza toccare la linea - non porta a
+         nessun posto cambio e non e' un mezzo da prendere. */
+      if (normalizePlace(segment.loc_s) !== DEPOT_CODE) return;
+      const toPlace = normalizePlace(segment.loc_e);
+      if (!toPlace || toPlace === DEPOT_CODE) return;
 
-        /* Un tratto che dal deposito torna al deposito non porta a nessun
-           posto cambio: negli orari sono le righe che riassumono lo sviluppo
-           intero, non un'uscita da prendere. */
-        const toPlace = normalizePlace(segment.loc_e);
-        if (toPlace === DEPOT_CODE) return;
+      /* Negativo = parte prima dell'orario scelto. */
+      const offsetMinutes = minutesFromNow(segment.start, targetMinutes);
 
-        /* Negativo = parte prima dell'orario scelto. */
-        const offsetMinutes = minutesFromNow(segment.start, targetMinutes);
+      const segmentServices = getServiceTypes(segment.gt);
+      /* La linea la porta il segmento. La chiave non e' un ripiego: comincia
+         con USCITE, e usarla farebbe comparire "USCITE" al posto del numero. */
+      const line = segment.lineaNorm || segment.ln || '';
+      const vehicleShift = String(segment.vett || '').trim();
+      const direction = normalizeDirection(segment.dir);
 
-        const segmentServices = getServiceTypes(segment.gt);
-        const line = segment.lineaNorm || segment.ln || keyLine;
-        /* Solo il numero letto da LINEA/VETTURA. Quando manca, il parser ci
-           mette la chiave dello sviluppo come ripiego, che vettura non e'. */
-        const vehicleShift = String(segment.vett || '').trim();
+      /* L'identita' e' l'uscita reale - linea, ora di partenza, ora di
+         arrivo, destinazione - non la riga da cui l'abbiamo letta. Il PDF
+         ripete la stessa pagina in ogni versione dell'orario: tenendo la
+         chiave, o la vettura che in qualche copia si perde, la stessa uscita
+         si contava una volta per copia. Un mezzo dal deposito esce una volta
+         sola.
 
-        /* L'identita' e' l'uscita reale - linea, ora di partenza, ora di
-           arrivo, destinazione - non la riga da cui l'abbiamo letta. Lo stesso
-           sviluppo finisce sotto piu' chiavi (il turno e la vettura) e il PDF
-           lo ripete in ogni versione dell'orario: tenendo la chiave, o la
-           vettura che in qualche copia si perde, la stessa uscita si contava
-           una volta per copia. Un mezzo dal deposito esce una volta sola.
-
-           I giorni in cui gira non fanno identita' ma si sommano: la stessa
-           uscita scritta una volta come feriale e una come "LUN - SAB" resta
-           un'uscita sola, che pero' capita in entrambi i giorni. */
-        const identity = [line, segment.start, segment.end, toPlace].join('|');
-        const existing = byIdentity.get(identity);
-        if (existing) {
-          segmentServices.forEach((type) => existing.services.add(type));
-          /* Fra due copie vince quella che porta l'informazione: se una ha il
-             numero di vettura e l'altra no, si tiene il numero. */
-          if (!existing.vehicleShift && vehicleShift) existing.vehicleShift = vehicleShift;
-          if (!existing.direction) {
-            const recovered = findRunDirection(run, index);
-            if (recovered) {
-              existing.direction = recovered;
-              existing.directionLabel = getDirectionLabel(recovered);
-              existing.directionFromRun = normalizeDirection(segment.dir) === '';
-            }
-          }
-          return;
+         I giorni in cui gira non fanno identita' ma si sommano: la stessa
+         uscita scritta una volta come feriale e una come "LUN - SAB" resta
+         un'uscita sola, che pero' capita in entrambi i giorni. */
+      const identity = [line, segment.start, segment.end, toPlace].join('|');
+      const existing = byIdentity.get(identity);
+      if (existing) {
+        segmentServices.forEach((type) => existing.services.add(type));
+        /* Fra due copie vince quella che porta l'informazione: se una ha il
+           numero di vettura e l'altra no, si tiene il numero. */
+        if (!existing.vehicleShift && vehicleShift) existing.vehicleShift = vehicleShift;
+        if (!existing.direction && direction) {
+          existing.direction = direction;
+          existing.directionLabel = getDirectionLabel(direction);
         }
+        return;
+      }
 
-        const direction = findRunDirection(run, index);
-
-        byIdentity.set(identity, {
-          services: new Set(segmentServices),
-          arrival: segment.end,
-          departure: segment.start,
-          direction,
-          directionLabel: getDirectionLabel(direction),
-          /* Vero quando la direzione arriva da un tratto successivo della
-             stessa corsa, non dal tratto che esce dal deposito. */
-          directionFromRun: direction !== '' && normalizeDirection(segment.dir) === '',
-          legMinutes: durationMinutes(segment.start, segment.end),
-          line,
-          offsetMinutes,
-          service,
-          /* La chiave da cui il tratto e' stato letto: a volte e' il turno,
-             a volte la vettura, e non c'e' modo di distinguerli. Resta qui
-             perche' aiuta a rileggere il dato, ma non si mostra come turno. */
-          shift,
-          toPlace,
-          vehicleShift,
-        });
+      byIdentity.set(identity, {
+        services: new Set(segmentServices),
+        arrival: segment.end,
+        departure: segment.start,
+        /* Il grafico dice dove la vettura entra in linea, non da che parte
+           prosegue: oggi resta vuota sempre, e il campo c'e' perche' il giorno
+           in cui quella pagina lo dicesse non ci sia altro da cambiare. */
+        direction,
+        directionLabel: getDirectionLabel(direction),
+        /* Quanto dura il trasferimento: sono i minuti della tabella TEMPI DI
+           USCITA / RIENTRO, nove per Cattaneo. Un numero a tre cifre qui vuol
+           dire che si sta leggendo una ripresa. */
+        legMinutes: durationMinutes(segment.start, segment.end),
+        line,
+        offsetMinutes,
+        service,
+        toPlace,
+        vehicleShift,
       });
     });
   });

@@ -1,5 +1,5 @@
 import { DEPOT_CODE, getServiceTypes, normalizePlace } from './depotReturns.js';
-import { isRientriKey } from '../parserRientri.js';
+import { isRientriKey, isUsciteKey } from '../parserRientri.js';
 
 /**
  * Un referto su cosa il parser ha capito degli Orari caricati.
@@ -15,10 +15,12 @@ import { isRientriKey } from '../parserRientri.js';
  * la traccia.
  */
 
-/* Le uscite dal deposito con la stessa regola del pannello: un tratto che
-   parte dal Gerbido e non ci torna. Contate due volte di proposito - righe
-   lette e mezzi distinti - perche' la distanza fra i due numeri e' quanto il
-   parser sta duplicando. */
+/* I tratti che partono dal Gerbido e non ci tornano, in tutto quello che il
+   parser ha letto. Non sono le uscite del pannello, che vengono dal solo
+   grafico di servizio (-> decisioni/0010): qui dentro finiscono anche le
+   riprese della pagina dei turni, ed e' voluto. Contati due volte - righe lette
+   e tratti distinti - perche' la distanza fra i due numeri e' quanto il parser
+   sta duplicando. */
 export function countExits(segments = []) {
   const seen = new Set();
   let rows = 0;
@@ -109,6 +111,20 @@ export function summarizeReturns(developments = {}) {
     .sort((a, b) => a.key.localeCompare(b.key));
 }
 
+/* Le uscite lette dal grafico di servizio, per linea. Sono l'unica fonte dei
+   trasferimenti con cui le vetture lasciano il deposito: se qui c'e' zero, il
+   pannello Uscite restera' vuoto per quella linea. */
+export function summarizeExits(developments = {}) {
+  return Object.entries(developments || {})
+    .filter(([key]) => isUsciteKey(key))
+    .map(([key, segments]) => ({
+      key,
+      places: [...new Set((segments || []).map((segment) => normalizePlace(segment.loc_e)))].sort(),
+      segments: (segments || []).length,
+    }))
+    .sort((a, b) => a.key.localeCompare(b.key));
+}
+
 const MAX_RUNS = 24;
 const MAX_EXCERPTS = 3;
 
@@ -143,12 +159,18 @@ export function buildOrariReport({ developments = {}, pages = null } = {}) {
     lines.push(`${item.key} · ultime corse ${item.segments} · da ${item.places.join(' ') || '-'}`);
   });
 
-  /* Quando i rientri sono zero la domanda e' una sola: il PDF quella pagina ce
-     l'ha? Le pagine con i marcatori del grafico rispondono di si', e il loro
-     testo dice in che forma esce, che e' l'unico dato su cui correggere il
-     parser senza avere il PDF sotto mano. */
+  const exits = summarizeExits(developments);
+  if (!exits.length) lines.push('uscite: nessuna (grafico di servizio non letto)');
+  exits.forEach((item) => {
+    lines.push(`${item.key} · trasferimenti ${item.segments} · verso ${item.places.join(' ') || '-'}`);
+  });
+
+  /* Quando rientri o uscite sono zero la domanda e' una sola: il PDF quella
+     pagina ce l'ha? Le pagine con i marcatori del grafico rispondono di si', e
+     il loro testo dice in che forma esce, che e' l'unico dato su cui correggere
+     il parser senza avere il PDF sotto mano. */
   const marked = (pages || []).filter((page) => page.graphicMarkers?.length);
-  if (!returns.length) {
+  if (!returns.length || !exits.length) {
     if (!marked.length) {
       lines.push('nessuna pagina col grafico: carica il PDF Orari completo');
     } else {

@@ -79,6 +79,11 @@ I tempi di percorrenza fra deposito e capolinea stanno nella tabella **TEMPI DI
 USCITA / RIENTRO** del grafico di servizio, e possono essere diversi nei due
 sensi (sulla 5: Orbassano 25 minuti in uscita, 20 in rientro).
 
+Le une e gli altri li da' **solo** il grafico di servizio. Una riga della pagina
+turni comincia in deposito allo stesso modo, ma finisce dove il conducente
+stacca: e' la ripresa, e vale come uscita quanto vale come rientro, cioe' niente
+(→ `decisioni/0001` e `0010`).
+
 ## U.L. e I.L.
 
 Sul grafico di servizio, per ogni vettura:
@@ -90,6 +95,10 @@ Sul grafico di servizio, per ogni vettura:
 `U.L. 21.51 OSET` seguito da `Entra 21.58` significa: ultima corsa da
 Settembrini alle 21:51, in deposito alle 21:58. **Sono i due dati su cui si
 regge tutta la funzione Rientri.**
+
+`Esce 04.13` seguito da `I.L. 04.22 CATT` e' la stessa cosa al contrario: lascia
+il deposito alle 04:13, in linea a Cattaneo alle 04:22. **Sono i due dati su cui
+si regge tutta la funzione Uscite** (→ `decisioni/0010`).
 
 ## Preconoscenza
 
