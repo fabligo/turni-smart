@@ -986,6 +986,10 @@ scomode.
 
 ---
 
+*Questo registro e la **memoria** del progetto, non il riferimento operativo:
+per quello vedi `AGENTS.md` e le pagine in `docs/`. Si consulta per sezione,
+quando serve capire **come** ci siamo arrivati.*
+
 *Ultimo aggiornamento: 9 agosto 2026, con il service worker (§ 13) e le
 sveglie del mattino (§ 14). Copre dal commit `7f8a70d` (26 maggio 2026) in
 poi.*
