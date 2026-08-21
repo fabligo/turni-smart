@@ -10,6 +10,13 @@ produzione.
 
 ---
 
+## Sei nel posto giusto?
+
+Questo file e' di **`trailpress/turni-smart`**: l'app dei turni GTT del deposito
+Gerbido. Se il lavoro che ti hanno chiesto parla di mappe, mezzi in tempo reale,
+`frontend/`, `handoff.md` o file `.tsx`, sei su **BusRadar**, che e' un altro
+repository — fermati e dillo, invece di cercare qui qualcosa che sta altrove.
+
 ## Come si apre una sessione
 
 Ogni sessione e' **un ramo e una PR**. Puo' chiudere piu' di una issue, se

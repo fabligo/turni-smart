@@ -15,6 +15,22 @@ il parser leggeva la pagina sbagliata del PDF. Con i tre campi del modello
 causa si trova al primo giro, perche' «da Cattaneo al Gerbido sono nove minuti,
 non un'ora e venti» dice gia' dove guardare.
 
+### Come si nomina il lavoro
+
+Il riferimento a una issue va dato **per esteso**, con il collegamento completo:
+
+> Lavora sulla issue https://github.com/trailpress/turni-smart/issues/62
+
+Non `#62`. Un numero da solo non dice in quale progetto cercare, e ogni
+repository ha il suo `AGENTS.md`: una sessione aperta su quello sbagliato legge
+istruzioni sbagliate, non trova la issue e si ferma dopo aver speso tutto il
+giro di avvio.
+
+E' gia' successo, il 21 agosto: una sessione e' stata aperta su BusRadar
+cercando una issue di Turni Smart. L'agente ha fatto la cosa giusta - ha
+verificato in tre modi e si e' fermato invece di inventare lavoro - ma il giro
+era perso.
+
 ### Quando si apre una sessione nuova
 
 Non a ogni issue: sarebbe burocrazia, e butterebbe via un contesto che spesso
