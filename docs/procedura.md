@@ -2,6 +2,41 @@
 
 ---
 
+## Da dove arriva il lavoro
+
+Le richieste arrivano come **issue su GitHub**, con i modelli in
+`.github/ISSUE_TEMPLATE/`. Non e' burocrazia: e' la voce di costo piu' grossa
+del progetto.
+
+Misura reale. La richiesta «la funzione Rientro non sembra funzionare» ha
+richiesto **una quindicina di scambi** prima di arrivare alla causa — che era:
+il parser leggeva la pagina sbagliata del PDF. Con i tre campi del modello
+(*cosa vedi*, *cosa dovrebbe dire e come lo sai*, *con quali dati*) la stessa
+causa si trova al primo giro, perche' «da Cattaneo al Gerbido sono nove minuti,
+non un'ora e venti» dice gia' dove guardare.
+
+**Una sessione = una issue = un ramo = una PR.** Poi si chiude.
+
+Le sessioni lunghe vengono riassunte quando il contesto si riempie, e dopo il
+riassunto si ricostruisce cio' che si sapeva gia': file riletti, fatti
+ritrovati, a volte decisioni ridiscusse. E' il modo piu' caro di lavorare qui.
+
+### Il costo, dove sta davvero
+
+In ordine, dal piu' caro:
+
+1. **Una richiesta vaga.** Costa esplorazione: leggere codice a tentoni,
+   provare ipotesi, chiedere chiarimenti.
+2. **Una sessione che si riassume.** Costa la ricostruzione del contesto.
+3. **Lavoro rifatto.** Un difetto corretto due volte, un merge in conflitto,
+   una decisione ripresa da capo.
+4. **Leggere la documentazione.** La voce piu' piccola — se si legge solo cio'
+   che serve. Ogni pagina dichiara il suo costo in `AGENTS.md`.
+
+Il risparmio non si fa scrivendo meno documenti: si fa **arrivando preparati**.
+
+---
+
 ## Il ciclo di una modifica
 
 1. **Ramo** `claude/<descrizione>` o `codex/<descrizione>` da `main` aggiornato.
@@ -13,12 +48,19 @@
 5. **PR → CI → merge in squash.** Il deploy Pages parte da solo sul push a
    `main`.
 6. **Riferire il risultato**, compreso cio' che non e' stato fatto e perche'.
+7. **Aggiornare `stato.md`**, e scrivere una decisione se ne e' stata presa una.
 
 ```bash
 npm ci
 npm run dev
 npm run check
 ```
+
+### Quando e' finita
+
+Una modifica e' finita quando: `npm run check` passa, e' stata guardata in un
+browser vero, la PR e' unita, `stato.md` e' aggiornato, e all'utente e' stato
+detto anche cio' che resta fuori. Mancando uno di questi, non e' finita.
 
 ---
 
@@ -60,12 +102,16 @@ Se un merge produce conflitti:
 
 ```bash
 git diff --diff-filter=U --name-only   # TUTTI i file in conflitto
-grep -rn "<<<<<<<" src/ tests/         # e ricontrolla dopo aver risolto
+git checkout --ours <file...>          # o --theirs, o a mano
+# e prima di committare, sempre:
+git grep -n "<<<<<<<\|>>>>>>>" -- . ':!docs/procedura.md'
 ```
 
-> **Successo gia' visto:** un merge e' stato committato **con i marcatori di
-> conflitto ancora dentro**. Se ne e' accorto solo `npm run check`. Il comando
-> `grep` qui sopra costa due secondi e chiude il caso.
+> **Successo gia' visto due volte.** La prima, un merge e' stato committato
+> **con i marcatori di conflitto ancora dentro**, e se ne e' accorto solo
+> `npm run check`. La seconda, il controllo cercava solo in `src/` e `tests/`
+> mentre il conflitto era nei `.md`: cerca in tutto il repository, non nelle
+> cartelle che ti aspetti.
 
 ---
 
