@@ -102,12 +102,16 @@ Se un merge produce conflitti:
 
 ```bash
 git diff --diff-filter=U --name-only   # TUTTI i file in conflitto
-grep -rn "<<<<<<<" src/ tests/         # e ricontrolla dopo aver risolto
+git checkout --ours <file...>          # o --theirs, o a mano
+# e prima di committare, sempre:
+git grep -n "<<<<<<<\|>>>>>>>" -- . ':!docs/procedura.md'
 ```
 
-> **Successo gia' visto:** un merge e' stato committato **con i marcatori di
-> conflitto ancora dentro**. Se ne e' accorto solo `npm run check`. Il comando
-> `grep` qui sopra costa due secondi e chiude il caso.
+> **Successo gia' visto due volte.** La prima, un merge e' stato committato
+> **con i marcatori di conflitto ancora dentro**, e se ne e' accorto solo
+> `npm run check`. La seconda, il controllo cercava solo in `src/` e `tests/`
+> mentre il conflitto era nei `.md`: cerca in tutto il repository, non nelle
+> cartelle che ti aspetti.
 
 ---
 
