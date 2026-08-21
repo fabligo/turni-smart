@@ -6,6 +6,18 @@ conversazioni rifanno lo stesso lavoro in modo diverso.
 
 *Aggiornato: 21 agosto 2026 · 221 test verdi · issue aperte: #62, #63, #64*
 
+## Per aprire la prossima sessione
+
+Copiare questa riga, cambiando il numero:
+
+> Lavora sulla issue https://github.com/trailpress/turni-smart/issues/62 —
+> leggi prima AGENTS.md e docs/stato.md.
+
+**Il collegamento per esteso, non `#62`.** Un numero da solo non dice in quale
+progetto cercare, e ogni repository ha il suo `AGENTS.md`: una sessione aperta
+sul repository sbagliato legge le istruzioni sbagliate, non trova la issue, e si
+ferma dopo aver speso tutto il giro di avvio. E' gia' successo.
+
 ---
 
 ## Chi tiene cosa
