@@ -4,13 +4,13 @@
 E' il solo posto che dice cosa e' in corso e chi tiene cosa. Senza, due
 conversazioni rifanno lo stesso lavoro in modo diverso.
 
-*Aggiornato: 21 agosto 2026 · 221 test verdi · issue aperte: #62, #63, #64*
+*Aggiornato: 21 agosto 2026 · 227 test verdi · issue aperte: #63, #64*
 
 ## Per aprire la prossima sessione
 
 Copiare questa riga, cambiando il numero:
 
-> Lavora sulla issue https://github.com/trailpress/turni-smart/issues/62 —
+> Lavora sulla issue https://github.com/trailpress/turni-smart/issues/63 —
 > leggi prima AGENTS.md e docs/stato.md.
 
 **Il collegamento per esteso, non `#62`.** Un numero da solo non dice in quale
@@ -25,6 +25,7 @@ ferma dopo aver speso tutto il giro di avvio. E' gia' successo.
 | Area | Conversazione | Stato |
 |---|---|---|
 | Rientri in deposito | sessione del 21 agosto | chiusa |
+| Uscite dal deposito (#62) | sessione del 21 agosto | chiusa |
 | BusRadar dentro l'app | altra conversazione (PR #60) | ultima attivita' 14 agosto |
 | Documentazione e processo | sessione del 21 agosto | chiusa |
 
@@ -45,7 +46,11 @@ statistiche, esportazione ICS, turni comunicati a mano, archivio per mese.
 dei posti dalla legenda, la distanza da dove si e' e l'ordine di vicinanza.
 Segnala quando non li puo' calcolare, distinguendo tre casi diversi.
 
-**Uscite** — cosa esce dal Gerbido, per fascia oraria e per posto cambio.
+**Uscite** — cosa esce dal Gerbido, per fascia oraria e per posto cambio. Lette
+dal grafico di servizio (`Esce` → `I.L.`), come i rientri. Ogni scheda dice
+l'ora di uscita, l'ora di ingresso in linea e **quanti minuti ci mette**: sono
+quelli della tabella dei tempi, non le ore di una ripresa. Senza quella pagina
+lo dicono, invece di arrangiarsi.
 
 **Turni** — classificati secondo l'Accordo TPL (100/200/300/400, T2R, T2RP).
 
@@ -65,9 +70,11 @@ Aperte adesso:
 
 | # | | |
 |---|---|---|
-| [#62](https://github.com/trailpress/turni-smart/issues/62) | difetto | Le Uscite leggono la pagina giusta del PDF? |
 | [#63](https://github.com/trailpress/turni-smart/issues/63) | dati | Paline di `GCAS` e dei due posti cambio in sospeso |
 | [#64](https://github.com/trailpress/turni-smart/issues/64) | debito | Le zone senza test: i due parser d'origine e `detectGt` |
+
+Chiusa il 21 agosto: [#62](https://github.com/trailpress/turni-smart/issues/62)
+— le Uscite leggevano le riprese della pagina turni (→ `decisioni/0010`).
 
 ### Limiti noti, senza issue
 
@@ -75,9 +82,14 @@ Cose vere ma che nessuno ha mai lamentato. Se danno fastidio, diventano issue.
 
 - **`MERCOLEDI'`** — 17 segmenti su una pagina sola, oggi valgono come feriale
   generico: corretto ma grossolano. Domanda posta all'utente, senza risposta.
+- **Le uscite non dicono la direzione ne' la vettura.** Il grafico di servizio
+  dice dove la vettura entra in linea, non da che parte prosegue, e il numero
+  prima di `Esce` non si distingue dalla coda della tabella dei tempi. Restano
+  vuoti invece che indovinati (→ `decisioni/0010`). Se servono, il posto dove
+  cercarli e' l'elenco delle corse della vettura, che oggi il parser non legge.
 - **Uscite che toccano un posto cambio piu' avanti nella corsa.** Il filtro
-  guarda dove arriva il tratto che esce dal deposito; una seconda tappa piu'
-  tardi non compare. Nessun caso reale riportato.
+  guarda dove la vettura entra in linea; una tappa piu' tardi nella corsa non
+  compare. Nessun caso reale riportato.
 - **BusRadar non legge i parametri che gli mandiamo.** Il riquadro mostra la
   mappa, ma finche' la modifica non arriva nell'altro repository non si apre
   centrato sul mezzo.

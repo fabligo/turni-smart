@@ -23,19 +23,13 @@ const SERVICE_OPTIONS = [
 
 const SERVICE_LABELS = { feriali: 'feriale', sabato: 'sabato', festivi: 'festivo' };
 
-/* Lo scarto e' firmato: negativo vuol dire che il mezzo parte prima
-   dell'orario scelto, e va detto, non nascosto in un valore assoluto. */
-function formatOffset(minutes, anchor) {
-  if (minutes === 0) return `esattamente alle ${anchor}`;
-  const amount = Math.abs(minutes) >= 60 ? formatMinutes(Math.abs(minutes)) : `${Math.abs(minutes)} min`;
-  return minutes < 0 ? `${amount} prima delle ${anchor}` : `${amount} dopo le ${anchor}`;
-}
+const DEPOT_LABEL = 'Gerbido';
 
-/* Dove va a finire il tratto che esce: e' la riga che risponde alla domanda
-   vera, "questo mezzo mi porta dove devo andare?". */
-function formatDestination(item) {
-  const place = getChangePointLabel(item.toPlace);
-  return item.directionLabel ? `${item.directionLabel} verso ${place}` : `verso ${place}`;
+/* Quanto ci mette da qui a li'. E' il numero per cui si guarda questo pannello:
+   se esco alle 13:29 e il trasferimento e' di sette minuti, a Settembrini ci
+   sono alle 13:36, e so se il cambio lo prendo. */
+function formatLeg(minutes) {
+  return minutes >= 60 ? formatMinutes(minutes) : `${minutes} min`;
 }
 
 /* Le uscite lette per fascia oraria: con la giornata intera un elenco piatto
@@ -59,8 +53,11 @@ function groupByHour(matches = []) {
  * arrivare dove devo andare": si sceglie il posto cambio e restano solo le
  * uscite che ci vanno. Senza sceglierlo si vedono tutte, che e' il modo giusto
  * di guardare la giornata quando si sta ancora decidendo.
+ *
+ * Come i rientri, le uscite stanno solo sul grafico di servizio: senza quella
+ * pagina il pannello non ha niente da mostrare e lo dice.
  */
-export function DepotDeparturesPanel({ developments = {} }) {
+export function DepotDeparturesPanel({ developments = {}, staleParse = false }) {
   const [form, setForm] = useState(() => ({
     place: '',
     service: '',
@@ -116,9 +113,9 @@ export function DepotDeparturesPanel({ developments = {} }) {
         </span>
         <h2 id="depot-departures-title">Cosa esce dal Gerbido</h2>
         <p>
-          I mezzi che partono dal Gerbido intorno all&apos;orario scelto, con la linea, la direzione e il posto cambio
-          dove arrivano. Se devi raggiungere un posto cambio preciso scegli <strong>Vado a</strong>: restano solo le
-          uscite che ci vanno.
+          I mezzi che lasciano il Gerbido intorno all&apos;orario scelto, con la linea e il posto dove entrano in
+          linea. Se devi raggiungere un posto cambio preciso scegli <strong>Vado a</strong>: restano solo le uscite
+          che ci vanno.
         </p>
       </div>
 
@@ -179,7 +176,10 @@ export function DepotDeparturesPanel({ developments = {} }) {
         </div>
       </form>
 
-      <p className="depot-returns-summary">
+      {/* Senza grafico "nessuna uscita alle 07:20" e' vero ma fuorviante: non e'
+          quella fascia a essere vuota, e' il PDF a non avere la pagina. La
+          ragione la da' il messaggio qui sotto, da solo. */}
+      <p className="depot-returns-summary" hidden={!result.graphicLoaded}>
         {result.total ? (
           <>
             <strong>
@@ -211,8 +211,19 @@ export function DepotDeparturesPanel({ developments = {} }) {
       ) : null}
 
       {/* Un elenco vuoto ha sempre una ragione, e dirla e' l'unico modo per
-          distinguere un dato che manca da una funzione rotta. */}
-      {!result.total && result.otherServiceCount ? (
+          distinguere un dato che manca da una funzione rotta. La prima ragione
+          possibile e' che il grafico di servizio non sia stato letto: senza
+          quella pagina non c'e' niente su cui cercare, e prima di dare la colpa
+          al PDF va escluso che gli Orari in uso vengano da una versione
+          dell'app che le uscite non le ricavava ancora. */}
+      {!result.graphicLoaded ? (
+        <p className="depot-returns-message">
+          {staleParse
+            ? "Gli orari in uso sono stati letti da una versione precedente dell'app, che non ricavava le uscite. Ricarica il PDF degli orari e le uscite compaiono."
+            : 'Negli orari caricati manca il grafico di servizio, la pagina che dice a che ora ogni vettura lascia il deposito. Senza quella le uscite non si possono calcolare.'}
+        </p>
+      ) : null}
+      {result.graphicLoaded && !result.total && result.otherServiceCount ? (
         <p className="depot-returns-message">
           In questa fascia {result.otherServiceCount === 1 ? "c'è 1 uscita" : `ci sono ${result.otherServiceCount} uscite`}
           {placeLabel ? ` verso ${placeLabel}` : ''}, ma di un altro servizio
@@ -248,34 +259,45 @@ export function DepotDeparturesPanel({ developments = {} }) {
               </em>
             </h3>
             {group.items.map((item) => {
-              const palina = getChangePointStop(item.toPlace, { direction: item.direction, line: item.line });
+              /* La palina e' una per senso di marcia: senza sapere da che
+                 parte il mezzo prosegue, mostrarne una vuol dire indovinare
+                 quale delle due, e mandare qualcuno dal lato sbagliato della
+                 strada e' peggio che non dirgli niente. */
+              const palina = item.direction
+                ? getChangePointStop(item.toPlace, { direction: item.direction, line: item.line })
+                : '';
+              const place = getChangePointLabel(item.toPlace);
               return (
                 <article
                   className="depot-return-card"
                   key={`${item.line}-${item.vehicleShift}-${item.departure}-${item.toPlace}`}
                 >
-                  <div>
-                    <strong>Linea {getLineDisplayName(item.line)}</strong>
-                    {/* Solo la vettura: negli orari il turno che guida quel
-                        mezzo non e' sempre distinguibile dalla vettura, e
-                        scriverne uno sbagliato e' peggio che non scriverlo. */}
-                    <span>{item.vehicleShift ? `vettura ${item.vehicleShift}` : 'vettura non indicata'}</span>
-                  </div>
-                  <div>
-                    <strong>esce alle {item.departure}</strong>
-                    <span>{formatOffset(item.offsetMinutes, anchor)}</span>
-                  </div>
-                  <div>
-                    <strong>{formatDestination(item)}</strong>
-                    <span>
-                      arriva alle {item.arrival}
-                      {palina ? ` · palina ${palina}` : ''}
+                  <p className="depot-return-card__head">
+                    <strong>{getLineDisplayName(item.line)}</strong>
+                    {item.directionLabel}
+                  </p>
+                  {/* I due orari sono l'uscita dal deposito e l'ingresso in
+                      linea, con sotto il posto a cui si riferiscono: senza
+                      scriverlo, il secondo si legge come fine corsa. */}
+                  <p className="depot-return-card__times">
+                    <span className="depot-return-card__stop">
+                      <strong>{item.departure}</strong>
+                      <small>{DEPOT_LABEL}</small>
                     </span>
-                    {/* Se la direzione arriva da un tratto successivo della corsa
-                        lo diciamo: e' la direzione del mezzo una volta in linea,
-                        non del trasferimento con cui esce dal deposito. */}
-                    {item.directionFromRun ? <span>direzione letta dal tratto in linea</span> : null}
-                  </div>
+                    <i aria-hidden="true">→</i>
+                    <span className="depot-return-card__stop">
+                      <strong>{item.arrival}</strong>
+                      <small>
+                        {palina ? `palina ${palina} · ` : ''}
+                        {place}
+                      </small>
+                    </span>
+                  </p>
+                  <p className="depot-return-card__meta">
+                    {[`${formatLeg(item.legMinutes)} fino a ${place}`, item.vehicleShift ? `vettura ${item.vehicleShift}` : '']
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </p>
                 </article>
               );
             })}
