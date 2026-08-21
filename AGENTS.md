@@ -10,25 +10,29 @@ produzione.
 
 ---
 
-## Prima di toccare qualsiasi cosa
+## Come si apre una sessione
 
-**Leggi [`docs/stato.md`](docs/stato.md).** Dice cosa e' in corso, chi tiene
-cosa e cosa resta aperto. Ci vuole un minuto e evita di rifare lavoro gia'
-fatto o di scontrarsi con un'altra sessione.
+Una sessione = **una issue = un ramo = una PR**. Poi si chiude.
 
-Poi, **solo la pagina che riguarda il tuo compito**:
+Le sessioni lunghe vengono riassunte quando il contesto si riempie, e dopo il
+riassunto si ricostruisce cio' che si sapeva gia': e' il modo piu' caro di
+lavorare qui. Meglio tre sessioni corte che una lunga.
 
-| Se devi... | Leggi |
-|---|---|
-| toccare i parser, i rientri, le uscite, i turni | [`docs/glossario.md`](docs/glossario.md) — le parole non sono sinonimi |
-| aggiungere o verificare un dato, una palina, una coordinata | [`docs/dati.md`](docs/dati.md) |
-| capire dove sta una cosa nel codice | [`docs/architettura.md`](docs/architettura.md) |
-| aprire un ramo, fare un merge, pubblicare | [`docs/procedura.md`](docs/procedura.md) |
-| capire perche' una cosa e' fatta cosi' | [`docs/decisioni/`](docs/decisioni/README.md) |
-| ricostruire come ci siamo arrivati | [`docs/registro-progetto.md`](docs/registro-progetto.md) |
+**Leggi solo cio' che ti serve.** Ogni pagina dichiara quanto costa:
 
-Il registro e' lungo: e' la **memoria**, non il riferimento. Si consulta per
-sezione quando serve il perche' di qualcosa, non si legge tutto all'inizio.
+| Pagina | Costo | Quando |
+|---|---|---|
+| questa | ~750 tk | sempre |
+| [`docs/stato.md`](docs/stato.md) | ~950 tk | sempre, prima di toccare il codice |
+| [`docs/glossario.md`](docs/glossario.md) | ~1350 tk | parser, rientri, uscite, turni |
+| [`docs/dati.md`](docs/dati.md) | ~2100 tk | aggiungi o verifichi un dato |
+| [`docs/architettura.md`](docs/architettura.md) | ~1400 tk | non sai dove sta una cosa |
+| [`docs/procedura.md`](docs/procedura.md) | ~1200 tk | rami, merge, browser, piu' chat |
+| [`docs/decisioni/`](docs/decisioni/README.md) | ~320 tk l'indice | «perche' e' fatto cosi'» |
+| [`docs/registro-progetto.md`](docs/registro-progetto.md) | **~12000 tk** | **una sezione per volta**, mai tutto |
+
+Il registro e' la **memoria**, non il riferimento: si apre su una sezione
+precisa quando serve il come ci siamo arrivati.
 
 ---
 
@@ -56,19 +60,21 @@ npm run dev
 npm run check     # lint, test, anti-segreti, build — deve passare prima di ogni commit
 ```
 
-Ramo `claude/<descrizione>` o `codex/<descrizione>` → implementa con test →
-verifica in un browser vero → `npm run check` → PR → merge in squash. Il deploy
-Pages parte da solo sul push a `main`.
+Ramo `claude/<descrizione>` → implementa con test → verifica in un browser vero
+→ `npm run check` → PR → merge in squash. Il deploy Pages parte da solo sul push
+a `main`.
 
-I dettagli, compresi i conflitti di merge e il coordinamento fra piu'
-conversazioni, stanno in [`docs/procedura.md`](docs/procedura.md).
+I dettagli — conflitti di merge, Playwright, coordinamento fra piu'
+conversazioni — stanno in [`docs/procedura.md`](docs/procedura.md).
 
 ---
 
-## Alla fine della sessione
+## Quando hai finito
 
-Aggiorna [`docs/stato.md`](docs/stato.md). Se hai preso una decisione che chi
-viene dopo non deve ridiscutere, scrivi un file in
-[`docs/decisioni/`](docs/decisioni/README.md).
+1. Aggiorna [`docs/stato.md`](docs/stato.md): la tua riga in «Chi tiene cosa»,
+   e cosa si e' chiuso o aperto.
+2. Se hai preso una decisione che chi viene dopo non deve ridiscutere, scrivi un
+   file in [`docs/decisioni/`](docs/decisioni/README.md).
+3. Riferisci cosa **non** hai fatto e perche'.
 
 Costa due minuti ed e' la ragione per cui questa pagina e' corta.

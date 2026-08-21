@@ -1,0 +1,57 @@
+name: Difetto
+description: Qualcosa non funziona o mostra un dato sbagliato
+labels: [difetto]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Piu' e' preciso quello che scrivi qui, meno giri servono per arrivare
+        alla causa. Il campo che conta di piu' e' il terzo.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Dove
+      options:
+        - Rientri in deposito
+        - Uscite dal deposito
+        - Turno di oggi / scheda turno
+        - Calendario o vista periodo
+        - Caricamento PDF
+        - Sveglie
+        - Altro
+    validations: { required: true }
+
+  - type: textarea
+    id: visto
+    attributes:
+      label: Cosa vedi
+      description: Copia il testo che compare a schermo, o allega uno screenshot.
+      placeholder: "74 · 11:34 palina 307 Cattaneo → 12:55 Gerbido · diretto · a bordo 1h 21m"
+    validations: { required: true }
+
+  - type: textarea
+    id: atteso
+    attributes:
+      label: Cosa dovrebbe dire, e come lo sai
+      description: |
+        Questa e' la parte decisiva. Non basta "e' sbagliato": serve il valore
+        giusto e da dove viene. Un'informazione di questo tipo chiude il caso
+        in un giro invece che in dieci.
+      placeholder: "Da Cattaneo al Gerbido sono nove minuti. Un'ora e venti e' la ripresa intera del turno."
+    validations: { required: true }
+
+  - type: input
+    id: quando
+    attributes:
+      label: Con quali dati
+      description: Linea, turno, orario cercato, giorno di servizio — quel che serve a rifare la prova.
+      placeholder: "linea 5, ricerca dalle 20:00, feriale"
+
+  - type: checkboxes
+    id: verifiche
+    attributes:
+      label: Prima di aprire
+      options:
+        - label: Ho ricaricato il PDF degli orari dopo l'ultimo aggiornamento dell'app
+        - label: Ho guardato il referto su `?diag=orari` (se riguarda i PDF)

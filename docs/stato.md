@@ -4,7 +4,7 @@
 E' il solo posto che dice cosa e' in corso e chi tiene cosa. Senza, due
 conversazioni rifanno lo stesso lavoro in modo diverso.
 
-*Aggiornato: 21 agosto 2026 · 221 test verdi · 147 commit su `main`*
+*Aggiornato: 21 agosto 2026 · 221 test verdi · issue aperte: #62, #63, #64*
 
 ---
 
@@ -14,7 +14,7 @@ conversazioni rifanno lo stesso lavoro in modo diverso.
 |---|---|---|
 | Rientri in deposito | sessione del 21 agosto | chiusa |
 | BusRadar dentro l'app | altra conversazione (PR #60) | ultima attivita' 14 agosto |
-| Documentazione | sessione del 21 agosto | in corso |
+| Documentazione e processo | sessione del 21 agosto | chiusa |
 
 Chi apre una sessione nuova aggiunge la sua riga **prima** di toccare il codice,
 e la toglie quando ha finito. Vedi `decisioni/0006`.
@@ -45,54 +45,52 @@ Segnala quando non li puo' calcolare, distinguendo tre casi diversi.
 
 ## Cosa resta aperto
 
-### Dati da procurare
+Il lavoro sta nelle **[issue](https://github.com/trailpress/turni-smart/issues)**,
+non qui: si aprono dal telefono, si leggono senza aprire una sessione, e i
+modelli in `.github/ISSUE_TEMPLATE/` fanno le domande giuste subito.
 
-1. **Le paline dei capolinea rimasti.** `GCAS` (linea 58B) non si risolve: fra i
-   capolinea che il GTFS assegna alle linee 58 e 58/ non c'e' nulla che
-   somigli. Puo' darsi che l'istantanea GTFS di luglio non copra un percorso
-   introdotto ad agosto. Serve il numero di palina, oppure una istantanea GTFS
-   piu' recente.
-2. **I due posti cambio in sospeso.** Corso Siracusa / via Monfalcone (linea 56)
-   e piazza Massaua (VE1, CP1): l'utente non era sicuro dell'ubicazione e ha
-   chiesto di aspettare.
+Aperte adesso:
 
-### Difetti noti e limiti
+| # | | |
+|---|---|---|
+| [#62](https://github.com/trailpress/turni-smart/issues/62) | difetto | Le Uscite leggono la pagina giusta del PDF? |
+| [#63](https://github.com/trailpress/turni-smart/issues/63) | dati | Paline di `GCAS` e dei due posti cambio in sospeso |
+| [#64](https://github.com/trailpress/turni-smart/issues/64) | debito | Le zone senza test: i due parser d'origine e `detectGt` |
 
-3. **`MERCOLEDI'`** — 17 segmenti su una pagina sola. Oggi vale come feriale
-   generico: corretto ma grossolano. Domanda posta all'utente, senza risposta.
-4. **Uscite che toccano un posto cambio piu' avanti nella corsa.** Il filtro
-   guarda dove arriva il tratto che esce dal deposito; una seconda tappa piu'
-   tardi non compare. Nessun caso reale riportato.
-5. **`detectGt` senza test.** Classifica le pagine per tipo di servizio, e un
-   errore al confine fra due sezioni si propaga in silenzio.
-6. **I due parser d'origine non hanno test propri.**
-   `parserPreconoscenza.js` e la ricostruzione degli sviluppi in
-   `parserOrari.js` sono arrivati gia' fatti.
-7. **Il bundle e' grosso** (~700 kB js, ~2,3 MB il worker pdf.js). Mai
-   affrontato perche' mai lamentato.
+### Limiti noti, senza issue
 
-### Da verificare quando capita
+Cose vere ma che nessuno ha mai lamentato. Se danno fastidio, diventano issue.
 
-8. **Le Uscite leggono la pagina giusta?** I Rientri erano calcolati dalle
-   riprese della pagina turni invece che dal grafico di servizio, ed era un
-   difetto di fondo (→ `decisioni/0001`). Se le Uscite hanno la stessa origine,
-   hanno lo stesso problema. **Non ancora verificato.**
-9. **BusRadar non legge i parametri che gli mandiamo.** Il riquadro mostra la
-   mappa, ma finche' la modifica non arriva nell'altro repository non si apre
-   centrato sul mezzo.
+- **`MERCOLEDI'`** — 17 segmenti su una pagina sola, oggi valgono come feriale
+  generico: corretto ma grossolano. Domanda posta all'utente, senza risposta.
+- **Uscite che toccano un posto cambio piu' avanti nella corsa.** Il filtro
+  guarda dove arriva il tratto che esce dal deposito; una seconda tappa piu'
+  tardi non compare. Nessun caso reale riportato.
+- **BusRadar non legge i parametri che gli mandiamo.** Il riquadro mostra la
+  mappa, ma finche' la modifica non arriva nell'altro repository non si apre
+  centrato sul mezzo.
+- **Il bundle e' grosso** (~700 kB js, ~2,3 MB il worker pdf.js). Mai
+  affrontato perche' mai lamentato.
 
 ---
 
 ## Domande in attesa di risposta dall'utente
 
 - La linea `MERCOLEDI'` e' una scolastica, un servizio di mercato, o altro?
-- Le due paline dei posti cambio in sospeso (punto 2).
-- Il numero di palina di `GCAS` (punto 1).
+- Le paline di [#63](https://github.com/trailpress/turni-smart/issues/63).
 
 ---
 
 ## Come aggiornare questo file
 
-A fine sessione: cosa e' cambiato in «Cosa funziona», cosa si e' chiuso o
-aggiunto in «Cosa resta aperto», e la propria riga in «Chi tiene cosa». Se una
-decisione e' stata presa, un file nuovo in `decisioni/`.
+A fine sessione, tre righe bastano:
+
+1. la propria riga in «Chi tiene cosa» — tolta, o aggiornata;
+2. cosa e' cambiato in «Cosa funziona»;
+3. le issue chiuse o aperte, nella tabella qui sopra.
+
+Se e' stata presa una decisione che chi viene dopo non deve ridiscutere, un file
+nuovo in `decisioni/`.
+
+Questo file resta corto di proposito: e' l'unico che **ogni** sessione legge, e
+ogni riga in piu' la pagano tutte.

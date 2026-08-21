@@ -1,0 +1,30 @@
+name: Funzione
+description: Una cosa nuova che l'app dovrebbe saper fare
+labels: [funzione]
+body:
+  - type: textarea
+    id: bisogno
+    attributes:
+      label: Cosa devi poter fare, e quando
+      description: |
+        Il momento e il posto contano quanto la funzione. "In deposito a fine
+        turno, col telefono in mano" porta a una soluzione diversa da "a casa
+        la sera".
+      placeholder: "Quando finisco il turno voglio sapere cosa passa da qui vicino che rientra al Gerbido entro mezz'ora."
+    validations: { required: true }
+
+  - type: textarea
+    id: dati
+    attributes:
+      label: Su quale dato si regge
+      description: |
+        Da quale pagina del PDF, o da quale altra fonte. Se il dato non c'e',
+        la funzione non si puo' fare, ed e' meglio saperlo subito.
+      placeholder: "Il grafico di servizio: righe U.L. / Entra, piu' la tabella TEMPI DI USCITA / RIENTRO."
+
+  - type: textarea
+    id: fatto
+    attributes:
+      label: Quando e' finita
+      description: Come si riconosce che funziona davvero, con un caso concreto.
+      placeholder: "Da Cattaneo alle 20:00 deve uscire la 5 delle 20:14, con la distanza da dove sono."
