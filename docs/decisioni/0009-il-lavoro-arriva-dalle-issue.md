@@ -22,12 +22,21 @@ gia' letto.
 Il campo che conta e' «cosa dovrebbe dire, e come lo sai»: e' quello che
 trasforma quindici giri in uno.
 
-**Una sessione = una issue = un ramo = una PR.** Poi si chiude. Meglio tre
-sessioni corte che una lunga.
+**Ogni sessione e' un ramo e una PR.** Puo' chiudere piu' di una issue se
+stanno nella stessa area: la regola non e' contarle, e' accorgersi di quando il
+contesto smette di aiutare e comincia a pesare. Il segnale e' rileggere file
+gia' letti, o richiedere cose gia' dette.
 
 Il backlog vive nelle issue, non nei documenti: `stato.md` le elenca ma non le
 duplica. Duplicare vuol dire tenere allineate due cose, e prima o poi una delle
 due mente.
+
+## Nota, 21 agosto
+
+La prima formulazione diceva «una sessione = una issue», e l'utente ha chiesto
+se dovesse davvero aprire una chat per ogni cosa. Applicata alla lettera sarebbe
+stata burocrazia: il criterio non e' contare le issue, e' riconoscere quando il
+contesto ha smesso di aiutare.
 
 ## Conseguenze
 

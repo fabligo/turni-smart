@@ -15,11 +15,24 @@ il parser leggeva la pagina sbagliata del PDF. Con i tre campi del modello
 causa si trova al primo giro, perche' «da Cattaneo al Gerbido sono nove minuti,
 non un'ora e venti» dice gia' dove guardare.
 
-**Una sessione = una issue = un ramo = una PR.** Poi si chiude.
+### Quando si apre una sessione nuova
 
-Le sessioni lunghe vengono riassunte quando il contesto si riempie, e dopo il
-riassunto si ricostruisce cio' che si sapeva gia': file riletti, fatti
-ritrovati, a volte decisioni ridiscusse. E' il modo piu' caro di lavorare qui.
+Non a ogni issue: sarebbe burocrazia, e butterebbe via un contesto che spesso
+serve ancora.
+
+**Si resta nella stessa** quando il lavoro nuovo tocca gli stessi file, quando
+e' una correzione di cio' che si e' appena fatto, o quando sono due o tre cose
+piccole della stessa area. Li' il contesto gia' caricato e' un vantaggio.
+
+**Se ne apre una nuova** quando si cambia area, quando la sessione e' gia' stata
+riassunta una volta, quando sono passati giorni, o quando il lavoro precedente
+e' chiuso e pubblicato.
+
+**Il segnale**: quando si ricomincia a rileggere file gia' letti, o a chiedere
+all'utente cose che ha gia' detto. Da quel punto si sta pagando ricostruzione
+invece di lavoro, e conviene chiudere.
+
+Ogni sessione resta comunque **un ramo e una PR**: quello non cambia.
 
 ### Il costo, dove sta davvero
 
