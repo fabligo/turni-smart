@@ -12,11 +12,14 @@ produzione.
 
 ## Come si apre una sessione
 
-Una sessione = **una issue = un ramo = una PR**. Poi si chiude.
+Ogni sessione e' **un ramo e una PR**. Puo' chiudere piu' di una issue, se
+stanno nella stessa area e toccano gli stessi file: ricominciare da capo per
+ognuna butterebbe via un contesto che serve ancora.
 
-Le sessioni lunghe vengono riassunte quando il contesto si riempie, e dopo il
-riassunto si ricostruisce cio' che si sapeva gia': e' il modo piu' caro di
-lavorare qui. Meglio tre sessioni corte che una lunga.
+Si chiude e se ne apre una nuova quando si cambia area, quando la sessione e'
+gia' stata riassunta, o quando si ricomincia a rileggere file gia' letti — da
+li' in poi si paga ricostruzione invece di lavoro. Il dettaglio in
+[`docs/procedura.md`](docs/procedura.md).
 
 **Leggi solo cio' che ti serve.** Ogni pagina dichiara quanto costa:
 
