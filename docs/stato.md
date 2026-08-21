@@ -47,9 +47,10 @@ dei posti dalla legenda, la distanza da dove si e' e l'ordine di vicinanza.
 Segnala quando non li puo' calcolare, distinguendo tre casi diversi.
 
 **Uscite** — cosa esce dal Gerbido, per fascia oraria e per posto cambio. Lette
-dal grafico di servizio (`Esce` → `I.L.`), come i rientri: durano i minuti che
-la tabella dei tempi dichiara, non le ore di una ripresa. Senza quella pagina lo
-dicono, invece di arrangiarsi.
+dal grafico di servizio (`Esce` → `I.L.`), come i rientri. Ogni scheda dice
+l'ora di uscita, l'ora di ingresso in linea e **quanti minuti ci mette**: sono
+quelli della tabella dei tempi, non le ore di una ripresa. Senza quella pagina
+lo dicono, invece di arrangiarsi.
 
 **Turni** — classificati secondo l'Accordo TPL (100/200/300/400, T2R, T2RP).
 

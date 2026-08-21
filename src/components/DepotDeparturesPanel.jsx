@@ -23,19 +23,13 @@ const SERVICE_OPTIONS = [
 
 const SERVICE_LABELS = { feriali: 'feriale', sabato: 'sabato', festivi: 'festivo' };
 
-/* Lo scarto e' firmato: negativo vuol dire che il mezzo parte prima
-   dell'orario scelto, e va detto, non nascosto in un valore assoluto. */
-function formatOffset(minutes, anchor) {
-  if (minutes === 0) return `esattamente alle ${anchor}`;
-  const amount = Math.abs(minutes) >= 60 ? formatMinutes(Math.abs(minutes)) : `${Math.abs(minutes)} min`;
-  return minutes < 0 ? `${amount} prima delle ${anchor}` : `${amount} dopo le ${anchor}`;
-}
+const DEPOT_LABEL = 'Gerbido';
 
-/* Dove il mezzo entra in linea: e' la riga che risponde alla domanda vera,
-   "questo mezzo mi porta dove devo andare?". */
-function formatDestination(item) {
-  const place = getChangePointLabel(item.toPlace);
-  return item.directionLabel ? `${item.directionLabel} verso ${place}` : `verso ${place}`;
+/* Quanto ci mette da qui a li'. E' il numero per cui si guarda questo pannello:
+   se esco alle 13:29 e il trasferimento e' di sette minuti, a Settembrini ci
+   sono alle 13:36, e so se il cambio lo prendo. */
+function formatLeg(minutes) {
+  return minutes >= 60 ? formatMinutes(minutes) : `${minutes} min`;
 }
 
 /* Le uscite lette per fascia oraria: con la giornata intera un elenco piatto
@@ -272,34 +266,38 @@ export function DepotDeparturesPanel({ developments = {}, staleParse = false }) 
               const palina = item.direction
                 ? getChangePointStop(item.toPlace, { direction: item.direction, line: item.line })
                 : '';
+              const place = getChangePointLabel(item.toPlace);
               return (
                 <article
                   className="depot-return-card"
                   key={`${item.line}-${item.vehicleShift}-${item.departure}-${item.toPlace}`}
                 >
-                  <div>
-                    <strong>Linea {getLineDisplayName(item.line)}</strong>
-                    {/* Il grafico di servizio la vettura non la dichiara in un
-                        posto che non si confonda con altro, quindi oggi qui non
-                        c'e' mai niente. Ripetere "vettura non indicata" su ogni
-                        scheda non aggiunge nulla dopo la prima volta: la riga
-                        compare solo se un numero c'e' davvero. */}
-                    {item.vehicleShift ? <span>vettura {item.vehicleShift}</span> : null}
-                  </div>
-                  <div>
-                    <strong>esce alle {item.departure}</strong>
-                    <span>{formatOffset(item.offsetMinutes, anchor)}</span>
-                  </div>
-                  <div>
-                    <strong>{formatDestination(item)}</strong>
-                    {/* "In linea", non "arriva": e' l'ora in cui la vettura
-                        comincia il servizio li', che e' quella che il grafico
-                        dichiara. */}
-                    <span>
-                      in linea alle {item.arrival}
-                      {palina ? ` · palina ${palina}` : ''}
+                  <p className="depot-return-card__head">
+                    <strong>{getLineDisplayName(item.line)}</strong>
+                    {item.directionLabel}
+                  </p>
+                  {/* I due orari sono l'uscita dal deposito e l'ingresso in
+                      linea, con sotto il posto a cui si riferiscono: senza
+                      scriverlo, il secondo si legge come fine corsa. */}
+                  <p className="depot-return-card__times">
+                    <span className="depot-return-card__stop">
+                      <strong>{item.departure}</strong>
+                      <small>{DEPOT_LABEL}</small>
                     </span>
-                  </div>
+                    <i aria-hidden="true">→</i>
+                    <span className="depot-return-card__stop">
+                      <strong>{item.arrival}</strong>
+                      <small>
+                        {palina ? `palina ${palina} · ` : ''}
+                        {place}
+                      </small>
+                    </span>
+                  </p>
+                  <p className="depot-return-card__meta">
+                    {[`${formatLeg(item.legMinutes)} fino a ${place}`, item.vehicleShift ? `vettura ${item.vehicleShift}` : '']
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </p>
                 </article>
               );
             })}
