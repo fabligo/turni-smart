@@ -11,6 +11,7 @@ import {
   parseDepotTransferTimes,
   parseLegend,
   rientriKey,
+  stripPlaceRole,
   usciteKey,
 } from '../src/parserRientri.js';
 
@@ -269,6 +270,33 @@ test('la linea si ricava anche dai codici dell orario tipo', () => {
   // Sul grafico l'intestazione non porta la parola "linea": restano i codici.
   assert.equal(detectRientriLine('CODICI H05Q0101 A05Q0101 W05Q0101'), '5');
   assert.equal(detectRientriLine('CODICI A58BQ0101'), '58B');
+});
+
+test('le linee che non sono numeri hanno un nome come le altre', () => {
+  /* M1S, M1N, CP1: dal Gerbido escono anche queste, e cercando solo cifre
+     restavano senza linea. Sulla scheda del rientro diventava una pillola
+     gialla vuota - segnalata dall'utente il 22 agosto - che non dice ne' cosa
+     prendere ne' che il dato manca. */
+  assert.equal(detectRientriLine('LINEA M1S'), 'M1S');
+  assert.equal(detectRientriLine('TEMPI DI USCITA / RIENTRO M1N'), 'M1N');
+  assert.equal(detectRientriLine('LINEA CP1'), 'CP1');
+  assert.equal(detectRientriLine('CODICI AM1SQ0101'), 'M1S');
+  // Anche la legenda basta, quando intestazione e tabelle si perdono.
+  assert.equal(detectRientriLine('MARC = C.SO MARONCELLI - CAPOLINEA RITORNO M1S'), 'M1S');
+  // E non deve inventarne dove non ce ne sono.
+  assert.equal(detectRientriLine('LINEA GERBIDO DEPOSITO'), '');
+});
+
+test('il nome del posto non si porta dietro il ruolo', () => {
+  /* Sulla scheda serve «C.so Maroncelli», non «C.so Maroncelli - Capolinea
+     Ritorno M1s»: il ruolo e la linea li dice gia' il resto della scheda. */
+  assert.equal(parseLegend('MARC = C.SO MARONCELLI - CAPOLINEA RITORNO M1S').MARC.label, 'C.so Maroncelli');
+  // La stessa pulizia si applica a video, sulle letture gia' salvate.
+  assert.equal(stripPlaceRole('C.so Maroncelli - Capolinea Ritorno M1s'), 'C.so Maroncelli');
+  assert.equal(stripPlaceRole('P.za Cattaneo - Posto cambio'), 'P.za Cattaneo');
+  // Un nome che il ruolo non ce l'ha resta intero.
+  assert.equal(stripPlaceRole('C. Orbassano / C. Settembrini'), 'C. Orbassano / C. Settembrini');
+  assert.equal(stripPlaceRole(''), '');
 });
 
 test('il capolinea del grafico trova la sua palina passando dalla legenda', () => {

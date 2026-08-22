@@ -17,6 +17,7 @@ import {
   readPosition,
 } from '../utils/nearbyStops.js';
 import { getChangePointLabel, getChangePointStop } from '../constants/changePoints.js';
+import { stripPlaceRole } from '../parserRientri.js';
 import { formatMinutes } from '../utils/timeUtils.js';
 import { Icon } from './Icon.jsx';
 
@@ -81,9 +82,12 @@ function formatWindow(windowMinutes) {
 export function DepotReturnsPanel({ developments = {}, places = {}, staleParse = false }) {
   /* I codici di quattro lettere sono roba interna al documento: GORX e NEGR
      non li ha mai sentiti nessuno. La legenda degli Orari li traduce nel posto
-     vero, e quando manca resta la tabella dei posti cambio raccolta a mano. */
+     vero, e quando manca resta la tabella dei posti cambio raccolta a mano.
+     La coda che ne dice il ruolo si toglie qui e non solo in lettura: gli
+     orari restano salvati, e chi ha letto il PDF prima della correzione si
+     ritroverebbe «C.so Maroncelli - Capolinea Ritorno M1s» sulla scheda. */
   function placeLabel(code) {
-    return places?.[String(code || '').toUpperCase()]?.label || getChangePointLabel(code);
+    return stripPlaceRole(places?.[String(code || '').toUpperCase()]?.label || getChangePointLabel(code));
   }
 
   const [form, setForm] = useState(() => ({
@@ -197,7 +201,9 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
     });
   }, [here, result.matches]);
 
-  const returningLines = [...new Set(matches.map((item) => getLineDisplayName(item.line)))];
+  // Un rientro di cui il grafico non dice la linea non ha una pillola da
+  // mettere qui sopra: lo dice la sua scheda, e basta.
+  const returningLines = [...new Set(matches.map((item) => getLineDisplayName(item.line)).filter(Boolean))];
   const nextUpcoming = result.upcoming[0];
   const otherServices = Object.entries(result.passagesByService).filter(
     ([service, count]) => service !== result.service && count > 0,
@@ -459,9 +465,20 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
                 className={`depot-return-card${item.reachable === false ? ' depot-return-card--far' : ''}`}
                 key={`${item.line}-${item.from}-${item.shift}-${item.departure}-${item.vehicleShift}`}
               >
+                {/* La pillola gialla e' il numero della linea. Senza numero
+                    sarebbe una macchia gialla vuota, che non dice ne' cosa
+                    prendere ne' che il dato manca: in quel caso lo si scrive.
+                    E "diretto" non c'e' piu': i rientri del grafico sono tutti
+                    di un tratto solo, quindi quella parola compariva su ogni
+                    scheda senza distinguere niente. I tratti si dicono solo
+                    quando sono piu' di uno. */}
                 <p className="depot-return-card__head" title={item.route}>
-                  <strong>{getLineDisplayName(item.line)}</strong>
-                  {item.direct ? 'diretto' : `${item.legs.length} tratti`}
+                  {getLineDisplayName(item.line) ? (
+                    <strong>{getLineDisplayName(item.line)}</strong>
+                  ) : (
+                    <span>linea non indicata sul grafico</span>
+                  )}
+                  {item.direct ? '' : `${item.legs.length} tratti`}
                 </p>
                 {/* I due orari sono l'uno il passaggio alla palina dove si sale
                     e l'altro l'arrivo in deposito: senza scriverlo sotto
@@ -599,7 +616,7 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
             {result.upcoming.slice(0, UPCOMING_LIMIT).map((item) => (
               <li key={`${item.line}-${item.from}-${item.shift}-${item.departure}-${item.vehicleShift}`}>
                 <strong>
-                  {getLineDisplayName(item.line)}
+                  {getLineDisplayName(item.line) || 'linea n.d.'}
                   {item.direct ? '' : ` · ${item.legs.length} tratti`}
                 </strong>
                 <span>
