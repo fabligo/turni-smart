@@ -4,7 +4,7 @@
 E' il solo posto che dice cosa e' in corso e chi tiene cosa. Senza, due
 conversazioni rifanno lo stesso lavoro in modo diverso.
 
-*Aggiornato: 22 agosto 2026 · 231 test verdi · issue aperte: #63, #64*
+*Aggiornato: 22 agosto 2026 · 234 test verdi · issue aperte: #63, #64*
 
 ## Per aprire la prossima sessione
 
@@ -76,7 +76,7 @@ Aperte adesso:
 
 | # | | |
 |---|---|---|
-| [#63](https://github.com/trailpress/turni-smart/issues/63) | dati | Paline di `GCAS` e dei due posti cambio in sospeso |
+| [#63](https://github.com/trailpress/turni-smart/issues/63) | dati | Resta solo piazza Massaua: `GCAS` e corso Siracusa sono risolti |
 | [#64](https://github.com/trailpress/turni-smart/issues/64) | debito | Le zone senza test: i due parser d'origine e `detectGt` |
 
 Chiusa il 21 agosto: [#62](https://github.com/trailpress/turni-smart/issues/62)
@@ -112,7 +112,8 @@ Cose vere ma che nessuno ha mai lamentato. Se danno fastidio, diventano issue.
   di piazza Massaua insieme a CP1, ma nessuno dei due capolinea che il GTFS le
   assegna - Venaria Reale e Stadio Nord - passa di li'. Non e' in
   `GERBIDO_LINES` e non ce l'ho messa.
-- Le paline di [#63](https://github.com/trailpress/turni-smart/issues/63).
+- Piazza Massaua: codice di quattro lettere, e quale palina per quale senso
+  ([#63](https://github.com/trailpress/turni-smart/issues/63)).
 
 ---
 

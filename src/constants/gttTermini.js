@@ -105,6 +105,14 @@ export const TERMINI = {
     { code: '3542', name: 'GROSSO CAP', lat: 45.04929, lng: 7.62255 },
     { code: '1671', name: 'ADA NEGRI', lat: 45.05152, lng: 7.64158 },
   ],
+  /* La 58/ - che l'app scrive 58B - va da via Grosso a via Bertola, e il
+     capolinea di Bertola lo divide con la 58: il GTFS elenca la palina 1683 su
+     tutte e due. Senza questa voce un grafico della 58/ non trovava nessun
+     capolinea, perche' la tabella conosceva solo la 58. */
+  '58B': [
+    { code: '1683', name: 'BERTOLA CAP', lat: 45.06996, lng: 7.68134 },
+    { code: '3542', name: 'GROSSO CAP', lat: 45.04929, lng: 7.62255 },
+  ],
   '62': [
     { code: '1868', name: 'SEBASTOPOLI', lat: 45.0512, lng: 7.62989 },
     { code: '2393', name: 'SOFIA CAP', lat: 45.09536, lng: 7.71649 },
