@@ -105,3 +105,61 @@ test('il referto dice le tratte e i conti per intestazione', () => {
   assert.match(report, /p1-3 "FESTIVO" \[festivi\] ric 1\/3/);
   assert.match(report, /"FESTIVO" \[festivi\] segm \d+ · usc \d+ → \d+/);
 });
+
+/* Il caso vero visto sul PDF del deposito: le uscite si leggono su qualche
+   pagina e si perdono su molte altre. Il totale non e' zero, e prima di questo
+   il referto restava muto proprio li' - cioe' nel caso in cui serviva. */
+const GRAFICO_COMPLETO = `GTT gruppo torinese trasporti - SABATO - Versione Q01
+LINEA 5
+8 Esce 04.13 ARBA GER I.L. 04.22 CATT
+Linea 5 U.L. 21.51 OSET Entra 21.58
+TEMPI DI USCITA / RIENTRO 5
+GERB - OSET 7 7
+GERB - CATT 9 9`;
+
+/* La stessa pagina di un'altra linea, con l'ingresso in linea scritto in una
+   forma che il parser non riconosce: i rientri escono, le uscite no. */
+const GRAFICO_SENZA_USCITE = `GTT gruppo torinese trasporti - SABATO - Versione Q01
+LINEA 63
+7 Esce 05.40 IN LINEA 05.51 NEGR
+Linea 63 U.L. 22.10 NEGR Entra 22.21
+TEMPI DI USCITA / RIENTRO 63
+GERB - NEGR 11 11`;
+
+test('il referto mostra le pagine incomplete anche quando altrove le uscite si leggono', () => {
+  const diagnostics = [];
+  const developments = parseOrari([GRAFICO_COMPLETO, GRAFICO_SENZA_USCITE], { diagnostics });
+  const report = buildOrariReport({ developments, pages: diagnostics });
+
+  // Le uscite in tutto il documento non sono zero: la 5 le ha.
+  assert.match(report, /USCITE 5 SABATO/);
+  // Ma la pagina della 63 va segnalata lo stesso, con il suo testo.
+  assert.match(report, /pagine col grafico 2, incomplete 1/);
+  assert.match(report, /p2 rientri 1 uscite 0 marcatori/);
+  assert.match(report, /IN LINEA 05\.51 NEGR/, 'l estratto parte da Esce, dove il parser si perde');
+});
+
+test('quando ogni pagina col grafico e completa il referto lo dice', () => {
+  const diagnostics = [];
+  const developments = parseOrari([GRAFICO_COMPLETO], { diagnostics });
+  const report = buildOrariReport({ developments, pages: diagnostics });
+  assert.match(report, /pagine col grafico 1, tutte lette per intero/);
+});
+
+/* Senza i dati delle pagine il referto non puo' sapere se il PDF il grafico ce
+   l'abbia: prima diceva "nessuna pagina col grafico", che e' un'affermazione
+   sul documento, e ha mandato fuori strada chi la leggeva. */
+test('senza le pagine il referto non dice cosa non puo sapere', () => {
+  const report = buildOrariReport({ developments: {}, pages: null });
+  assert.match(report, /pagine col grafico: non si sa/);
+  assert.doesNotMatch(report, /nessuna pagina col grafico/);
+});
+
+test('un PDF senza il grafico resta distinguibile da uno non letto', () => {
+  const diagnostics = [];
+  const developments = parseOrari(['GTT gruppo torinese trasporti - SABATO - Versione Q01\n05 101 5 / 1 04.48 GERB - 10.15 CATT'], {
+    diagnostics,
+  });
+  const report = buildOrariReport({ developments, pages: diagnostics });
+  assert.match(report, /nessuna pagina col grafico in questo PDF/);
+});
