@@ -4,7 +4,7 @@
 E' il solo posto che dice cosa e' in corso e chi tiene cosa. Senza, due
 conversazioni rifanno lo stesso lavoro in modo diverso.
 
-*Aggiornato: 21 agosto 2026 · 227 test verdi · issue aperte: #63, #64*
+*Aggiornato: 22 agosto 2026 · 229 test verdi · issue aperte: #63, #64*
 
 ## Per aprire la prossima sessione
 
@@ -24,7 +24,7 @@ ferma dopo aver speso tutto il giro di avvio. E' gia' successo.
 
 | Area | Conversazione | Stato |
 |---|---|---|
-| Rientri in deposito | sessione del 21 agosto | chiusa |
+| Rientri in deposito | sessione del 22 agosto | chiusa |
 | Uscite dal deposito (#62) | sessione del 21 agosto | chiusa |
 | BusRadar dentro l'app | altra conversazione (PR #60) | ultima attivita' 14 agosto |
 | Documentazione e processo | sessione del 21 agosto | chiusa |
@@ -44,7 +44,10 @@ statistiche, esportazione ICS, turni comunicati a mano, archivio per mese.
 
 **Rientri** — letti dal grafico di servizio (`U.L.` → `Entra`), con i nomi veri
 dei posti dalla legenda, la distanza da dove si e' e l'ordine di vicinanza.
-Segnala quando non li puo' calcolare, distinguendo tre casi diversi.
+Segnala quando non li puo' calcolare, distinguendo tre casi diversi. La linea
+sulla scheda vale anche per M1S, M1N, CP1 e le altre che numeri non sono, e il
+nome del posto non si porta piu' dietro il ruolo («C.so Maroncelli», non «C.so
+Maroncelli - Capolinea Ritorno M1s»).
 
 **Uscite** — cosa esce dal Gerbido, per fascia oraria e per posto cambio. Lette
 dal grafico di servizio (`Esce` → `I.L.`), come i rientri. Ogni scheda dice

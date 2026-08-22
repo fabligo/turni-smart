@@ -30,6 +30,7 @@
 
 import { findTerminus } from './constants/gttTermini.js';
 import { distanceMeters } from './constants/gttPaline.js';
+import { normalizeLineCode } from './constants/depotGerbido.js';
 
 const DEPOT = 'GERB';
 // Il deposito e' la palina 693, GORINI CAP: e' li' che entrano le vetture.
@@ -87,6 +88,14 @@ function isAnchor(token, letter) {
   return new RegExp(`^${letter}\\.?L\\.?$`).test(token);
 }
 
+/* Dal Gerbido non escono solo numeri. M1S, M1N, CP1, VE1 sono linee come la 5
+   e la 132, e cercare solo cifre le lasciava senza nome: la scheda del rientro
+   mostrava una pillola gialla vuota, che non dice ne' quale linea prendere ne'
+   che il dato manca. Un codice e' una delle due forme:
+     - un numero con l'eventuale barrato: 5, 5B, 132;
+     - una o due lettere seguite da una cifra: M1S, CP1, VE1. */
+const LINE_CODE = '(?:\\d{1,3}|[A-Z]{1,2}\\d)[A-Z]?';
+
 /**
  * La linea a cui appartiene la pagina. Il titolo grande non porta la parola
  * "linea", quindi si parte dalle due tabelle in fondo, che il numero ce l'hanno
@@ -95,17 +104,23 @@ function isAnchor(token, letter) {
 export function detectRientriLine(text = '') {
   const source = String(text || '').toUpperCase();
   const patterns = [
-    /USCITA\s*\/?\s*RIENTRO\s+(\d{1,3}[A-Z]?)\b/,
-    /ANDATA\s*\/?\s*RITORNO\s+(\d{1,3}[A-Z]?)\b/,
-    /\bLINEA\s+(\d{1,3}[A-Z]?)\b/,
-    /* I codici dell'orario tipo portano dentro la linea: A05Q0101 e' la 5.
-       E' l'unico appiglio quando l'intestazione grande non ha la parola
-       "linea" e le due tabelle in fondo non vengono estratte. */
-    /\b[AHW](\d{2,3}[A-Z]?)Q\d/,
+    new RegExp(`USCITA\\s*/?\\s*RIENTRO\\s+(${LINE_CODE})\\b`),
+    new RegExp(`ANDATA\\s*/?\\s*RITORNO\\s+(${LINE_CODE})\\b`),
+    new RegExp(`\\bLINEA\\s+(${LINE_CODE})\\b`),
+    /* I codici dell'orario tipo portano dentro la linea: A05Q0101 e' la 5,
+       AM1SQ0101 e' la M1S. E' l'unico appiglio quando l'intestazione grande
+       non ha la parola "linea" e le due tabelle in fondo non vengono
+       estratte. */
+    new RegExp(`\\b[AHW](${LINE_CODE})Q\\d`),
+    /* Ultima spiaggia: la legenda stessa. "CAPOLINEA RITORNO M1S" dice la
+       linea anche quando l'intestazione e le tabelle sono andate perse
+       nell'estrazione del testo. */
+    new RegExp(`CAPOLINEA\\s+(?:ANDATA|RITORNO)\\s+(${LINE_CODE})\\b`),
   ];
   for (const pattern of patterns) {
     const match = source.match(pattern);
-    if (match) return match[1].replace(/^0+(?=\d)/, '');
+    // Stessa normalizzazione del resto dell'app: "05" e' la 5, "M1S" resta M1S.
+    if (match) return normalizeLineCode(match[1]);
   }
   return '';
 }
@@ -402,6 +417,26 @@ function tidyLegendName(value = '') {
     .trim();
 }
 
+/* Che ruolo ha quel posto, se la legenda lo dice. Il posto cambio e' dove si
+   da' il cambio, il capolinea dove la vettura inverte: sono parole loro, non
+   nostre, e servono a non chiamare le due cose allo stesso modo. */
+const ROLE_SUFFIX_RE = /-?\s*(POSTO\s+CAMBIO|CAPOLINEA(?:\s+[\w./]+)*)\s*$/i;
+
+/**
+ * Il solo nome del posto, senza la coda che ne dice il ruolo.
+ *
+ * Sulla scheda di un rientro serve «C.so Maroncelli», non «C.so Maroncelli -
+ * Capolinea Ritorno M1s»: il ruolo e la linea li dice gia' il resto della
+ * scheda, e ripeterli li' dentro rende la riga illeggibile su un telefono.
+ *
+ * Si applica sia in lettura sia a video: le letture salvate prima di questa
+ * correzione hanno la coda dentro l'etichetta, e ricaricare il PDF per togliere
+ * tre parole non e' una cosa da chiedere a nessuno.
+ */
+export function stripPlaceRole(value = '') {
+  return tidyLegendName(String(value || '').replace(ROLE_SUFFIX_RE, ''));
+}
+
 export function parseLegend(text = '') {
   const source = String(text || '').toUpperCase().replace(/\s+/g, ' ');
   const legend = {};
@@ -410,11 +445,8 @@ export function parseLegend(text = '') {
     const code = match[1];
     const name = tidyLegendName(match[2]);
     if (!name || name.length > MAX_LEGEND_NAME) continue;
-    /* La legenda dice anche a cosa serve il posto: il posto cambio e' dove si
-       da' il cambio, il capolinea dove la vettura inverte. Sono parole loro,
-       non nostre, e servono a non chiamare le due cose allo stesso modo. */
     const role = /POSTO\s+CAMBIO/.test(name) ? 'cambio' : /CAPOLINEA/.test(name) ? 'capolinea' : '';
-    const label = tidyLegendName(name.replace(/-?\s*(POSTO\s+CAMBIO|CAPOLINEA(\s+\w+)*(\s+\d+[A-Z]?)?)\s*$/, ''));
+    const label = stripPlaceRole(name);
     if (!label) continue;
     legend[code] = { label: titleCase(label), role };
   }
