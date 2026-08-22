@@ -738,10 +738,15 @@ imposto — e qui è affrontata su quattro fronti, tutti in `src/sw.js`:
 2. **`dist/sw.js` cambia a ogni pubblicazione**, e il client lo registra con
    `updateViaCache: 'none'`: il browser non lo serve mai dalla propria cache
    HTTP, quindi si accorge sempre che c'è qualcosa di nuovo.
-3. **Il ricambio non avviene di nascosto.** Il service worker nuovo resta in
-   attesa, l'app mostra l'avviso «Versione nuova pronta», e la ricarica parte
-   solo al tocco. Sostituire i file sotto i piedi di chi sta guardando il turno
-   di domani manderebbe in errore il primo tocco successivo.
+3. **Il ricambio non avviene sotto i piedi di chi sta usando l'app.** Il
+   service worker nuovo resta in attesa, e l'app lo mette in uso da sola nel
+   momento in cui non dà fastidio: all'apertura, se è già pronto quando l'app
+   parte, oppure alla prima volta che l'app finisce in secondo piano.
+   Sostituire i file mentre qualcuno guarda il turno di domani manderebbe in
+   errore il primo tocco successivo; chiederglielo ogni volta, invece, era
+   peggio — l'avviso «Versione nuova pronta» compariva a ogni apertura, con una
+   pubblicazione al giorno, ed è diventato una cosa da scacciare invece che una
+   cosa da leggere. Tolto il 22 agosto 2026, su segnalazione dell'utente.
 4. **`reset-cache.html` non viene mai intercettata.** La via di fuga manuale
    deve funzionare anche quando il colpevole è il service worker stesso.
 
