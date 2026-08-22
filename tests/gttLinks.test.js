@@ -150,6 +150,20 @@ test('le coordinate dei posti cambio vengono dalla palina, non da noi', () => {
   assert.equal(getChangePointPosition(''), null);
 });
 
+test('i due lati di corso Siracusa sono due punti diversi', () => {
+  /* 711 e' SIRACUSA, 128 e' MONFALCONE: le due vie che si incrociano li'.
+     Finche' la seconda non era in tabella il ritorno prendeva le coordinate
+     dell'andata, e mandava sessanta metri piu' in la' - dall'altra parte del
+     corso, che alle quattro del mattino non e' un dettaglio. */
+  assert.deepEqual(getChangePointPosition('SIRA', { direction: 'A' }), { lat: 45.05287, lng: 7.6338 });
+  assert.deepEqual(getChangePointPosition('SIRA', { direction: 'R' }), { lat: 45.05292, lng: 7.63458 });
+});
+
+test('il capolinea di via Bertola ha la sua palina', () => {
+  // 1683, BERTOLA CAP: capolinea di andata della 58 e della 58/.
+  assert.deepEqual(getChangePointPosition('GCAS'), { lat: 45.06996, lng: 7.68134 });
+});
+
 test('ogni palina nota porta un nome che conferma la ricerca', () => {
   Object.entries(PALINE).forEach(([palina, meta]) => {
     assert.ok(Number.isFinite(meta.lat) && Number.isFinite(meta.lng), `palina ${palina} senza coordinate`);

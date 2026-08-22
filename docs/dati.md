@@ -92,8 +92,8 @@ Tre controlli prima di accettarla:
 
 ### Lo stato attuale
 
-Diciannove paline dei posti cambio, raccolte sul campo dall'utente e **tutte
-confermate dal GTFS, nome compreso**:
+Le paline dei posti cambio, raccolte sul campo dall'utente e **tutte confermate
+dal GTFS, nome compreso**:
 
 | Posto | Paline A/R | Nome GTT | Scarto |
 |---|---|---|---|
@@ -107,11 +107,25 @@ confermate dal GTFS, nome compreso**:
 | BARB | 1169 / 1170 | PORTOFINO | 25 m |
 | CLGR | 969 / 968 | GRAMSCI NORD | 27 m |
 | CLMA | 853 / 852 | MACEDONIA | 16 m |
+| SIRA | 711 / 128 | SIRACUSA / MONFALCONE | 62 m |
+| OMRO | 309 / 310 | OMERO | 28 m |
+| FILA | 1665 / 1666 | FILADELFIA | 42 m |
 | ARBA | 303 | SICCARDI CAP | — |
 | OBFR | 2927 | DALLA CHIESA CAP | — |
+| GCAS | 1683 | BERTOLA CAP | — |
 
 Piu' il deposito: **palina 693, GORINI CAP**, `45.03941, 7.59166`.
 
+> `SIRA` e' l'unico posto in tabella dove le due paline portano **due nomi
+> diversi**: sono le due vie che si incrociano li', corso Siracusa e via
+> Monfalcone. E' per questo che la seconda era sfuggita.
+>
+> `GCAS` e' il capolinea di andata della **58 e della 58/**, in via Bertola: la
+> palina l'ha data l'utente, e il GTFS la conferma elencandola su tutte e due le
+> linee, che di nome fanno «via Allason - via Bertola» e «via Grosso - via
+> Bertola». L'altro capolinea e' Allason per la 58 e Grosso per la 58/ — due
+> posti diversi, quindi un ritorno da mettere non c'e'.
+>
 > `ARBA` e `OBFR` sono i due capolinea della linea 5. Il grafico li chiama
 > *P.za Arbarello* e *Orbassano - Strada Torino*, GTT li chiama *Siccardi* e
 > *Dalla Chiesa*: sono gli stessi posti, confermati dall'utente e dal fatto che

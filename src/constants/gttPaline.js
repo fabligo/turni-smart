@@ -8,9 +8,9 @@
 // e' andata a segno: combacia con il nome che GTT stampa sulla palina, quindi
 // il numero raccolto sul campo e la fermata trovata sono la stessa cosa.
 //
-// Qui dentro non ci sono capolinea: i loro codici stanno solo sul grafico di
-// servizio, senza numero di palina, e agganciarli per somiglianza di nome
-// produce accostamenti sbagliati.
+// Un capolinea ci entra solo quando qualcuno ne ha dato il numero di palina:
+// il grafico di servizio i capolinea li chiama per nome, senza numero, e
+// agganciarli per somiglianza di nome produce accostamenti sbagliati.
 export const PALINE = {
   307: { lat: 45.03614, lng: 7.62627, name: 'CATTANEO' },
   308: { lat: 45.03618, lng: 7.62581, name: 'CATTANEO' },
@@ -37,6 +37,22 @@ export const PALINE = {
      che sono proprio i capolinea della linea 5. */
   303: { lat: 45.07296, lng: 7.67568, name: 'SICCARDI CAP' },
   2927: { lat: 45.0078, lng: 7.54506, name: 'DALLA CHIESA CAP' },
+  /* I due lati di corso Siracusa, sulla 56: portano il nome delle due vie che
+     si incrociano li', ed e' per questo che la seconda era sfuggita - cercando
+     "SIRACUSA" non si trova, perche' si chiama MONFALCONE. Distano 62 metri, e
+     senza tutte e due il ritorno veniva collocato sul lato dell'andata. */
+  711: { lat: 45.05287, lng: 7.6338, name: 'SIRACUSA' },
+  128: { lat: 45.05292, lng: 7.63458, name: 'MONFALCONE' },
+  /* Piazza Omero e via Filadelfia: le paline la tabella dei posti cambio le
+     conosceva gia', ma qui non c'erano, e il ritorno finiva sulle coordinate
+     dell'andata. */
+  309: { lat: 45.03821, lng: 7.63044, name: 'OMERO' },
+  310: { lat: 45.03835, lng: 7.63014, name: 'OMERO' },
+  1665: { lat: 45.04447, lng: 7.64046, name: 'FILADELFIA' },
+  1666: { lat: 45.04411, lng: 7.6403, name: 'FILADELFIA' },
+  /* Il capolinea di via Bertola, che la 58 e la 58/ condividono: il GTFS lo
+     conferma elencando la palina su tutte e due le linee. */
+  1683: { lat: 45.06996, lng: 7.68134, name: 'BERTOLA CAP' },
 };
 
 export function getPalinaPosition(palina) {

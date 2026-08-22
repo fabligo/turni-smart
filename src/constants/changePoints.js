@@ -158,6 +158,18 @@ export const CHANGE_POINTS = {
     address: 'Piazza Arbarello, Torino',
     stops: { A: '303', R: '303' },
   },
+  /* Capolinea di andata della 58 e della 58/, in via Bertola. La palina l'ha
+     data chi guida la linea - «la 1683 e' il capolinea direzione andata
+     (Bertola), sia della 58 che della 58/» - e il GTFS la conferma da solo:
+     BERTOLA CAP, elencata su tutte e due le linee, che di nome fanno «via
+     Allason - via Bertola» e «via Grosso - via Bertola».
+     L'altro capolinea e' Allason per la 58 e Grosso per la 58/: sono due posti
+     diversi, quindi qui non c'e' un ritorno da mettere. */
+  GCAS: {
+    label: 'V. Bertola',
+    address: 'Via Bertola, Torino',
+    stops: { A: '1683', R: '1683' },
+  },
 };
 
 export function normalizeChangePoint(code) {

@@ -11,6 +11,18 @@ test('il nome del grafico trova il capolinea di quella linea', () => {
   assert.equal(findTerminus('74', 'GORINI CAP').code, '693');
 });
 
+test('la 58 barrata ha i suoi capolinea, non quelli della 58', () => {
+  /* La 58/ - che l'app scrive 58B - va da via Grosso a via Bertola, e Bertola
+     lo divide con la 58: il GTFS elenca la palina 1683 su tutte e due. Senza la
+     voce 58B un grafico della barrata non trovava nessun capolinea. */
+  assert.equal(findTerminus('58B', 'V. Bertola').code, '1683');
+  assert.equal(findTerminus('58', 'V. Bertola').code, '1683');
+  assert.equal(findTerminus('58B', 'Grosso').code, '3542');
+  // Allason e' capolinea della 58, non della barrata.
+  assert.equal(findTerminus('58', 'Allason').code, '1649');
+  assert.equal(findTerminus('58B', 'Allason'), null);
+});
+
 test('un pareggio non si scioglie a caso', () => {
   // La linea 5 ha due capolinea Settembrini, uno per senso: senza sapere quale
   // sia, nessuno dei due e' la risposta.
