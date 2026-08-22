@@ -58,9 +58,17 @@ export function isGerbidoLine(line) {
   return GERBIDO_LINES.includes(normalizeLineCode(line));
 }
 
+/* Le barrate: dentro l'app la 58 barrata e' "58B", perche' una barra in fondo a
+   una chiave non si maneggia bene. Ma sul documento e in deposito si chiama
+   "58/", ed e' quello che uno legge sulla vettura: a schermo torna com'e'. */
+const BARRATA_RE = /^(\d+)B$/;
+
 export function getLineDisplayName(line) {
   const normalized = normalizeLineCode(line);
-  return DISPLAY_NAMES[normalized] || normalized || String(line ?? '');
+  if (DISPLAY_NAMES[normalized]) return DISPLAY_NAMES[normalized];
+  const barrata = normalized.match(BARRATA_RE);
+  if (barrata) return `${barrata[1]}/`;
+  return normalized || String(line ?? '');
 }
 
 /* La variante di una linea rispetto alla sua linea madre: la 5B e' la 5

@@ -1631,6 +1631,7 @@ export default function App() {
                   {linesTab === 'departures' ? (
                     <DepotDeparturesPanel
                       developments={developments}
+                      places={orariPlaces}
                       staleParse={orariParserVersion < RIENTRI_PARSER_VERSION}
                     />
                   ) : null}
