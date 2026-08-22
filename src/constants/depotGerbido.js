@@ -45,7 +45,6 @@ export function normalizeLineCode(line) {
   if (/^36\s*(?:\(|)?MERC\.?(?:\)|)?$/.test(raw)) return '36_MERC';
 
   const compact = raw.replace(/\s+/g, '').replace(/[()]/g, '');
-  if (['CP1', 'M1N', 'M1S'].includes(compact)) return compact;
 
   const barrato = compact.replace(/\/+$/g, 'B');
   const match = barrato.match(/^0*(\d+)([A-Z]*)$/);
@@ -64,11 +63,15 @@ export function getLineDisplayName(line) {
   return DISPLAY_NAMES[normalized] || normalized || String(line ?? '');
 }
 
+/* La variante di una linea rispetto alla sua linea madre: la 5B e' la 5
+   barrata, la 36 (merc.) e' la 36 del mercato. CP1, M1N e M1S qui non c'entrano
+   niente: non sono varianti di niente e non sono sigle, sono linee per conto
+   loro, con il loro percorso e i loro capolinea. Erano marcate 'speciale', che
+   e' il modo in cui questo codice diceva che non le considerava linee vere. */
 export function getLineVariant(line) {
   const normalized = normalizeLineCode(line);
   if (normalized === '36_MERC') return 'merc';
   if (/B$/.test(normalized)) return 'B';
-  if (['CP1', 'M1N', 'M1S'].includes(normalized)) return 'speciale';
   return 'base';
 }
 

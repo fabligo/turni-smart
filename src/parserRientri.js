@@ -30,7 +30,7 @@
 
 import { findTerminus } from './constants/gttTermini.js';
 import { distanceMeters } from './constants/gttPaline.js';
-import { normalizeLineCode } from './constants/depotGerbido.js';
+import { isGerbidoLine, normalizeLineCode } from './constants/depotGerbido.js';
 
 const DEPOT = 'GERB';
 // Il deposito e' la palina 693, GORINI CAP: e' li' che entrano le vetture.
@@ -88,39 +88,58 @@ function isAnchor(token, letter) {
   return new RegExp(`^${letter}\\.?L\\.?$`).test(token);
 }
 
-/* Dal Gerbido non escono solo numeri. M1S, M1N, CP1, VE1 sono linee come la 5
-   e la 132, e cercare solo cifre le lasciava senza nome: la scheda del rientro
-   mostrava una pillola gialla vuota, che non dice ne' quale linea prendere ne'
-   che il dato manca. Un codice e' una delle due forme:
-     - un numero con l'eventuale barrato: 5, 5B, 132;
-     - una o due lettere seguite da una cifra: M1S, CP1, VE1. */
-const LINE_CODE = '(?:\\d{1,3}|[A-Z]{1,2}\\d)[A-Z]?';
+/* Un codice di linea non ha una forma sola, e non c'e' niente da indovinare.
+   Sulla rete GTT ci sono la 5, la 58/ e la 132, ma anche M1S, M1N, CP1, VE1,
+   LS1, OB1, W01, N04B, e persino MEOR e SPX, che di cifre non ne hanno
+   nessuna. Non sono sigle di qualcos'altro: sono linee a tutti gli effetti,
+   con il loro nome, il loro percorso e i loro capolinea, esattamente come la 5.
+   Il GTFS le elenca alla pari - CP1 e' «via De Amicis (Fermi M1 - Collegno) -
+   via Musine' (Pianezza)», M1S e' il bus sostitutivo della metropolitana.
+
+   Quindi qui non si descrive che aspetto ha un codice: si prende il gruppo di
+   caratteri che segue l'ancora e lo si accetta se e' una linea del Gerbido,
+   oppure - per non restare fermi davanti a una linea che l'elenco non ha
+   ancora - se almeno contiene una cifra. E' il minimo che tiene fuori le
+   parole che possono capitare li' accanto, senza pretendere di sapere in
+   anticipo come GTT chiamera' la prossima. */
+const LINE_TOKEN = '([A-Z0-9]{1,6}/?)(?![A-Z0-9])';
+/* Dentro un codice dell'orario tipo la linea non finisce con uno spazio ma con
+   la Q che segue: li' il confine lo da' il resto del codice, non un a capo. */
+const LINE_IN_CODE = '([A-Z0-9]{1,6})';
+
+function acceptLine(raw) {
+  // Stessa normalizzazione del resto dell'app: "05" e' la 5, "58/" e' la 58B.
+  const code = normalizeLineCode(raw);
+  if (!code) return '';
+  if (isGerbidoLine(code)) return code;
+  return /\d/.test(code) ? code : '';
+}
 
 /**
  * La linea a cui appartiene la pagina. Il titolo grande non porta la parola
- * "linea", quindi si parte dalle due tabelle in fondo, che il numero ce l'hanno
+ * "linea", quindi si parte dalle due tabelle in fondo, che il codice ce l'hanno
  * accanto, e solo dopo si prova con l'intestazione.
  */
 export function detectRientriLine(text = '') {
   const source = String(text || '').toUpperCase();
   const patterns = [
-    new RegExp(`USCITA\\s*/?\\s*RIENTRO\\s+(${LINE_CODE})\\b`),
-    new RegExp(`ANDATA\\s*/?\\s*RITORNO\\s+(${LINE_CODE})\\b`),
-    new RegExp(`\\bLINEA\\s+(${LINE_CODE})\\b`),
+    new RegExp(`USCITA\\s*/?\\s*RIENTRO\\s+${LINE_TOKEN}`),
+    new RegExp(`ANDATA\\s*/?\\s*RITORNO\\s+${LINE_TOKEN}`),
+    new RegExp(`\\bLINEA\\s+${LINE_TOKEN}`),
     /* I codici dell'orario tipo portano dentro la linea: A05Q0101 e' la 5,
        AM1SQ0101 e' la M1S. E' l'unico appiglio quando l'intestazione grande
        non ha la parola "linea" e le due tabelle in fondo non vengono
        estratte. */
-    new RegExp(`\\b[AHW](${LINE_CODE})Q\\d`),
+    new RegExp(`\\b[AHW]${LINE_IN_CODE}Q\\d`),
     /* Ultima spiaggia: la legenda stessa. "CAPOLINEA RITORNO M1S" dice la
        linea anche quando l'intestazione e le tabelle sono andate perse
        nell'estrazione del testo. */
-    new RegExp(`CAPOLINEA\\s+(?:ANDATA|RITORNO)\\s+(${LINE_CODE})\\b`),
+    new RegExp(`CAPOLINEA\\s+(?:ANDATA|RITORNO)\\s+${LINE_TOKEN}`),
   ];
   for (const pattern of patterns) {
     const match = source.match(pattern);
-    // Stessa normalizzazione del resto dell'app: "05" e' la 5, "M1S" resta M1S.
-    if (match) return normalizeLineCode(match[1]);
+    const line = match ? acceptLine(match[1]) : '';
+    if (line) return line;
   }
   return '';
 }

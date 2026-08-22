@@ -143,6 +143,32 @@ I PDF GTT usano codici di **quattro lettere** — `CATT`, `OSET`, `GORX`, `NEGR`
 sempre nell'interfaccia: chi guida non ha motivo di riconoscere `GORX`, ma
 riconosce «V. Gorini».
 
+## Codice di linea
+
+Il nome della linea, come lo scrivono GTT e i PDF. **Non e' per forza un
+numero**, e quando non lo e' non e' una sigla di qualcos'altro: e' il nome di
+una linea a tutti gli effetti, con il suo percorso e i suoi capolinea.
+
+Dal Gerbido escono `M1S`, `M1N` e `CP1` accanto alla 5, alla 74 e alla 132. Il
+GTFS le elenca alla pari:
+
+| | |
+|---|---|
+| `CP1` | via De Amicis (Fermi M1 - Collegno) - via Musine' (Pianezza) |
+| `M1S` | bus sostitutivo metropolitana, stazione Fermi - stazione Bengasi |
+
+Sulla rete ce ne sono molte altre della stessa natura — `VE1`, `LS1`, `OB1`,
+`W01`, `N04B`, e perfino `MEOR` e `SPX`, che di cifre non ne hanno nessuna.
+
+> **Non si indovina la forma di un codice.** Cercare «una o piu' cifre» ha
+> lasciato senza nome tutte le linee del Gerbido che numeri non sono, e sulla
+> scheda del rientro compariva una pillola gialla vuota. Chiamarle «speciali»
+> in `getLineVariant` era la stessa idea sbagliata scritta un'altra volta.
+> Il codice si prende com'e' e si confronta con l'elenco vero.
+
+Il **barrato** e' l'unica variante che il codice normalizza: GTT scrive `58/`,
+l'app tiene `58B`. E `36 (merc.)` diventa `36_MERC`.
+
 ## Palina
 
 Il numero della singola fermata GTT, uno per senso di marcia. E' una **chiave

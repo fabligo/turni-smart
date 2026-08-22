@@ -4,7 +4,7 @@
 E' il solo posto che dice cosa e' in corso e chi tiene cosa. Senza, due
 conversazioni rifanno lo stesso lavoro in modo diverso.
 
-*Aggiornato: 22 agosto 2026 · 229 test verdi · issue aperte: #63, #64*
+*Aggiornato: 22 agosto 2026 · 231 test verdi · issue aperte: #63, #64*
 
 ## Per aprire la prossima sessione
 
@@ -45,9 +45,10 @@ statistiche, esportazione ICS, turni comunicati a mano, archivio per mese.
 **Rientri** — letti dal grafico di servizio (`U.L.` → `Entra`), con i nomi veri
 dei posti dalla legenda, la distanza da dove si e' e l'ordine di vicinanza.
 Segnala quando non li puo' calcolare, distinguendo tre casi diversi. La linea
-sulla scheda vale anche per M1S, M1N, CP1 e le altre che numeri non sono, e il
-nome del posto non si porta piu' dietro il ruolo («C.so Maroncelli», non «C.so
-Maroncelli - Capolinea Ritorno M1s»).
+sulla scheda vale anche per M1S, M1N e CP1, che sono linee come la 5 e non
+sigle (→ `glossario.md`, «Codice di linea»), e il nome del posto non si porta
+piu' dietro il ruolo («C.so Maroncelli», non «C.so Maroncelli - Capolinea
+Ritorno M1s»).
 
 **Uscite** — cosa esce dal Gerbido, per fascia oraria e per posto cambio. Lette
 dal grafico di servizio (`Esce` → `I.L.`), come i rientri. Ogni scheda dice
@@ -106,6 +107,11 @@ Cose vere ma che nessuno ha mai lamentato. Se danno fastidio, diventano issue.
 ## Domande in attesa di risposta dall'utente
 
 - La linea `MERCOLEDI'` e' una scolastica, un servizio di mercato, o altro?
+- **`VE1` e' davvero una linea del Gerbido?** Compare nella
+  [#63](https://github.com/trailpress/turni-smart/issues/63) come posto cambio
+  di piazza Massaua insieme a CP1, ma nessuno dei due capolinea che il GTFS le
+  assegna - Venaria Reale e Stadio Nord - passa di li'. Non e' in
+  `GERBIDO_LINES` e non ce l'ho messa.
 - Le paline di [#63](https://github.com/trailpress/turni-smart/issues/63).
 
 ---
