@@ -395,12 +395,17 @@ const GRAPHIC_MARKERS = [
 
 const EXCERPT_LENGTH = 320;
 
+/* Da dove tagliare l'estratto. Si parte da "Esce", perche' e' li' che il
+   parser delle uscite si perde e quindi e' quel pezzo che serve leggere; se la
+   pagina non ce l'ha si ripiega sugli altri ancoraggi. */
+const EXCERPT_ANCHORS = [/\bESCE\b/, /\bU\.?\s?L\.?\s/, /TEMPI\s+DI\s+USCITA/];
+
 export function findGraphicHints(text = '') {
   const source = String(text || '').toUpperCase();
   const found = GRAPHIC_MARKERS.filter(([, pattern]) => pattern.test(source)).map(([name]) => name);
   if (!found.length) return { excerpt: '', markers: [] };
 
-  const anchor = source.search(/TEMPI\s+DI\s+USCITA|\bU\.?\s?L\.?\s/);
+  const anchor = EXCERPT_ANCHORS.reduce((found_, pattern) => (found_ >= 0 ? found_ : source.search(pattern)), -1);
   const from = Math.max(0, anchor - 40);
   return {
     excerpt: source.slice(from, from + EXCERPT_LENGTH).replace(/\s+/g, ' ').trim(),

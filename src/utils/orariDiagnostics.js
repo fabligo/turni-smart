@@ -165,19 +165,41 @@ export function buildOrariReport({ developments = {}, pages = null } = {}) {
     lines.push(`${item.key} · trasferimenti ${item.segments} · verso ${item.places.join(' ') || '-'}`);
   });
 
-  /* Quando rientri o uscite sono zero la domanda e' una sola: il PDF quella
-     pagina ce l'ha? Le pagine con i marcatori del grafico rispondono di si', e
-     il loro testo dice in che forma esce, che e' l'unico dato su cui correggere
-     il parser senza avere il PDF sotto mano. */
-  const marked = (pages || []).filter((page) => page.graphicMarkers?.length);
-  if (!returns.length || !exits.length) {
-    if (!marked.length) {
-      lines.push('nessuna pagina col grafico: carica il PDF Orari completo');
-    } else {
-      marked.slice(0, MAX_EXCERPTS).forEach((page) => {
-        lines.push(`p${page.page} marcatori ${page.graphicMarkers.join(',')}`);
-        if (page.graphicExcerpt) lines.push(`  ${page.graphicExcerpt}`);
-      });
+  /* Le pagine che hanno i marcatori del grafico ma non ne hanno ricavato tutto.
+     Sono le sole su cui si puo' intervenire, e il loro testo dice in che forma
+     escono davvero le colonne: e' l'unico dato su cui correggere il parser
+     senza avere il PDF sotto mano.
+
+     Si mostrano anche quando altrove rientri e uscite si leggono. Il conto
+     globale non basta: se su cento pagine le uscite si perdono in ottanta, il
+     totale non e' zero e prima questo elenco restava muto proprio nel caso in
+     cui serviva di piu'. */
+  lines.push('--');
+  if (!pages) {
+    /* Senza i dati delle pagine non si sa se il PDF il grafico ce l'abbia:
+       dirlo e' l'unica risposta onesta. Prima qui usciva "nessuna pagina col
+       grafico", che e' un'affermazione sul PDF che il referto non puo' fare. */
+    lines.push('pagine col grafico: non si sa (ricarica il PDF Orari con la diagnostica attiva)');
+    return lines.join('\n');
+  }
+
+  const marked = pages.filter((page) => page.graphicMarkers?.length);
+  const incomplete = pages.filter((page) => page.graphicExcerpt);
+
+  if (!marked.length) {
+    lines.push('nessuna pagina col grafico in questo PDF');
+  } else if (!incomplete.length) {
+    lines.push(`pagine col grafico ${marked.length}, tutte lette per intero`);
+  } else {
+    lines.push(`pagine col grafico ${marked.length}, incomplete ${incomplete.length}`);
+    incomplete.slice(0, MAX_EXCERPTS).forEach((page) => {
+      lines.push(
+        `p${page.page} rientri ${page.returns ?? 0} uscite ${page.exits ?? 0} marcatori ${page.graphicMarkers.join(',')}`,
+      );
+      lines.push(`  ${page.graphicExcerpt}`);
+    });
+    if (incomplete.length > MAX_EXCERPTS) {
+      lines.push(`… altre ${incomplete.length - MAX_EXCERPTS} pagine incomplete`);
     }
   }
 
