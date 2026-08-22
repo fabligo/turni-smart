@@ -272,19 +272,32 @@ test('la linea si ricava anche dai codici dell orario tipo', () => {
   assert.equal(detectRientriLine('CODICI A58BQ0101'), '58B');
 });
 
-test('le linee che non sono numeri hanno un nome come le altre', () => {
-  /* M1S, M1N, CP1: dal Gerbido escono anche queste, e cercando solo cifre
-     restavano senza linea. Sulla scheda del rientro diventava una pillola
-     gialla vuota - segnalata dall'utente il 22 agosto - che non dice ne' cosa
-     prendere ne' che il dato manca. */
+test('M1S, M1N e CP1 sono linee come la 5, non sigle', () => {
+  /* Cercando solo cifre restavano senza linea, e sulla scheda del rientro
+     diventavano una pillola gialla vuota - segnalata dall'utente il 22 agosto.
+     Non sono abbreviazioni di qualcos'altro: il GTFS le elenca alla pari, con
+     nome e percorso, e qui vanno lette alla pari. */
   assert.equal(detectRientriLine('LINEA M1S'), 'M1S');
   assert.equal(detectRientriLine('TEMPI DI USCITA / RIENTRO M1N'), 'M1N');
   assert.equal(detectRientriLine('LINEA CP1'), 'CP1');
   assert.equal(detectRientriLine('CODICI AM1SQ0101'), 'M1S');
   // Anche la legenda basta, quando intestazione e tabelle si perdono.
   assert.equal(detectRientriLine('MARC = C.SO MARONCELLI - CAPOLINEA RITORNO M1S'), 'M1S');
-  // E non deve inventarne dove non ce ne sono.
+});
+
+test('una linea si legge anche se il Gerbido non la conosce ancora', () => {
+  /* L'elenco delle linee del Gerbido e' una fotografia, non una legge: se il
+     PDF ne porta una che non c'e' ancora, si legge lo stesso invece di
+     lasciare la scheda muta. VE1 e W01 sono linee GTT vere. */
+  assert.equal(detectRientriLine('LINEA VE1'), 'VE1');
+  assert.equal(detectRientriLine('LINEA W01'), 'W01');
+  assert.equal(detectRientriLine('LINEA 58/'), '58B');
+});
+
+test('non si scambia per linea la parola che capita li accanto', () => {
   assert.equal(detectRientriLine('LINEA GERBIDO DEPOSITO'), '');
+  assert.equal(detectRientriLine('LINEA CATT'), '');
+  assert.equal(detectRientriLine('niente di utile'), '');
 });
 
 test('il nome del posto non si porta dietro il ruolo', () => {
