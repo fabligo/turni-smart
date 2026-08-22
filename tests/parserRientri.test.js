@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   detectRientriLine,
   findGraphicHints,
+  findOppositeTerminus,
   isGraphicKey,
   isRientriKey,
   isUsciteKey,
@@ -399,4 +400,58 @@ test('senza legenda il rientro resta senza posizione, non con una sbagliata', ()
   );
   assert.equal(rientro.position, null);
   assert.equal(rientro.loc_s, 'GORX');
+});
+
+/* La legenda della 58/, nella forma in cui compare sul grafico: dice quali
+   sono i due capolinea e di che linea sono. Serve a sapere dove va a finire
+   una vettura che entra in linea a uno dei due. */
+const LEGENDA_58 = `
+  Legenda
+  GCAS = VIA BERTOLA - Capolinea andata 58/
+  GROS = VIA GROSSO - Capolinea ritorno 58/
+  FILA = VIA FILADELFIA - Posto cambio
+  GERB = DEPOSITO GERBIDO
+`;
+
+test('di un capolinea la legenda tiene da che parte sta e di che linea e', () => {
+  const legenda = parseLegend(LEGENDA_58);
+  assert.deepEqual(legenda.GCAS.terminus, { direction: 'andata', line: '58B' });
+  assert.deepEqual(legenda.GROS.terminus, { direction: 'ritorno', line: '58B' });
+  // Il nome resta pulito: la coda del ruolo non entra nell'etichetta.
+  assert.equal(legenda.GCAS.label, 'Via Bertola');
+  // Un posto cambio non e' un capolinea e non ha un opposto.
+  assert.equal(legenda.FILA.terminus, undefined);
+});
+
+/* Il grafico la direzione non la scrive. Ma da un capolinea si parte verso
+   l'altro capo della linea: e' cosa vuol dire capolinea, non una deduzione. */
+test('da un capolinea si va verso l altro capolinea della stessa linea', () => {
+  const legenda = parseLegend(LEGENDA_58);
+  assert.equal(findOppositeTerminus(legenda, { line: '58B', place: 'GCAS' }), 'GROS');
+  assert.equal(findOppositeTerminus(legenda, { line: '58B', place: 'GROS' }), 'GCAS');
+  // La linea si riconosce anche scritta come sul documento.
+  assert.equal(findOppositeTerminus(legenda, { line: '58/', place: 'GCAS' }), 'GROS');
+});
+
+test('quando non e certo non si indica nessuna direzione', () => {
+  const legenda = parseLegend(LEGENDA_58);
+  // Un posto cambio non dice da che parte prosegue il mezzo.
+  assert.equal(findOppositeTerminus(legenda, { line: '58B', place: 'FILA' }), '');
+  // Il capolinea di un'altra linea non c'entra.
+  assert.equal(findOppositeTerminus(legenda, { line: '5', place: 'GCAS' }), '');
+  // Un posto che la legenda non conosce nemmeno.
+  assert.equal(findOppositeTerminus(legenda, { line: '58B', place: 'ZZZZ' }), '');
+  assert.equal(findOppositeTerminus({}, { line: '58B', place: 'GCAS' }), '');
+});
+
+/* Con tre capolinea della stessa linea - capita quando una variante ne aggiunge
+   uno - non si sa quale sia l'opposto, e allora non si dice niente. */
+test('con piu di un capolinea opposto si tace', () => {
+  const ambigua = parseLegend(`
+    Legenda
+    GCAS = VIA BERTOLA - Capolinea andata 58/
+    GROS = VIA GROSSO - Capolinea ritorno 58/
+    ALLA = VIA ALLASON - Capolinea ritorno 58/
+  `);
+  assert.equal(findOppositeTerminus(ambigua, { line: '58B', place: 'GCAS' }), '');
 });

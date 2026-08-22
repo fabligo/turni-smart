@@ -501,8 +501,50 @@ export function parseLegend(text = '') {
     const role = /POSTO\s+CAMBIO/.test(name) ? 'cambio' : /CAPOLINEA/.test(name) ? 'capolinea' : '';
     const label = stripPlaceRole(name);
     if (!label) continue;
-    legend[code] = { label: titleCase(label), role };
+    const entry = { label: titleCase(label), role };
+
+    /* Di un capolinea la legenda dice anche da che parte sta e di quale linea
+       e': "Capolinea andata 58/". Il nome lo si toglie dall'etichetta, ma il
+       dato serve, perche' e' l'unico modo per sapere dove va a finire una
+       vettura che entra in linea li'. */
+    if (role === 'capolinea') {
+      const parts = name.match(/CAPOLINEA\s+(ANDATA|RITORNO)?\s*([\d]{1,3}[A-Z]?\/?)?/);
+      const direction = (parts?.[1] || '').toLowerCase();
+      const terminusLine = normalizeLineCode(parts?.[2] || '');
+      if (direction || terminusLine) entry.terminus = { direction, line: terminusLine };
+    }
+
+    legend[code] = entry;
   }
 
   return legend;
+}
+
+/**
+ * L'altro capolinea della stessa linea: dove va a finire una vettura che entra
+ * in linea qui.
+ *
+ * Il grafico la direzione non la scrive, e infatti le Uscite non la mostrano.
+ * Ma se una vettura comincia il servizio a un capolinea, da li' parte verso
+ * l'altro capo della linea - e' cosa vuol dire capolinea, non una deduzione - e
+ * la legenda dichiara quali sono e di che linea: il dato resta del documento.
+ *
+ * Torna una stringa vuota in ogni caso in cui non e' certo: il posto non e' un
+ * capolinea, la legenda non dice di che linea sia, oppure di capolinea opposti
+ * ne trova piu' d'uno. Indicare la parte sbagliata e' peggio che tacere
+ * (-> decisioni/0003).
+ */
+export function findOppositeTerminus(legend = {}, { line = '', place = '' } = {}) {
+  const wanted = String(place || '').trim().toUpperCase();
+  const here = legend?.[wanted];
+  if (here?.role !== 'capolinea' || !here.terminus?.line) return '';
+
+  const lineCode = normalizeLineCode(line);
+  if (!lineCode || here.terminus.line !== lineCode) return '';
+
+  const others = Object.entries(legend).filter(
+    ([code, entry]) => code !== wanted && entry?.role === 'capolinea' && entry.terminus?.line === lineCode,
+  );
+
+  return others.length === 1 ? others[0][0] : '';
 }

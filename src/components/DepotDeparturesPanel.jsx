@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { getLineDisplayName } from '../constants/depotGerbido.js';
 import { getChangePointLabel, getChangePointStop } from '../constants/changePoints.js';
+import { findOppositeTerminus, stripPlaceRole } from '../parserRientri.js';
 import { DEPARTURE_WINDOW_MINUTES, searchDepartures } from '../utils/depotDepartures.js';
 import { formatClock } from '../utils/depotReturns.js';
 import { formatMinutes } from '../utils/timeUtils.js';
@@ -57,7 +58,7 @@ function groupByHour(matches = []) {
  * Come i rientri, le uscite stanno solo sul grafico di servizio: senza quella
  * pagina il pannello non ha niente da mostrare e lo dice.
  */
-export function DepotDeparturesPanel({ developments = {}, staleParse = false }) {
+export function DepotDeparturesPanel({ developments = {}, places = {}, staleParse = false }) {
   const [form, setForm] = useState(() => ({
     place: '',
     service: '',
@@ -78,23 +79,28 @@ export function DepotDeparturesPanel({ developments = {}, staleParse = false }) 
 
   const anchor = form.time || formatClock(new Date());
   const serviceLabel = SERVICE_LABELS[result.service] || result.service;
-  const placeLabel = form.place ? getChangePointLabel(form.place) : '';
+  const placeLabel = form.place ? namePlace(form.place) : '';
 
   /* Il selettore offre solo posti che negli orari caricati hanno davvero
      un'uscita dal Gerbido, in ordine alfabetico perche' si cerca per nome. Se
      il posto scelto sparisce cambiando servizio resta comunque nell'elenco,
      altrimenti la select si mostrerebbe vuota senza spiegare perche'. */
   const placeOptions = useMemo(() => {
+    /* Gli stessi nomi che compaiono sulle schede: quelli del documento, non
+       quelli della nostra tabella, altrimenti il posto scelto nel selettore si
+       legge in un modo e nel risultato in un altro. */
+    const name = (code) =>
+      stripPlaceRole(places?.[String(code || '').toUpperCase()]?.label || getChangePointLabel(code));
     const options = result.places.map((item) => ({
       count: item.count,
-      label: getChangePointLabel(item.place),
+      label: name(item.place),
       value: item.place,
     }));
     if (form.place && !options.some((option) => option.value === form.place)) {
-      options.push({ count: 0, label: getChangePointLabel(form.place), value: form.place });
+      options.push({ count: 0, label: name(form.place), value: form.place });
     }
     return options.sort((a, b) => a.label.localeCompare(b.label, 'it'));
-  }, [form.place, result.places]);
+  }, [form.place, places, result.places]);
 
   /* Quante uscite verso il posto scelto ci sono in tutta la giornata: serve a
      dire "non in questa finestra, ma piu' tardi si'" invece di un secco no. */
@@ -102,6 +108,22 @@ export function DepotDeparturesPanel({ developments = {}, staleParse = false }) 
 
   function updateForm(patch) {
     setForm((current) => ({ ...current, ...patch }));
+  }
+
+  /* Il nome che il documento da' a quel posto, senza la coda che ne dice il
+     ruolo: sulla scheda serve «Via Bertola», non «Via Bertola - Capolinea
+     andata 58/». */
+  function namePlace(code) {
+    return stripPlaceRole(places?.[String(code || '').toUpperCase()]?.label || getChangePointLabel(code));
+  }
+
+  /* Da che parte va il mezzo. Il grafico non lo scrive, ma se la vettura entra
+     in linea a un capolinea allora parte verso l'altro capo della linea, e
+     quali siano lo dice la legenda. Quando non e' certo non si scrive niente:
+     mandare qualcuno dalla parte sbagliata e' peggio che tacere. */
+  function towardsLabel(item) {
+    const opposite = findOppositeTerminus(places, { line: item.line, place: item.toPlace });
+    return opposite ? `verso ${namePlace(opposite)}` : '';
   }
 
   return (
@@ -266,7 +288,7 @@ export function DepotDeparturesPanel({ developments = {}, staleParse = false }) 
               const palina = item.direction
                 ? getChangePointStop(item.toPlace, { direction: item.direction, line: item.line })
                 : '';
-              const place = getChangePointLabel(item.toPlace);
+              const place = namePlace(item.toPlace);
               return (
                 <article
                   className="depot-return-card"
@@ -274,7 +296,7 @@ export function DepotDeparturesPanel({ developments = {}, staleParse = false }) 
                 >
                   <p className="depot-return-card__head">
                     <strong>{getLineDisplayName(item.line)}</strong>
-                    {item.directionLabel}
+                    {towardsLabel(item)}
                   </p>
                   {/* I due orari sono l'uscita dal deposito e l'ingresso in
                       linea, con sotto il posto a cui si riferiscono: senza
