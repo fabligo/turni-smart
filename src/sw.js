@@ -13,9 +13,11 @@
       vecchia non viene aggiornata, viene buttata.
    2. Questo file cambia a ogni pubblicazione, quindi il browser si accorge da
       solo che c'e' qualcosa di nuovo (`updateViaCache: 'none'` lato client).
-   3. Il ricambio non avviene di nascosto sotto i piedi di chi sta usando la
-      app: il service worker nuovo aspetta, la app mostra un avviso, e ricarica
-      solo quando l'utente tocca. Vedi `src/serviceWorkerClient.js`.
+   3. Il ricambio non avviene sotto i piedi di chi sta usando la app: il
+      service worker nuovo aspetta, e la app lo mette in uso da sola quando non
+      da' fastidio - all'apertura, o quando finisce in secondo piano. Non lo
+      chiede piu': l'avviso «Versione nuova pronta» c'era a ogni apertura ed era
+      diventato una cosa da scacciare. Vedi `src/serviceWorkerClient.js`.
    4. `reset-cache.html` non viene mai intercettata, cosi' la via di fuga
       manuale funziona anche quando il problema e' il service worker stesso.
 
@@ -57,8 +59,8 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('message', (event) => {
-  /* L'unico comando accettato: lo manda la app quando l'utente tocca
-     "Aggiorna" sull'avviso di versione nuova. */
+  /* L'unico comando accettato: lo manda la app quando decide che e' il
+     momento di passare alla versione nuova. */
   if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
@@ -149,7 +151,7 @@ function freshRequest(url) {
 /* L'app e' una pagina sola: qualsiasi navigazione dentro il perimetro riceve
    la stessa shell, presa dalla cache. E' istantanea e funziona senza rete; la
    versione nuova non arriva di soppiatto qui, ma dal ricambio del service
-   worker, che l'utente vede e comanda. */
+   worker, che la app fa avvenire all'apertura o a schermo spento. */
 async function serveShell(request) {
   const cache = await caches.open(CORE_CACHE);
   const cached = await cache.match(SHELL_URL);

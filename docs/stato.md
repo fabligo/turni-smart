@@ -59,7 +59,9 @@ lo dicono, invece di arrangiarsi.
 
 **Sveglie** — suggerimento per i turni che attaccano presto, con scorciatoia iOS.
 
-**Senza rete** — service worker, l'app si apre anche offline.
+**Senza rete** — service worker, l'app si apre anche offline. Le versioni nuove
+le mette in uso da sola, all'apertura o a schermo spento: non le chiede piu'
+(→ `decisioni/0011`).
 
 ---
 

@@ -2,6 +2,11 @@
 
 *agosto 2026 · vedi registro § 13*
 
+> **Superata dalla [0011](0011-laggiornamento-non-si-chiede.md) il 22 agosto
+> 2026.** Il principio — non ricaricare sotto i piedi di chi sta usando l'app —
+> resta; a cambiare e' chi sceglie il momento. Resta valido tutto il resto:
+> `public/reset-cache.html`, il percorso di `sw.js` e il prefisso delle cache.
+
 ## Contesto
 
 Un service worker che si aggiorna da solo puo' ricaricare la pagina mentre la si
