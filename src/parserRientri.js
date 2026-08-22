@@ -43,9 +43,6 @@ const COMPACT_TIME_RE = /^(\d{2})(\d{2})$/;
 // Fra "U.L. 21.51 OSET" e "Entra 21.58" il testo estratto puo' infilare le
 // etichette della colonna accanto: si guarda avanti quel tanto che basta.
 const ENTRY_LOOKAHEAD = 14;
-// Fra "Esce 04.13" e "I.L. 04.22 CATT" il testo estratto infila i codici della
-// colonna accanto - "ARBA GER" - allo stesso modo e con lo stesso rimedio.
-const LINE_START_LOOKAHEAD = 14;
 // Senza tabella dei tempi resta il buon senso: dal capolinea al deposito non ci
 // si mette tre quarti d'ora.
 const MAX_TRANSFER_MINUTES = 45;
@@ -272,42 +269,73 @@ export function parseDepotReturns(text = '', { gt = '', ver = '', legend = null,
  *
  * Torna segmenti nella stessa forma degli altri, con il deposito come partenza.
  */
+/* Tutti gli ingressi in linea della pagina, nell'ordine in cui compaiono.
+ *
+ * Vanno raccolti prima e tutti insieme, perche' nel testo estratto per colonne
+ * gli "Esce" stanno da una parte e gli "I.L." dall'altra:
+ *
+ *   1 ESCE 04.31 CLST  2 ESCE 04.56 CLST  3 ESCE 06.48 CLST  4 ESCE 05.47 ADUA
+ *   GER I.L. 04.50 CLST  GER I.L. 05.15 CLST  GER I.L. 07.09 CLST  GER I.L. 06.09 NUOV
+ *
+ * Fra il primo Esce e il suo I.L. ci sono sedici parole, e con dieci vetture
+ * sulla pagina ce ne sono quaranta: cercare l'I.L. a poca distanza dall'Esce
+ * pescava solo le ultime vetture di ogni pagina e perdeva sempre le prime.
+ */
+function collectLineStarts(tokens) {
+  const starts = [];
+
+  for (let index = 0; index < tokens.length - 2; index += 1) {
+    if (!isAnchor(tokens[index], 'I')) continue;
+    const minutes = toMinutes(tokens[index + 1]);
+    const place = tokens[index + 2];
+    if (minutes === null || !PLACE_RE.test(place) || place === DEPOT) continue;
+    starts.push({ minutes, place, token: tokens[index + 1] });
+  }
+
+  return starts;
+}
+
 export function parseDepotExits(text = '', { gt = '', ver = '', line = '' } = {}) {
   const tokens = tokenize(text);
   const transfers = parseDepotTransferTimes(text);
   const lineCode = line || detectRientriLine(text);
+  const lineStarts = collectLineStarts(tokens);
+  /* Un ingresso in linea appartiene a una vettura sola: quando e' stato preso
+     non puo' servire anche alla successiva. */
+  const taken = new Set();
   const exits = [];
   const seen = new Set();
 
-  for (let index = 0; index < tokens.length - 3; index += 1) {
+  for (let index = 0; index < tokens.length - 1; index += 1) {
     if (tokens[index] !== 'ESCE') continue;
     const departure = toMinutes(tokens[index + 1]);
     if (departure === null) continue;
 
-    let chosen = null;
+    let chosen = -1;
 
-    for (let ahead = index + 2; ahead < Math.min(tokens.length - 2, index + 2 + LINE_START_LOOKAHEAD); ahead += 1) {
-      if (!isAnchor(tokens[ahead], 'I')) continue;
-      const entry = toMinutes(tokens[ahead + 1]);
-      const place = tokens[ahead + 2];
-      if (entry === null || !PLACE_RE.test(place) || place === DEPOT) continue;
-      const gap = transferMinutes(departure, entry);
+    for (let candidate = 0; candidate < lineStarts.length; candidate += 1) {
+      if (taken.has(candidate)) continue;
+      const { minutes, place } = lineStarts[candidate];
+      const gap = transferMinutes(departure, minutes);
       if (gap <= 0 || gap > MAX_TRANSFER_MINUTES) continue;
-      // Come per l'Entra: il tempo dichiarato dalla tabella e' la prova. Se
-      // combacia si chiude qui, altrimenti si tiene il primo plausibile e si
-      // continua a cercare quello giusto.
+      /* Il tempo dichiarato dalla tabella e' la prova: se combacia si chiude
+         qui, altrimenti si tiene il primo plausibile e si continua a cercare
+         quello giusto. E' la stessa regola dell'Entra: senza, l'ordine delle
+         colonne basterebbe da solo a decidere, e non e' un dato certo. */
       if (transfers[place]?.out === gap) {
-        chosen = { place, token: tokens[ahead + 1] };
+        chosen = candidate;
         break;
       }
-      if (!chosen) chosen = { place, token: tokens[ahead + 1] };
+      if (chosen < 0) chosen = candidate;
     }
 
-    if (!chosen) continue;
+    if (chosen < 0) continue;
+    taken.add(chosen);
+    const lineStart = lineStarts[chosen];
 
     const start = formatTime(tokens[index + 1]);
-    const end = formatTime(chosen.token);
-    const identity = `${lineCode}|${chosen.place}|${start}|${end}`;
+    const end = formatTime(lineStart.token);
+    const identity = `${lineCode}|${lineStart.place}|${start}|${end}`;
     if (seen.has(identity)) continue;
     seen.add(identity);
 
@@ -324,11 +352,12 @@ export function parseDepotExits(text = '', { gt = '', ver = '', line = '' } = {}
       turnoVettura: '',
       start,
       loc_s: DEPOT,
-      /* Il grafico dice dove la vettura entra in linea, non da che parte
-         prosegue: la direzione resta vuota invece di essere dedotta. */
+      /* Il posto scritto dopo l'Esce non e' la destinazione: sulla 33 la
+         vettura 4 esce "ADUA" ed entra in linea a NUOV. Dove il mezzo entra in
+         servizio lo dice l'I.L., ed e' quello che serve a chi lo prende. */
       dir: '',
       end,
-      loc_e: chosen.place,
+      loc_e: lineStart.place,
       gt,
       ver,
       run_id: exits.length + 1,

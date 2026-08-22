@@ -204,6 +204,46 @@ test('le uscite si leggono anche quando il PDF perde separatori e spazi', () => 
    della tabella dei tempi in un'altra - "GERB - ARBA 25" seguito da "8 Esce" -
    e le due non si distinguono. Meglio nessun numero che quello di un altro
    mezzo: nel piazzale ci si va a colpo sicuro o non ci si va. */
+/* Il testo vero della pagina 13 del PDF Orari del deposito, com'e' uscito dal
+   referto `?diag=orari`: la 33, feriale. E' la forma che faceva perdere quasi
+   tutte le uscite - gli "Esce" tutti in fila e gli "I.L." tutti dopo - e quella
+   pagina dava 8 rientri e 0 uscite.
+
+   Fra il primo Esce e il suo I.L. ci sono sedici parole: il vecchio limite di
+   quattordici le tagliava fuori tutte tranne le ultime della pagina. */
+const PER_COLONNE_INTERE = `
+  TEMPI DI USCITA / RIENTRO 33
+  GERB - CLST 19 19
+  GERB - NUOV 22 22
+  1 ESCE 04.31 CLST 2 ESCE 04.56 CLST 3 ESCE 06.48 CLST 4 ESCE 05.47 ADUA
+  GER I.L. 04.50 CLST GER I.L. 05.15 CLST GER I.L. 07.09 CLST GER I.L. 06.09 NUOV
+`;
+
+test('gli Esce in fila e gli I.L. tutti dopo si accoppiano nell ordine', () => {
+  const exits = parseDepotExits(PER_COLONNE_INTERE, { gt: 'LUN - VEN' });
+  assert.equal(exits.length, 4, 'nessuna vettura va persa, nemmeno la prima');
+  assert.deepEqual(
+    exits.map((item) => `${item.start}→${item.end} ${item.loc_e}`),
+    ['04:31→04:50 CLST', '04:56→05:15 CLST', '06:48→07:09 CLST', '05:47→06:09 NUOV'],
+  );
+});
+
+/* Il posto scritto dopo l'Esce non e' dove la vettura entra in linea: la 4
+   esce "ADUA" e comincia a NUOV. Chi prende quel mezzo deve leggere NUOV. */
+test('la destinazione la dice l I.L., non il posto scritto dopo l Esce', () => {
+  const quarta = parseDepotExits(PER_COLONNE_INTERE, {}).find((item) => item.start === '05:47');
+  assert.equal(quarta.loc_e, 'NUOV');
+});
+
+/* Un ingresso in linea appartiene a una vettura sola: se due Esce potessero
+   prendersi lo stesso I.L., una pagina produrrebbe uscite doppie e un mezzo
+   inesistente. */
+test('due uscite non si prendono lo stesso ingresso in linea', () => {
+  const exits = parseDepotExits(PER_COLONNE_INTERE, {});
+  const ingressi = exits.map((item) => `${item.end} ${item.loc_e}`);
+  assert.equal(new Set(ingressi).size, ingressi.length);
+});
+
 test('l uscita non porta un numero di vettura indistinguibile da un tempo', () => {
   assert.equal(parseDepotExits(BY_COLUMN, {})[0].vett, '');
   const dallaTabella = parseDepotExits(`${TRANSFER_TABLE} Esce 04.48 I.L. 04.57 CATT`, {});
