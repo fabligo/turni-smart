@@ -50,9 +50,11 @@ export const PALINE = {
   310: { lat: 45.03835, lng: 7.63014, name: 'OMERO' },
   1665: { lat: 45.04447, lng: 7.64046, name: 'FILADELFIA' },
   1666: { lat: 45.04411, lng: 7.6403, name: 'FILADELFIA' },
-  /* Il capolinea di via Bertola, che la 58 e la 58/ condividono: il GTFS lo
-     conferma elencando la palina su tutte e due le linee. */
+  /* I due capolinea della 58/. Bertola lo divide con la 58 - il GTFS elenca la
+     palina su tutte e due - mentre via Grosso, all'angolo con via Casalegno, e'
+     solo suo: e' quello che il grafico chiama GCAS. */
   1683: { lat: 45.06996, lng: 7.68134, name: 'BERTOLA CAP' },
+  3542: { lat: 45.04929, lng: 7.62255, name: 'GROSSO CAP' },
 };
 
 export function getPalinaPosition(palina) {

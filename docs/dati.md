@@ -112,7 +112,7 @@ dal GTFS, nome compreso**:
 | FILA | 1665 / 1666 | FILADELFIA | 42 m |
 | ARBA | 303 | SICCARDI CAP | — |
 | OBFR | 2927 | DALLA CHIESA CAP | — |
-| GCAS | 1683 | BERTOLA CAP | — |
+| GCAS | 3542 | GROSSO CAP | — |
 
 Piu' il deposito: **palina 693, GORINI CAP**, `45.03941, 7.59166`.
 
@@ -120,11 +120,17 @@ Piu' il deposito: **palina 693, GORINI CAP**, `45.03941, 7.59166`.
 > diversi**: sono le due vie che si incrociano li', corso Siracusa e via
 > Monfalcone. E' per questo che la seconda era sfuggita.
 >
-> `GCAS` e' il capolinea di andata della **58 e della 58/**, in via Bertola: la
-> palina l'ha data l'utente, e il GTFS la conferma elencandola su tutte e due le
-> linee, che di nome fanno «via Allason - via Bertola» e «via Grosso - via
-> Bertola». L'altro capolinea e' Allason per la 58 e Grosso per la 58/ — due
-> posti diversi, quindi un ritorno da mettere non c'e'.
+> `GCAS` sta per **Grosso-CASalegno**: e' il capolinea della 58/ in via Grosso
+> all'angolo con via Casalegno, palina 3542, e la legenda del grafico lo scrive
+> per esteso — «Via Grosso / V. Casalegno».
+>
+> Per un giorno c'e' stato scritto **Bertola**, che e' l'altro capolinea della
+> linea, a tre chilometri di distanza. Era la palina dell'andata (1683, che la
+> 58/ divide con la 58), presa per la risposta alla domanda «dov'e' GCAS»
+> quando la domanda non era stata fatta cosi'. **Un numero di palina risponde a
+> una domanda sola: quella che gli e' stata posta.** La prova che era sbagliato
+> e' arrivata da uno screenshot dell'app, dove la scheda del rientro portava
+> gia' il nome giusto letto dalla legenda.
 >
 > `ARBA` e `OBFR` sono i due capolinea della linea 5. Il grafico li chiama
 > *P.za Arbarello* e *Orbassano - Strada Torino*, GTT li chiama *Siccardi* e

@@ -158,17 +158,19 @@ export const CHANGE_POINTS = {
     address: 'Piazza Arbarello, Torino',
     stops: { A: '303', R: '303' },
   },
-  /* Capolinea di andata della 58 e della 58/, in via Bertola. La palina l'ha
-     data chi guida la linea - «la 1683 e' il capolinea direzione andata
-     (Bertola), sia della 58 che della 58/» - e il GTFS la conferma da solo:
-     BERTOLA CAP, elencata su tutte e due le linee, che di nome fanno «via
-     Allason - via Bertola» e «via Grosso - via Bertola».
-     L'altro capolinea e' Allason per la 58 e Grosso per la 58/: sono due posti
-     diversi, quindi qui non c'e' un ritorno da mettere. */
+  /* GCAS e' il capolinea della 58/ in via Grosso, all'angolo con via
+     Casalegno: il codice sta per Grosso-CASalegno, e la legenda del grafico lo
+     scrive per esteso, «Via Grosso / V. Casalegno».
+     C'era scritto Bertola, ed era sbagliato. Bertola e' l'altro capolinea -
+     quello che la 58/ divide con la 58, palina 1683 - e ci era finito qui
+     perche' avevo letto la palina dell'andata come se fosse la risposta a
+     «dov'e' GCAS». Le due sono a tre chilometri l'una dall'altra: la scheda
+     mandava a prendere il mezzo dalla parte opposta della linea.
+     Il GTFS conferma la 3542: GROSSO CAP, capolinea della sola 58/. */
   GCAS: {
-    label: 'V. Bertola',
-    address: 'Via Bertola, Torino',
-    stops: { A: '1683', R: '1683' },
+    label: 'Via Grosso / V. Casalegno',
+    address: 'Via Grosso, Via Casalegno, Torino',
+    stops: { A: '3542', R: '3542' },
   },
 };
 

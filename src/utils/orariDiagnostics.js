@@ -107,6 +107,11 @@ export function summarizeReturns(developments = {}) {
       key,
       places: [...new Set((segments || []).map((segment) => normalizePlace(segment.loc_s)))].sort(),
       segments: (segments || []).length,
+      // Gli orari veri, in ordine: sono l'unico modo di rispondere a "quel
+      // rientro c'era o no" senza avere il PDF sotto mano.
+      times: (segments || [])
+        .map((segment) => `${segment.start}\u2192${segment.end}`)
+        .sort(),
     }))
     .sort((a, b) => a.key.localeCompare(b.key));
 }
@@ -126,6 +131,8 @@ export function summarizeExits(developments = {}) {
 }
 
 const MAX_RUNS = 24;
+// Quanti orari di rientro mostrare per linea prima di riassumere.
+const MAX_TIMES = 14;
 const MAX_EXCERPTS = 3;
 
 /** Il referto in testo semplice, fatto per essere fotografato o incollato. */
@@ -157,6 +164,15 @@ export function buildOrariReport({ developments = {}, pages = null } = {}) {
   if (!returns.length) lines.push('rientri: nessuno (grafico di servizio non letto)');
   returns.forEach((item) => {
     lines.push(`${item.key} · ultime corse ${item.segments} · da ${item.places.join(' ') || '-'}`);
+    /* Gli orari, non solo il conto. «La 63 rientrava e l'app non la dava» si
+       risolve in un colpo solo guardando se quel rientro c'e' e a che ora: il
+       conto da solo non lo dice, e senza il PDF in mano non c'e' altro modo di
+       saperlo. */
+    if (item.times.length) {
+      const shown = item.times.slice(0, MAX_TIMES).join(' ');
+      const rest = item.times.length > MAX_TIMES ? ` … +${item.times.length - MAX_TIMES}` : '';
+      lines.push(`  ${shown}${rest}`);
+    }
   });
 
   const exits = summarizeExits(developments);
