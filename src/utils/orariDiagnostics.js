@@ -130,6 +130,43 @@ export function summarizeExits(developments = {}) {
     .sort((a, b) => a.key.localeCompare(b.key));
 }
 
+/**
+ * Rientri e uscite a confronto, linea per linea.
+ *
+ * Ogni vettura che esce dal deposito prima o poi ci rientra: i due conti della
+ * stessa pagina devono somigliarsi. Quando non si somigliano, una delle due
+ * meta' si sta perdendo per strada.
+ *
+ * Non e' teoria. Il 24 agosto il referto diceva «58B LUN - VEN: rientri 2,
+ * uscite 13» e «17 LUN - VEN: 1 e 9», e li' dentro c'era la spiegazione di un
+ * difetto che durava da mesi - i rientri cercavano l'Entra a poche parole
+ * dall'U.L., mentre nel testo estratto per colonne sta molto piu' in la'. Il
+ * conto c'era gia', ma nessuno metteva le due colonne una accanto all'altra.
+ */
+export function compareReturnsAndExits(developments = {}) {
+  const byLine = new Map();
+
+  const add = (key, field) => {
+    const name = String(key).replace(/^(RIENTRI|USCITE)\s+/, '');
+    if (!byLine.has(name)) byLine.set(name, { name, returns: 0, exits: 0 });
+    byLine.get(name)[field] = (developments[key] || []).length;
+  };
+
+  Object.keys(developments || {}).forEach((key) => {
+    if (isRientriKey(key)) add(key, 'returns');
+    else if (isUsciteKey(key)) add(key, 'exits');
+  });
+
+  return [...byLine.values()]
+    .filter((item) => {
+      const low = Math.min(item.returns, item.exits);
+      const high = Math.max(item.returns, item.exits);
+      // Meno della meta' non e' oscillazione: e' roba che manca.
+      return high > 0 && low * 2 < high;
+    })
+    .sort((a, b) => b.exits - b.returns - (a.exits - a.returns));
+}
+
 const MAX_RUNS = 24;
 // Quanti orari di rientro mostrare per linea prima di riassumere.
 const MAX_TIMES = 14;
@@ -180,6 +217,20 @@ export function buildOrariReport({ developments = {}, pages = null } = {}) {
   exits.forEach((item) => {
     lines.push(`${item.key} · trasferimenti ${item.segments} · verso ${item.places.join(' ') || '-'}`);
   });
+
+  /* Il controllo che si legge per primo quando qualcosa non torna: ogni vettura
+     che esce rientra, quindi due conti molto diversi sulla stessa pagina
+     vogliono dire che una delle due meta' si sta perdendo. */
+  const squilibri = compareReturnsAndExits(developments);
+  lines.push('--');
+  if (!squilibri.length) {
+    lines.push('rientri e uscite: conti confrontabili su tutte le linee');
+  } else {
+    lines.push(`squilibrio rientri/uscite su ${squilibri.length}:`);
+    squilibri.forEach((item) => {
+      lines.push(`  ${item.name} · rientri ${item.returns} · uscite ${item.exits}`);
+    });
+  }
 
   /* Le pagine che hanno i marcatori del grafico ma non ne hanno ricavato tutto.
      Sono le sole su cui si puo' intervenire, e il loro testo dice in che forma
