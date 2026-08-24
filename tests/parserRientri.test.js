@@ -107,6 +107,45 @@ test('le colonne mescolate non fanno accoppiare U.L. ed Entra sbagliati', () => 
   );
 });
 
+test('gli U.L. da una parte e gli Entra dall altra si trovano lo stesso', () => {
+  /* Il caso vero, e per mesi il piu' grave. Nel testo estratto per colonne gli
+     U.L. di tutte le vetture stanno di seguito e gli Entra vengono dopo, tutti
+     insieme: fra il primo U.L. e il suo Entra ci sono decine di parole.
+
+     Cercandolo li' accanto se ne trovava una minima parte. Il referto del 24
+     agosto lo diceva confrontando le due meta' della stessa pagina - sulla 58/
+     tredici uscite e due rientri, sulla 17 nove e uno - e ogni vettura che esce
+     prima o poi rientra. E' il difetto per cui l'utente ha visto rientrare una
+     63 che l'app non gli dava. */
+  const perColonne = `${TRANSFER_TABLE}
+    Linea 5
+    U.L. 20.14 CATT  U.L. 20.44 CATT  U.L. 21.02 CATT
+    U.L. 21.30 CATT  U.L. 21.51 OSET  U.L. 22.20 OSET
+    GER Entra 20.23  GER Entra 20.53  GER Entra 21.11
+    GER Entra 21.39  GER Entra 21.58  GER Entra 22.27
+  `;
+  const returns = parseDepotReturns(perColonne, {});
+  assert.equal(returns.length, 6);
+  assert.deepEqual(
+    returns.map((item) => `${item.loc_s} ${item.start}→${item.end}`),
+    [
+      'CATT 20:14→20:23',
+      'CATT 20:44→20:53',
+      'CATT 21:02→21:11',
+      'CATT 21:30→21:39',
+      'OSET 21:51→21:58',
+      'OSET 22:20→22:27',
+    ],
+  );
+});
+
+test('un Entra preso da una vettura non serve anche alla successiva', () => {
+  // Due U.L. alla stessa ora da posti diversi, e un Entra solo: uno dei due
+  // resta senza, invece di prendersi lo stesso ingresso in deposito.
+  const returns = parseDepotReturns(`${TRANSFER_TABLE} U.L. 21.02 CATT U.L. 21.02 CATT Entra 21.11`, {});
+  assert.equal(returns.length, 1);
+});
+
 test('senza Entra credibile non si inventa un rientro', () => {
   // Un Entra lontanissimo non e' il rientro di questa corsa.
   assert.deepEqual(parseDepotReturns(`${TRANSFER_TABLE} U.L. 21.02 CATT Entra 23.40`, {}), []);

@@ -140,6 +140,30 @@ Piu' il deposito: **palina 693, GORINI CAP**, `45.03941, 7.59166`.
 
 ---
 
+## Il controllo che vale per primo
+
+**Ogni vettura che esce dal deposito prima o poi ci rientra.** Quindi, sulla
+stessa pagina, il numero dei rientri e quello delle uscite devono somigliarsi.
+Quando non si somigliano, una delle due meta' si sta perdendo per strada.
+
+Il referto su `?diag=orari` mette le due colonne una accanto all'altra e lo dice
+da solo. Il 24 agosto diceva:
+
+```
+58B LUN - VEN · rientri 2 · uscite 13
+17  LUN - VEN · rientri 1 · uscite 9
+71  LUN - VEN · rientri 0 · uscite 4
+```
+
+Li' dentro c'era un difetto che durava da mesi: i rientri cercavano l'`Entra` a
+poche parole dall'`U.L.`, mentre nel testo estratto per colonne gli `U.L.` di
+tutte le vetture stanno di seguito e gli `Entra` vengono dopo, tutti insieme. Le
+uscite quel rimedio ce l'avevano gia' — raccogliere prima tutti gli `I.L.` della
+pagina — e i rientri no. Il conto c'era da sempre; mancava chi mettesse le due
+colonne vicine.
+
+---
+
 ## I capolinea del grafico
 
 I codici come `GORX`, `NEGR`, `FERM` non hanno numero di palina accanto. Si

@@ -40,9 +40,6 @@ const PLACE_RE = /^[A-Z]{4}$/;
 // "21.51", "21:51" e, quando il separatore si perde, "2151".
 const TIME_RE = /^(\d{1,2})[.:](\d{2})$/;
 const COMPACT_TIME_RE = /^(\d{2})(\d{2})$/;
-// Fra "U.L. 21.51 OSET" e "Entra 21.58" il testo estratto puo' infilare le
-// etichette della colonna accanto: si guarda avanti quel tanto che basta.
-const ENTRY_LOOKAHEAD = 14;
 // Senza tabella dei tempi resta il buon senso: dal capolinea al deposito non ci
 // si mette tre quarti d'ora.
 const MAX_TRANSFER_MINUTES = 45;
@@ -188,11 +185,42 @@ function plausiblePosition(position, minutes) {
   return meters / 1000 / (minutes / 60) <= MAX_KMH ? position : null;
 }
 
+/* Tutti gli ingressi in deposito della pagina, nell'ordine in cui compaiono.
+ *
+ * Vanno raccolti prima e tutti insieme, per la stessa ragione degli I.L.: nel
+ * testo estratto per colonne gli "U.L." stanno da una parte e gli "Entra"
+ * dall'altra, e fra un U.L. e il suo Entra ci sono decine di parole.
+ *
+ * Cercare l'Entra a poca distanza dall'U.L. ne pescava una minima parte. Il
+ * conto lo diceva chiaro nel referto del 24 agosto, confrontando le due meta'
+ * della stessa pagina: sulla 58/ tredici uscite e due rientri, sulla 17 nove e
+ * uno, sulla 63 sette e cinque. Ogni vettura che esce prima o poi rientra,
+ * quindi i due numeri devono somigliarsi. Le uscite quel rimedio ce l'avevano
+ * gia'; i rientri no, ed e' il difetto che ha fatto dire all'utente «ho visto
+ * rientrare una 63 e l'app non me la dava».
+ */
+function collectDepotEntries(tokens) {
+  const entries = [];
+
+  for (let index = 0; index < tokens.length - 1; index += 1) {
+    if (tokens[index] !== 'ENTRA') continue;
+    const minutes = toMinutes(tokens[index + 1]);
+    if (minutes === null) continue;
+    entries.push({ minutes, token: tokens[index + 1] });
+  }
+
+  return entries;
+}
+
 export function parseDepotReturns(text = '', { gt = '', ver = '', legend = null, line = '' } = {}) {
   const tokens = tokenize(text);
   const transfers = parseDepotTransferTimes(text);
   const places = legend || parseLegend(text);
   const lineCode = line || detectRientriLine(text);
+  const entries = collectDepotEntries(tokens);
+  /* Un ingresso in deposito appartiene a una vettura sola: quando e' stato
+     preso non puo' servire anche alla successiva. */
+  const taken = new Set();
   const returns = [];
   const seen = new Set();
 
@@ -203,28 +231,27 @@ export function parseDepotReturns(text = '', { gt = '', ver = '', legend = null,
     if (departure === null || !PLACE_RE.test(place) || place === DEPOT) continue;
 
     const expected = transfers[place]?.in ?? null;
-    let chosen = null;
+    let chosen = -1;
 
-    for (let ahead = index + 3; ahead < Math.min(tokens.length - 1, index + 3 + ENTRY_LOOKAHEAD); ahead += 1) {
-      if (tokens[ahead] !== 'ENTRA') continue;
-      const entry = toMinutes(tokens[ahead + 1]);
-      if (entry === null) continue;
-      const gap = transferMinutes(departure, entry);
+    for (let candidate = 0; candidate < entries.length; candidate += 1) {
+      if (taken.has(candidate)) continue;
+      const gap = transferMinutes(departure, entries[candidate].minutes);
       if (gap <= 0 || gap > MAX_TRANSFER_MINUTES) continue;
       // Il tempo dichiarato dalla tabella e' la prova: se combacia si chiude
       // qui, altrimenti si tiene da parte il primo plausibile e si continua a
       // cercare quello giusto.
       if (expected !== null && gap === expected) {
-        chosen = { entry, token: tokens[ahead + 1] };
+        chosen = candidate;
         break;
       }
-      if (!chosen) chosen = { entry, token: tokens[ahead + 1] };
+      if (chosen < 0) chosen = candidate;
     }
 
-    if (!chosen) continue;
+    if (chosen < 0) continue;
+    taken.add(chosen);
 
     const start = formatTime(tokens[index + 1]);
-    const end = formatTime(chosen.token);
+    const end = formatTime(entries[chosen].token);
     const identity = `${lineCode}|${place}|${start}|${end}`;
     if (seen.has(identity)) continue;
     seen.add(identity);

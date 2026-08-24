@@ -1,7 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseOrari } from '../src/parserOrari.js';
-import { buildOrariReport, countExits, summarizeByGt, summarizePages } from '../src/utils/orariDiagnostics.js';
+import {
+  buildOrariReport,
+  compareReturnsAndExits,
+  countExits,
+  summarizeByGt,
+  summarizePages,
+} from '../src/utils/orariDiagnostics.js';
 
 /* Tre pagine: la prima dichiara il festivo, le due dopo non dichiarano niente
    e se lo prendono da lei. E' il meccanismo che va reso visibile. */
@@ -162,4 +168,41 @@ test('un PDF senza il grafico resta distinguibile da uno non letto', () => {
   });
   const report = buildOrariReport({ developments, pages: diagnostics });
   assert.match(report, /nessuna pagina col grafico in questo PDF/);
+});
+
+test('il referto mette rientri e uscite della stessa linea uno accanto all altro', () => {
+  /* Ogni vettura che esce dal deposito prima o poi ci rientra: due conti molto
+     diversi sulla stessa pagina vogliono dire che una delle due meta' si perde
+     per strada. E' il confronto che il 24 agosto ha fatto trovare il difetto
+     dei rientri - «58B: rientri 2, uscite 13» - dopo mesi che era li'. */
+  const developments = {
+    'RIENTRI 58B LUN - VEN': new Array(2).fill({}),
+    'USCITE 58B LUN - VEN': new Array(13).fill({}),
+    'RIENTRI 5 LUN - VEN': new Array(8).fill({}),
+    'USCITE 5 LUN - VEN': new Array(7).fill({}),
+    'RIENTRI 71 LUN - VEN': [],
+    'USCITE 71 LUN - VEN': new Array(4).fill({}),
+  };
+
+  const squilibri = compareReturnsAndExits(developments);
+  assert.deepEqual(
+    squilibri.map((item) => `${item.name} ${item.returns}/${item.exits}`),
+    ['58B LUN - VEN 2/13', '71 LUN - VEN 0/4'],
+  );
+  // La 5, con otto e sette, non e' uno squilibrio: e' come devono essere.
+  assert.ok(!squilibri.some((item) => item.name.startsWith('5 ')));
+
+  const report = buildOrariReport({ developments });
+  assert.match(report, /squilibrio rientri\/uscite su 2/);
+  assert.match(report, /58B LUN - VEN · rientri 2 · uscite 13/);
+});
+
+test('quando i conti tornano il referto lo dice, invece di tacere', () => {
+  const report = buildOrariReport({
+    developments: {
+      'RIENTRI 5 LUN - VEN': new Array(8).fill({}),
+      'USCITE 5 LUN - VEN': new Array(7).fill({}),
+    },
+  });
+  assert.match(report, /conti confrontabili su tutte le linee/);
 });
