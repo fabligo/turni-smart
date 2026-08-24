@@ -3035,9 +3035,12 @@ a.inline-action--gtt {
 
 /* Ogni orario porta sotto il posto a cui si riferisce: il primo e' il passaggio
    dalla palina dove si sale, non la partenza dal capolinea della linea. */
+/* Le due meta' si dividono lo spazio invece di prenderselo: con `auto` un nome
+   lungo - "Via Grosso / V. Casalegno" - mangiava la colonna e spingeva l'ora di
+   arrivo contro il bordo, dove finiva tagliata. */
 .depot-return-card__times {
   display: grid;
-  grid-template-columns: auto auto 1fr;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 10px;
   align-items: center;
 }
@@ -3046,6 +3049,7 @@ a.inline-action--gtt {
   display: grid;
   gap: 1px;
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .depot-return-card__stop strong {

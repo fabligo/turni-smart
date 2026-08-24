@@ -159,9 +159,12 @@ test('i due lati di corso Siracusa sono due punti diversi', () => {
   assert.deepEqual(getChangePointPosition('SIRA', { direction: 'R' }), { lat: 45.05292, lng: 7.63458 });
 });
 
-test('il capolinea di via Bertola ha la sua palina', () => {
-  // 1683, BERTOLA CAP: capolinea di andata della 58 e della 58/.
-  assert.deepEqual(getChangePointPosition('GCAS'), { lat: 45.06996, lng: 7.68134 });
+test('GCAS e via Grosso, non via Bertola', () => {
+  /* Grosso-CASalegno: il capolinea della 58/ in via Grosso, palina 3542.
+     Per un giorno c'e' stato scritto Bertola, che e' l'altro capolinea della
+     stessa linea, tre chilometri piu' in la': la scheda mandava a prendere il
+     mezzo dalla parte opposta. */
+  assert.deepEqual(getChangePointPosition('GCAS'), { lat: 45.04929, lng: 7.62255 });
 });
 
 test('ogni palina nota porta un nome che conferma la ricerca', () => {

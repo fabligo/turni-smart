@@ -4,6 +4,16 @@ import { getChangePointPosition } from '../constants/changePoints.js';
 import { distanceMeters } from '../constants/gttPaline.js';
 
 export const DEPOT_CODE = 'GERB';
+// Il deposito: palina 693, GORINI CAP.
+const DEPOT_POSITION = { lat: 45.03941, lng: 7.59166 };
+/* Un rientro che parte dal deposito non e' un rientro. Il capolinea della 74 e'
+   il Gerbido stesso, e la sua ultima corsa e' due minuti da V. Gorini al
+   cancello: comparivano come «12:53 da V. Gorini (dep. Gerbido) → 12:55 al
+   Gerbido», che a chi cerca un passaggio non serve, perche' e' gia' li'.
+   Il codice non basta a riconoscerli - sul grafico il posto si chiama GORX, non
+   GERB - quindi si guarda dove sta: sotto i duecentocinquanta metri il deposito
+   ci si arriva a piedi in tre minuti. */
+const AT_DEPOT_METERS = 250;
 // "Ovunque": tutte le corse dirette al deposito, da qualsiasi posto cambio.
 // E' la ricerca da fare a fine turno, quando conta solo rientrare presto e
 // qualsiasi linea che passa di li' va bene.
@@ -58,6 +68,12 @@ export function withDistance(matches = [], position = null) {
 
 export function normalizePlace(value = '') {
   return String(value || '').trim().toUpperCase();
+}
+
+function startsAtDepot(segment) {
+  if (normalizePlace(segment.loc_s) === DEPOT_CODE) return true;
+  const meters = segment.position ? distanceMeters(segment.position, DEPOT_POSITION) : null;
+  return meters !== null && meters <= AT_DEPOT_METERS;
 }
 
 // Accetta l'orario digitato dall'utente solo se e' un HH:MM valido.
@@ -256,10 +272,10 @@ export function searchReturns(developments = {}, selectedPlace, options = {}) {
     groupByRun(segments).forEach((run) => {
       run.forEach((segment, index) => {
         const from = normalizePlace(segment.loc_s);
+        // Una corsa che parte dal deposito non e' un rientro: chi cerca e' gia' li'.
+        if (startsAtDepot(segment)) return;
         if (anyPlace) {
           result.placeKnown = true;
-          // Una corsa che parte dal deposito non e' un rientro.
-          if (from === DEPOT_CODE) return;
         } else {
           if (from === place || normalizePlace(segment.loc_e) === place) result.placeKnown = true;
           if (from !== place) return;

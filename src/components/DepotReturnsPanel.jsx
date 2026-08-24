@@ -12,7 +12,6 @@ import {
   readChangePointDirectionsUrl,
   readDepotDirectionsUrl,
   readDepotMapsDirectionsUrl,
-  readMoovitWebUrl,
   readNearbyStopsUrl,
   readPosition,
 } from '../utils/nearbyStops.js';
@@ -25,7 +24,7 @@ import { Icon } from './Icon.jsx';
 // vedere che qualcosa e' partito, altrimenti premere Trova sembra inutile.
 const SEARCH_FEEDBACK_MS = 520;
 
-const UPCOMING_LIMIT = 5;
+const UPCOMING_LIMIT = 3;
 
 // Oltre questo si smette di aspettare il GPS e si dice che la posizione non c'e'.
 const GEO_DEADLINE_MS = 12000;
@@ -71,6 +70,16 @@ function formatDistance(item) {
   const distanza = item.meters >= 1000 ? `${(item.meters / 1000).toFixed(1)} km` : `${item.meters} m`;
   if (item.reachable === false) return `a ${distanza}, ${item.walkMinutes} min a piedi: non ci arrivi`;
   return `a ${distanza} · ${item.walkMinutes} min a piedi`;
+}
+
+/* La fine della finestra cercata. Il riepilogo diceva solo «dalle 12:13», e da
+   li' non si capiva fin dove avesse guardato: adesso dice l'intervallo intero,
+   che e' esattamente la domanda a cui sta rispondendo. */
+function clockPlus(time, minutes) {
+  const match = String(time || '').match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return '';
+  const total = (Number(match[1]) * 60 + Number(match[2]) + minutes) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 
 function formatWindow(windowMinutes) {
@@ -201,6 +210,15 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
     });
   }, [here, result.matches]);
 
+  /* I rientri oltre la finestra. Erano un elenco a parte, stretto, con la linea
+     e i due orari sulla stessa riga: l'utente ha detto che non si capiva cosa
+     fosse quella tabella in fondo. Sono rientri come gli altri - solo piu'
+     tardi - quindi sono schede come le altre, e ne bastano poche. */
+  const upcoming = useMemo(
+    () => withDistance(result.upcoming.slice(0, UPCOMING_LIMIT), here),
+    [here, result.upcoming],
+  );
+
   // Un rientro di cui il grafico non dice la linea non ha una pillola da
   // mettere qui sopra: lo dice la sua scheda, e basta.
   const returningLines = [...new Set(matches.map((item) => getLineDisplayName(item.line)).filter(Boolean))];
@@ -208,6 +226,79 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
   const otherServices = Object.entries(result.passagesByService).filter(
     ([service, count]) => service !== result.service && count > 0,
   );
+
+  /* Una scheda sola per tutti i rientri, dentro la finestra e oltre. Prima ce
+     n'erano due formati diversi, e il secondo - linea e due orari sulla stessa
+     riga, dentro un riquadro tratteggiato - andava a capo dove capitava. */
+  function renderCard(item) {
+    const stop = getChangePointStop(item.from, { line: item.line });
+    const line = getLineDisplayName(item.line);
+    return (
+      <article
+        className={`depot-return-card${item.reachable === false ? ' depot-return-card--far' : ''}`}
+        key={`${item.line}-${item.from}-${item.shift}-${item.departure}-${item.vehicleShift}`}
+      >
+        {/* La pillola gialla e' il numero della linea. Senza numero sarebbe una
+            macchia gialla vuota, che non dice ne' cosa prendere ne' che il dato
+            manca: in quel caso lo si scrive. I tratti si dicono solo quando
+            sono piu' di uno. */}
+        <p className="depot-return-card__head" title={item.route}>
+          {line ? <strong>{line}</strong> : <span>linea non indicata sul grafico</span>}
+          {item.direct ? '' : `${item.legs.length} tratti`}
+        </p>
+        {/* I due orari sono l'uno il passaggio alla palina dove si sale e
+            l'altro l'arrivo in deposito: senza scriverlo sotto ciascuno, il
+            primo si legge come partenza dal capolinea. */}
+        <p className="depot-return-card__times">
+          <span className="depot-return-card__stop">
+            <strong>{item.departure}</strong>
+            <small>
+              {stop ? `palina ${stop} · ` : ''}
+              {placeLabel(item.from)}
+            </small>
+          </span>
+          <i aria-hidden="true">→</i>
+          <span className="depot-return-card__stop">
+            <strong>{item.arrival}</strong>
+            <small>{DEPOT_LABEL}</small>
+          </span>
+        </p>
+        <p className="depot-return-card__meta">
+          {[
+            formatDistance(item),
+            formatWaitShort(item.waitMinutes),
+            // Su un rientro a piu' tratti dentro ci sta anche il recupero a
+            // capolinea fra un tratto e l'altro: e' tempo passato sul mezzo,
+            // non viaggio.
+            `a bordo ${formatSpan(item.rideMinutes)}`,
+            item.vehicleShift ? `vettura ${item.vehicleShift}` : '',
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </p>
+        {positionLink?.kind === `to-${item.from}` ? (
+          <a
+            className="depot-returns-maps-link"
+            href={positionLink.url}
+            onClick={() => setPositionLink(null)}
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            Apri il percorso fino a {placeLabel(item.from)}
+          </a>
+        ) : (
+          <button
+            className="depot-returns-maps-link"
+            disabled={Boolean(geoBusy)}
+            onClick={() => openWithPosition(() => readChangePointDirectionsUrl(item.from), `to-${item.from}`)}
+            type="button"
+          >
+            {geoBusy === `to-${item.from}` ? 'Leggo la posizione…' : 'ci arrivo in tempo?'}
+          </button>
+        )}
+      </article>
+    );
+  }
 
   function renderEmptyState() {
     // I rientri stanno solo sul grafico di servizio. Senza quella pagina non
@@ -441,7 +532,7 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
           {matches.length
             ? `${matches.length} ${matches.length === 1 ? 'rientro' : 'rientri'}`
             : 'Nessun rientro'}{' '}
-          dalle {criteria.time}
+          fra le {criteria.time} e le {clockPlus(criteria.time, criteria.windowMinutes)}
           {criteria.service ? '' : ` · servizio ${SERVICE_LABELS[result.service] || result.service}`}
         </p>
       ) : null}
@@ -457,93 +548,30 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
       ) : null}
 
       <div className="depot-returns-results" aria-live="polite">
-        {searching ? null : matches.length ? (
-          matches.map((item) => {
-            const stop = getChangePointStop(item.from, { line: item.line });
-            return (
-              <article
-                className={`depot-return-card${item.reachable === false ? ' depot-return-card--far' : ''}`}
-                key={`${item.line}-${item.from}-${item.shift}-${item.departure}-${item.vehicleShift}`}
-              >
-                {/* La pillola gialla e' il numero della linea. Senza numero
-                    sarebbe una macchia gialla vuota, che non dice ne' cosa
-                    prendere ne' che il dato manca: in quel caso lo si scrive.
-                    E "diretto" non c'e' piu': i rientri del grafico sono tutti
-                    di un tratto solo, quindi quella parola compariva su ogni
-                    scheda senza distinguere niente. I tratti si dicono solo
-                    quando sono piu' di uno. */}
-                <p className="depot-return-card__head" title={item.route}>
-                  {getLineDisplayName(item.line) ? (
-                    <strong>{getLineDisplayName(item.line)}</strong>
-                  ) : (
-                    <span>linea non indicata sul grafico</span>
-                  )}
-                  {item.direct ? '' : `${item.legs.length} tratti`}
-                </p>
-                {/* I due orari sono l'uno il passaggio alla palina dove si sale
-                    e l'altro l'arrivo in deposito: senza scriverlo sotto
-                    ciascuno, il primo si legge come partenza dal capolinea. */}
-                <p className="depot-return-card__times">
-                  <span className="depot-return-card__stop">
-                    <strong>{item.departure}</strong>
-                    <small>
-                      {stop ? `palina ${stop} · ` : ''}
-                      {placeLabel(item.from)}
-                    </small>
-                  </span>
-                  <i aria-hidden="true">→</i>
-                  <span className="depot-return-card__stop">
-                    <strong>{item.arrival}</strong>
-                    <small>{DEPOT_LABEL}</small>
-                  </span>
-                </p>
-                <p className="depot-return-card__meta">
-                  {[
-                    formatDistance(item),
-                    formatWaitShort(item.waitMinutes),
-                    // Su un rientro a piu' tratti dentro ci sta anche il
-                    // recupero a capolinea fra un tratto e l'altro: e' tempo
-                    // passato sul mezzo, non viaggio.
-                    `a bordo ${formatSpan(item.rideMinutes)}`,
-                    item.vehicleShift ? `vettura ${item.vehicleShift}` : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </p>
-                {positionLink?.kind === `to-${item.from}` ? (
-                  <a
-                    className="depot-returns-maps-link"
-                    href={positionLink.url}
-                    onClick={() => setPositionLink(null)}
-                    rel="noopener noreferrer"
-                    target="_blank"
-                  >
-                    Apri il percorso fino a {placeLabel(item.from)}
-                  </a>
-                ) : (
-                  <button
-                    className="depot-returns-maps-link"
-                    disabled={Boolean(geoBusy)}
-                    onClick={() => openWithPosition(() => readChangePointDirectionsUrl(item.from), `to-${item.from}`)}
-                    type="button"
-                  >
-                    {geoBusy === `to-${item.from}` ? 'Leggo la posizione…' : 'ci arrivo in tempo?'}
-                  </button>
-                )}
-              </article>
-            );
-          })
-        ) : (
-          renderEmptyState()
-        )}
+        {searching ? null : matches.length ? matches.map(renderCard) : renderEmptyState()}
       </div>
 
+      {/* I rientri oltre la finestra, con le stesse schede: prima si vedeva un
+          elenco stretto intitolato "Prossimi rientri", che sopra a un pannello
+          che diceva "nessun rientro" non si capiva cosa fosse. Sono rientri
+          anche quelli, solo piu' tardi, e il titolo dice quanto piu' tardi. */}
+      {!searching && upcoming.length ? (
+        <div className="depot-returns-upcoming">
+          <h3>
+            {matches.length
+              ? `Piu' tardi, oltre ${formatWindow(criteria.windowMinutes)}`
+              : `Il primo e' alle ${upcoming[0].departure}`}
+          </h3>
+          <div className="depot-returns-results">{upcoming.map(renderCard)}</div>
+        </div>
+      ) : null}
+
+      {/* Ultimo, e non piu' in mezzo alla pagina: e' il ripiego per quando in
+          servizio non torna indietro niente, non la risposta principale. Un
+          bottone e un link, non tre. */}
       {!searching && !matches.length ? (
         <div className="depot-returns-fallback">
-          <p>
-            Nessun mezzo di servizio ti riporta in deposito adesso. Moovit parte da dove sei, prende la fermata piu
-            vicina e ti da linee, orari di passaggio e cambi fino al Gerbido.
-          </p>
+          <p>In servizio non rientra niente. Moovit ti porta al Gerbido coi mezzi di linea, da dove sei.</p>
           {positionLink?.kind === 'depot' ? (
             <a
               className="depot-returns-search"
@@ -586,50 +614,9 @@ export function DepotReturnsPanel({ developments = {}, places = {}, staleParse =
               {geoBusy === 'maps' ? 'Leggo la posizione…' : 'oppure con Google Maps'}
             </button>
           )}
-          {positionLink?.kind === 'moovitWeb' ? (
-            <a
-              className="depot-returns-maps-link"
-              href={positionLink.url}
-              onClick={() => setPositionLink(null)}
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              Apri Moovit nel browser
-            </a>
-          ) : (
-            <button
-              className="depot-returns-maps-link"
-              disabled={Boolean(geoBusy)}
-              onClick={() => openWithPosition(readMoovitWebUrl, 'moovitWeb')}
-              type="button"
-            >
-              {geoBusy === 'moovitWeb' ? 'Leggo la posizione…' : 'oppure Moovit nel browser'}
-            </button>
-          )}
         </div>
       ) : null}
 
-      {!searching && result.upcoming.length ? (
-        <div className="depot-returns-upcoming">
-          <h3>{matches.length ? 'Rientri successivi' : 'Prossimi rientri'}</h3>
-          <ul>
-            {result.upcoming.slice(0, UPCOMING_LIMIT).map((item) => (
-              <li key={`${item.line}-${item.from}-${item.shift}-${item.departure}-${item.vehicleShift}`}>
-                <strong>
-                  {getLineDisplayName(item.line) || 'linea n.d.'}
-                  {item.direct ? '' : ` · ${item.legs.length} tratti`}
-                </strong>
-                <span>
-                  {item.departure} da {placeLabel(item.from)}
-                </span>
-                <span>
-                  {item.arrival} al {DEPOT_LABEL}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
     </section>
   );
 }
