@@ -22,3 +22,4 @@ e' costato giorni.
 | [0009](0009-il-lavoro-arriva-dalle-issue.md) | Il lavoro arriva dalle issue, e una sessione ne fa una |
 | [0010](0010-uscite-dal-grafico-di-servizio.md) | Anche le uscite vengono dal grafico di servizio |
 | [0011](0011-laggiornamento-non-si-chiede.md) | L'aggiornamento non si chiede: si sceglie il momento |
+| [0012](0012-lo-sviluppo-viene-dalla-pagina-turni.md) | Lo sviluppo turno viene dalla pagina turni, e quando manca si dice |

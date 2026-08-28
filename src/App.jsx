@@ -31,7 +31,7 @@ import {
 import { buildCsv, buildPreconoscenzaInfographicBlob, downloadBlobFile, downloadTextFile } from './exportUtils.js';
 import { getDevSegments, normalizeShiftKey, parseOrari, summarizeDevelopments } from './parserOrari.js';
 import { buildOrariReport } from './utils/orariDiagnostics.js';
-import { RIENTRI_PARSER_VERSION } from './parserRientri.js';
+import { isGraphicKey, RIENTRI_PARSER_VERSION } from './parserRientri.js';
 import { parseNaturalDate, toIsoDate } from './utils/dateUtils.js';
 import { isGerbidoLine as checkGerbidoLine } from './constants/depotGerbido.js';
 import { DEFAULT_REST_CODE, getOfficialRestEntries } from './constants/restCodes2026.js';
@@ -926,7 +926,10 @@ export default function App() {
     const firstShift = homeSelection.day?.t === 'turno' ? homeSelection.day : Object.values(days).find((day) => day?.t === 'turno');
     const searchedKey = firstShift ? normalizeShiftKey(firstShift.l, firstShift.n) : '';
     const segments = firstShift ? getDevSegments(developments, firstShift.l, firstShift.n, firstShift.date, firstShift) : [];
-    const keys = Object.keys(developments);
+    /* I turni degli Orari, senza rientri e uscite: stanno nella stessa mappa ma
+       non sono turni, e contarli faceva dire al pannello Documenti piu' turni
+       di quanti il PDF ne abbia. */
+    const keys = Object.keys(developments).filter((key) => !isGraphicKey(key));
     const lineSet = new Set();
     const unknownLineSet = new Set();
     const missingDevelopments = [];

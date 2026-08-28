@@ -4,7 +4,7 @@
 E' il solo posto che dice cosa e' in corso e chi tiene cosa. Senza, due
 conversazioni rifanno lo stesso lavoro in modo diverso.
 
-*Aggiornato: 24 agosto 2026 · 251 test verdi · issue aperte: #63, #64*
+*Aggiornato: 28 agosto 2026 · 256 test verdi · issue aperte: #63, #64, #77*
 
 ## Per aprire la prossima sessione
 
@@ -24,6 +24,7 @@ ferma dopo aver speso tutto il giro di avvio. E' gia' successo.
 
 | Area | Conversazione | Stato |
 |---|---|---|
+| Sviluppo turno nelle schede | sessione del 28 agosto | chiusa |
 | Rientri in deposito | sessione del 24 agosto | chiusa |
 | Uscite dal deposito (#62) | sessione del 21 agosto | chiusa |
 | BusRadar dentro l'app | altra conversazione (PR #60) | ultima attivita' 14 agosto |
@@ -42,6 +43,18 @@ statistiche, esportazione ICS, turni comunicati a mano, archivio per mese.
 **Orari** — sviluppi turno, consultazione linee, referto diagnostico su
 `?diag=orari`, che mette rientri e uscite di ogni linea uno accanto all'altro e
 segnala i conti che non si somigliano.
+
+Lo sviluppo di un turno lo costruisce **solo** la pagina turni: il grafico di
+servizio non ci entra piu' ne' come turno inventato (`05 4` era la vettura 4)
+ne' come coda del turno della pagina prima, e le ricerche che guardavano tutta
+la mappa saltano le sue chiavi. Il ripiego per le linee scritte in due modi
+(`58` e `58/`) adesso pretende il numero di turno o tutte e due le estremita'
+della finestra: prima bastavano la linea e l'ora di fine, e in deposito staccano
+tutti alla stessa ora (→ `decisioni/0012`).
+
+Quando il PDF Orari quel turno non ce l'ha, la scheda del giorno **lo dice** —
+etichetta «Turno non negli Orari» e il motivo per esteso — invece di chiedere di
+caricare un documento gia' caricato.
 
 **Rientri** — letti dal grafico di servizio (`U.L.` → `Entra`), **tutti**: fino
 al 24 agosto l'`Entra` si cercava a poche parole dall'`U.L.`, e nel testo
@@ -84,7 +97,8 @@ Aperte adesso:
 | # | | |
 |---|---|---|
 | [#63](https://github.com/trailpress/turni-smart/issues/63) | dati | Resta solo piazza Massaua: `GCAS` e corso Siracusa sono risolti |
-| [#64](https://github.com/trailpress/turni-smart/issues/64) | debito | Le zone senza test: i due parser d'origine e `detectGt` |
+| [#64](https://github.com/trailpress/turni-smart/issues/64) | debito | Le zone senza test: i due parser d'origine e `detectGt` — `tests/parserOrari.test.js` e' il primo pezzo |
+| [#77](https://github.com/trailpress/turni-smart/issues/77) | rientri | Si perdono dove `ENTRA` e `U.L.` stanno scritti insieme |
 
 Chiusa il 21 agosto: [#62](https://github.com/trailpress/turni-smart/issues/62)
 — le Uscite leggevano le riprese della pagina turni (→ `decisioni/0010`).

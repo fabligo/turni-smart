@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { formatMinutes, minutesBetween } from '../utils/timeUtils.js';
 import { getDevSegments } from '../parserOrari.js';
+import { isGraphicKey } from '../parserRientri.js';
 import { getLineDisplayName } from '../constants/depotGerbido.js';
 import { getChangePointAddress, normalizeChangePoint } from '../constants/changePoints.js';
 import { BALLOTTAGGI } from '../constants/shiftClassification.js';
@@ -363,6 +364,14 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
   const restMinutes = enrichment?.restMinutes ?? shift.restMinutes ?? null;
   const category = enrichment?.category || shift.category;
   const hasSegments = segments.length > 0;
+  /* Tre situazioni che sulla card sembravano una sola: lo sviluppo c'e', gli
+     Orari Linee non sono caricati, oppure sono caricati e quel turno dentro
+     non c'e'. La terza e' la piu' frequente - il PDF Orari e' per linee, e una
+     linea o una versione che manca porta via tutti i suoi turni - ed era anche
+     l'unica che la card non diceva: invitava a caricare un PDF gia' caricato,
+     e da fuori sembrava che lo sviluppo fosse sparito. */
+  const hasOrari = Object.keys(developments || {}).some((key) => !isGraphicKey(key));
+  const developmentStatus = hasSegments ? 'ok' : hasOrari ? 'shift-missing' : 'no-orari';
   const legPause = hasMultipleLegs ? minutesBetween(segments[0].end, segments[1].start) : null;
   const dateParts = getDateParts(shift.date);
   /* Lo sviluppo si apre quando c'e' piu' di un tratto da leggere, che e' una
@@ -436,6 +445,7 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
               <div className="shift-badge-row" aria-label="Classificazione turno">
                 {dayData?.isGerbidoLine ? <span className="shift-badge shift-badge--line">Gerbido</span> : null}
                 {dayData && !dayData.isGerbidoLine ? <span className="shift-badge shift-badge--rest">Linea non riconosciuta</span> : null}
+                {developmentStatus === 'shift-missing' ? <span className="shift-badge shift-badge--rest">Turno non negli Orari</span> : null}
                 {isSplit ? <span className="shift-badge shift-badge--warning">2 riprese</span> : null}
                 {showEveningBadge ? <span className="shift-badge shift-badge--evening">Serale</span> : null}
                 {/* "Riposo breve" da solo non dice niente: il numero si', ed
@@ -496,7 +506,7 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
           </div>
 
           {!canFlipDevelopment ? (
-            <DevelopmentPanel hasMultipleLegs={hasMultipleLegs} hasSegments={hasSegments} isSplit={isSplit} legPause={legPause} line={dayData?.lineaNorm || shift.line} onVehicleNumberChange={updateSegmentVehicle} segments={segments} />
+            <DevelopmentPanel hasMultipleLegs={hasMultipleLegs} hasSegments={hasSegments} isSplit={isSplit} legPause={legPause} line={dayData?.lineaNorm || shift.line} number={shift.number} onVehicleNumberChange={updateSegmentVehicle} segments={segments} status={developmentStatus} />
           ) : null}
         </div>
 
@@ -514,7 +524,7 @@ export function ShiftCard({ calendarActions, date, developments = {}, enrichment
                 Torna al turno
               </button>
             </div>
-            <DevelopmentPanel expanded hasMultipleLegs={hasMultipleLegs} hasSegments={hasSegments} isSplit={isSplit} legPause={legPause} line={dayData?.lineaNorm || shift.line} onVehicleNumberChange={updateSegmentVehicle} segments={segments} />
+            <DevelopmentPanel expanded hasMultipleLegs={hasMultipleLegs} hasSegments={hasSegments} isSplit={isSplit} legPause={legPause} line={dayData?.lineaNorm || shift.line} number={shift.number} onVehicleNumberChange={updateSegmentVehicle} segments={segments} status={developmentStatus} />
           </div>
         ) : null}
       </div>
@@ -582,7 +592,7 @@ function ShiftTiming({ dayData, duration }) {
   );
 }
 
-function DevelopmentPanel({ expanded = false, hasMultipleLegs, hasSegments, isSplit, legPause, line = '', onVehicleNumberChange, segments }) {
+function DevelopmentPanel({ expanded = false, hasMultipleLegs, hasSegments, isSplit, legPause, line = '', number = '', onVehicleNumberChange, segments, status = 'ok' }) {
   /* Quale tratto sta guardando la mappa. L'indice e non il tratto: il numero
      di vettura si puo' scrivere mentre il riquadro e' aperto, e la mappa deve
      seguirlo invece di restare ferma su una copia vecchia. */
@@ -676,7 +686,16 @@ function DevelopmentPanel({ expanded = false, hasMultipleLegs, hasSegments, isSp
         </>
       ) : (
         <p className="development-empty">
-          Sviluppo non disponibile. Carica il PDF Orari Deposito da <strong>Altro › Documenti</strong> per vedere le riprese di questo turno.
+          {status === 'shift-missing' ? (
+            <>
+              Sviluppo non disponibile: negli Orari Linee caricati il turno <strong>{number}</strong> della linea{' '}
+              <strong>{getLineDisplayName(line)}</strong> non c'e'. Qui sopra ci sono gli orari della preconoscenza, che restano validi.
+            </>
+          ) : (
+            <>
+              Sviluppo non disponibile. Carica il PDF Orari Deposito da <strong>Altro › Documenti</strong> per vedere le riprese di questo turno.
+            </>
+          )}
         </p>
       )}
       {mapTarget ? (

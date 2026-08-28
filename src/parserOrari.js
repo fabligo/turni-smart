@@ -386,6 +386,21 @@ export function parseOrariPageLines(text, gt, ver, developments, tableState = nu
   }
 }
 
+/* Come si riconosce una pagina del grafico di servizio, senza indovinare: o ne
+   sono usciti rientri o uscite - cosa che la pagina dei turni non puo'
+   produrre, perche' le etichette `Esce`, `I.L.`, `U.L.` ed `Entra` le ha solo
+   il grafico - oppure porta la tabella dei tempi da e per il deposito, che e'
+   sua e di nessun altro (→ `docs/dati.md`, «I PDF di GTT»).
+
+   Serve a tenerla lontana dal parser dei turni. Le sue righe hanno la stessa
+   forma di quelle dei turni - `5 / 4 06.00 CATT A 06.35 OSET` - ma il numero
+   dopo la linea e' la vettura, non il turno: lette come turni diventavano
+   sviluppi inventati sotto chiavi come `05 4`, e le righe senza codice davanti
+   si attaccavano in coda all'ultimo turno letto sulla pagina prima. */
+function isGraphicPage(text, returns = [], exits = []) {
+  return Boolean(returns.length || exits.length || /TEMPI\s+DI\s+USCITA/i.test(String(text || '')));
+}
+
 /**
  * @param pagesText  il testo delle pagine del PDF
  * @param diagnostics  array facoltativo: se passato, riceve una riga per
@@ -412,8 +427,8 @@ export function parseOrari(pagesText, { diagnostics = null, places = null } = {}
     }
 
     const serviceKey = `${resolved}|${ver || ''}`;
-    tableStateByService[serviceKey] = tableStateByService[serviceKey] || { currentCode: '', currentRun: 0 };
-    parseOrariPageLines(pageText, resolved, ver, developments, tableStateByService[serviceKey]);
+    const tableState = tableStateByService[serviceKey] || { currentCode: '', currentRun: 0 };
+    tableStateByService[serviceKey] = tableState;
 
     /* Il grafico di servizio e' un'altra pagina con un'altra forma: da li'
        vengono le ultime corse prima del deposito e i trasferimenti con cui le
@@ -439,6 +454,15 @@ export function parseOrari(pagesText, { diagnostics = null, places = null } = {}
       developments[key] = developments[key] || [];
       exits.forEach((segment) => addSegment(developments, key, segment));
     }
+
+    /* Quella pagina la legge il parser del grafico, non quello dei turni: le
+       sue righe sono corse di una vettura, non riprese di un turno, e passate
+       alla tabella dei turni diventavano sviluppi che non esistono. Lo stato
+       della tabella attraversa le pagine dello stesso servizio, quindi va
+       anche azzerato: senza, le corse del grafico si attaccavano in coda
+       all'ultimo turno della pagina prima. */
+    if (isGraphicPage(pageText, returns, exits)) tableState.currentCode = '';
+    else parseOrariPageLines(pageText, resolved, ver, developments, tableState);
 
     if (diagnostics) {
       const entry = diagnostics[diagnostics.length - 1];
@@ -529,6 +553,23 @@ function isItalianHoliday(date) {
   const easterMonday = easterDate(year);
   easterMonday.setDate(easterMonday.getDate() + 1);
   return date.getMonth() === easterMonday.getMonth() && date.getDate() === easterMonday.getDate();
+}
+
+/* I tratti fra cui si cerca lo sviluppo di un turno: quelli dei turni, non
+   quelli del grafico di servizio.
+
+   Rientri e uscite stanno nella stessa mappa sotto chiavi che nessun turno puo'
+   avere, e la scheda di un turno non le pesca per chiave. Ma tre ricerche - il
+   percorso esatto, il completamento nella finestra e il ripiego a punteggio -
+   guardavano tutti i valori della mappa senza guardarne le chiavi, e da quando
+   il grafico viene letto (→ `decisioni/0001` e `0010`) ci trovavano dentro
+   anche i trasferimenti da e per il deposito: un turno poteva ritrovarsi come
+   sviluppo un rientro solo, cioe' un tratto al posto di due, e la scheda del
+   giorno smetteva di mostrarlo. */
+function turnSegments(developments) {
+  return Object.entries(developments || {})
+    .filter(([key]) => !isGraphicKey(key))
+    .flatMap(([, segments]) => segments || []);
 }
 
 function pickRun(segments, preShift) {
@@ -660,8 +701,7 @@ function findExactShiftPath(developments, line, date, preShift) {
   if (shiftEnd < shiftStart) shiftEnd += 24 * 60;
 
   const seen = new Set();
-  const baseCandidates = Object.values(developments || {})
-    .flat()
+  const baseCandidates = turnSegments(developments)
     .filter((segment) => (segment.lineaNorm || normalizeLineCode(segment.ln)) === lineNorm)
     .filter((segment) => isWithinShiftWindow(segment, preShift))
     .filter((segment) => {
@@ -730,8 +770,7 @@ function completeShiftFromWindow(developments, line, date, preShift, baseSegment
   const sortedBase = sortSegments(baseSegments);
   if (reachesPreShiftEnd(sortedBase[sortedBase.length - 1], preShift)) return sortedBase;
 
-  const basePool = Object.values(developments || {})
-    .flat()
+  const basePool = turnSegments(developments)
     .filter((segment) => (segment.lineaNorm || normalizeLineCode(segment.ln)) === lineNorm)
     .filter((segment) => isWithinShiftWindow(segment, preShift));
   const dayPool = basePool.filter((segment) => matchesServiceDay(segment.gt, date));
@@ -768,8 +807,19 @@ function normalizePlace(value) {
   return String(value || '').trim().toUpperCase();
 }
 
+/* Il ripiego: quando la chiave del turno non si trova, si prende lo sviluppo
+   che gli somiglia di piu'. Serve perche' la stessa linea compare scritta in
+   modi diversi sulle due fonti - `58` e `58/`, `05` e `5` - e in quel caso il
+   turno c'e', solo sotto un'altra chiave.
+
+   `identified` e' il vincolo che tiene onesto il ripiego: o il numero di turno
+   combacia, oppure combaciano tutte e due le estremita' della finestra. Senza,
+   bastavano la linea e l'ora di fine per prendersi lo sviluppo di un altro
+   turno della stessa linea che stacca allo stesso minuto - e in deposito
+   staccano tutti li' - e la card lo mostrava come proprio invece di dire che
+   negli Orari quel turno non c'e' (→ `decisioni/0003`). */
 function scoreFallbackSegments(key, segments, line, shiftNumber, date, preShift) {
-  if (!segments?.length) return 0;
+  if (!segments?.length) return { score: 0, identified: false };
 
   const candidates = segments.filter((segment) => matchesServiceDay(segment.gt, date));
   const list = candidates.length ? candidates : segments;
@@ -784,26 +834,31 @@ function scoreFallbackSegments(key, segments, line, shiftNumber, date, preShift)
   const normalizedShift = String(Number.parseInt(shiftNumber, 10));
   let score = 0;
 
+  const shiftMatch = normalizedShift !== 'NaN' && String(key).split(' ')[1] === normalizedShift;
+  const startMatch = Boolean(startTime) && first?.start === startTime;
+  const endMatch = Boolean(endTime) && last?.end === endTime;
+
   if (list.some((segment) => segment.lineaNorm === lineNorm || normalizeLineCode(segment.ln) === lineNorm)) score += 4;
-  if (normalizedShift !== 'NaN' && String(key).split(' ')[1] === normalizedShift) score += 5;
-  if (first?.start === startTime) score += 3;
-  if (last?.end === endTime) score += 3;
+  if (shiftMatch) score += 5;
+  if (startMatch) score += 3;
+  if (endMatch) score += 3;
   if (normalizePlace(first?.loc_s) === startPlace) score += 2;
   if (normalizePlace(last?.loc_e) === endPlace) score += 2;
 
-  return score;
+  return { score, identified: shiftMatch || (startMatch && endMatch) };
 }
 
 function findFallbackSegments(developments, line, shiftNumber, date, preShift) {
   if (!preShift) return [];
 
   const best = Object.entries(developments || {})
+    .filter(([key]) => !isGraphicKey(key))
     .map(([key, segments]) => ({
       key,
       segments,
-      score: scoreFallbackSegments(key, segments, line, shiftNumber, date, preShift),
+      ...scoreFallbackSegments(key, segments, line, shiftNumber, date, preShift),
     }))
-    .filter((item) => item.score >= 7)
+    .filter((item) => item.identified && item.score >= 7)
     .sort((a, b) => b.score - a.score || a.segments.length - b.segments.length)[0];
 
   if (!best) return [];
